@@ -2,7 +2,7 @@
   "name": "merkle-patricia-tree",
   "version": "2.3.1",
   "description": "This is an implementation of the modified merkle patricia tree as speficed in the Ethereum's yellow paper.",
-  "main": "index.js",
+  "main": "build/index.js",
   "scripts": {
     "test": "mocha -r ts-node/register src/**/*.spec.ts --timeout 40000",
     "coverage": "istanbul cover ./test/index.js",
