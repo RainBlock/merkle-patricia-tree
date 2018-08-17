@@ -65,13 +65,12 @@ export class MerklePatriciaTree {
   }
 
   /**
-   * Given a key, retrieve the previously mapped value, or null, if no mappping
-   * exists.
+   * Given a key, retrieve a witness for the mapping.
    *
-   * @param key   The key to retrieve the value for.
+   * @param key   The key to retrieve the witness for.
    *
-   * @returns     A promise, containing the value if it exists, or null, if no
-   * value was previously mapped to key.
+   * @returns     A witness, with a proof of the value read (or a null value,
+   * with a proof of the value's nonexistence).
    */
   get(key: Buffer): Promise<Witness> {
     return new Promise((resolve, reject) => {
