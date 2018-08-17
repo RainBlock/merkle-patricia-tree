@@ -67,7 +67,7 @@ trie.createReadStream()
 ```
 
 # API
-[./docs/](./docs/index.md)
+API documentation can be found [here](https://rainblock.github.io/merkle-patricia-tree/)
 
 # TESTING
 `npm test`
