@@ -25,20 +25,20 @@ describe('Try original simple-save-retrieve', async () => {
 
   it('should get a value', async () => {
     const val = await tree.get(Buffer.from('test'));
-    should.exist(val);
-    val!.should.deep.equal(one);
+    should.exist(val.value);
+    val.value!.should.deep.equal(one);
   });
 
   it('should update a value', async () => {
     await tree.put(Buffer.from('test'), two);
     const val = await tree.get(Buffer.from('test'));
-    should.exist(val);
-    val!.should.deep.equal(two);
+    should.exist(val.value);
+    val.value!.should.deep.equal(two);
   });
 
   it('should delete value', async () => {
     await tree.del(Buffer.from('test'));
-    should.not.exist(await tree.get(Buffer.from('test')));
+    should.not.exist((await tree.get(Buffer.from('test'))).value);
   });
 
   it('should recreate value', async () => {
@@ -47,8 +47,8 @@ describe('Try original simple-save-retrieve', async () => {
 
   it('should get updated value', async () => {
     const val = await tree.get(Buffer.from('test'));
-    should.exist(val);
-    val!.should.deep.equal(one);
+    should.exist(val.value);
+    val.value!.should.deep.equal(one);
   });
 
   it('should create a branch', async () => {
@@ -59,13 +59,13 @@ describe('Try original simple-save-retrieve', async () => {
 
   it('should get a value in a branch', async () => {
     const val = await tree.get(Buffer.from('doge'));
-    should.exist(val);
-    val!.should.deep.equal(Buffer.from('coin'));
+    should.exist(val.value);
+    val.value!.should.deep.equal(Buffer.from('coin'));
   });
 
   it('should delete from a branch', async () => {
     await tree.del(Buffer.from('doge'));
-    should.not.exist(await tree.get(Buffer.from('doge')));
+    should.not.exist((await tree.get(Buffer.from('doge'))).value);
   });
 });
 
@@ -85,14 +85,15 @@ describe('Try original storing larger values', async () => {
 
   it('should retrieve longer values', async () => {
     const val = await tree.get(Buffer.from('done'));
-    should.exist(val);
-    val!.should.deep.equal(Buffer.from(longString));
+    should.exist(val.value);
+    val.value!.should.deep.equal(Buffer.from(longString));
   });
 
   it('should be able to update older values', async () => {
     await tree.put(Buffer.from('done'), Buffer.from('test'));
     const val = await tree.get(Buffer.from('done'));
-    val!.should.deep.equal(Buffer.from('test'));
+    should.exist(val.value);
+    val.value!.should.deep.equal(Buffer.from('test'));
   });
 });
 
@@ -153,7 +154,7 @@ describe('Try original deletions tests', async () => {
     await Promise.all([a1, a2, a3]);
     await tree.del(Buffer.from([12, 22, 22]));
     const val = await tree.get(Buffer.from([12, 22, 22]));
-    should.not.exist(val);
+    should.not.exist(val.value);
   });
 
   it('should delete from a branch->branch-extension', async () => {
@@ -168,7 +169,7 @@ describe('Try original deletions tests', async () => {
     await Promise.all([a1, a2, a3, a4]);
     await tree.del(Buffer.from([12, 22, 22]));
     const val = await tree.get(Buffer.from([12, 22, 22]));
-    should.not.exist(val);
+    should.not.exist(val.value);
   });
 
   it('should delete from a extension->branch-extension', async () => {
@@ -181,7 +182,7 @@ describe('Try original deletions tests', async () => {
         Buffer.from([12, 33, 44]), Buffer.from('create the last branch'));
     await tree.del(Buffer.from([11, 11, 11]));
     const val = await tree.get(Buffer.from([11, 11, 11]));
-    should.not.exist(val);
+    should.not.exist(val.value);
   });
 
   it('should delete from a extension->branch-branch', async () => {
@@ -194,7 +195,7 @@ describe('Try original deletions tests', async () => {
         Buffer.from([12, 34, 44]), Buffer.from('create the last branch'));
     await tree.del(Buffer.from([11, 11, 11]));
     const val = await tree.get(Buffer.from([11, 11, 11]));
-    should.not.exist(val);
+    should.not.exist(val.value);
   });
 });
 
