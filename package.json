@@ -47,6 +47,7 @@
     "memdown": "^1.0.0",
     "readable-stream": "^2.0.0",
     "rlp": "^2.0.0",
+    "rlp-stream": "^0.1.0",
     "semaphore": ">=1.0.1"
   },
   "devDependencies": {

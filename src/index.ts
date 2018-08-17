@@ -5,9 +5,9 @@ const original = require('./index_original');
 
 interface OriginalTree {
   root: Buffer;
-  put: (key: string, val: Buffer, callback: (err: string) => void) => void;
-  get: (key: string, callback: (err: string, val: Buffer|null) => void) => void;
-  del: (key: string, callback: (err: string) => void) => void;
+  put: (key: Buffer, val: Buffer, callback: (err: string) => void) => void;
+  get: (key: Buffer, callback: (err: string, val: Buffer|null) => void) => void;
+  del: (key: Buffer, callback: (err: string) => void) => void;
 }
 
 /** A Merkle Patricia Tree, as defined in the Ethereum Yellow Paper. */
@@ -37,7 +37,7 @@ export class MerklePatriciaTree {
    *
    * @returns     A promise, resolved when the put is completed.
    */
-  put(key: string, val: Buffer): Promise<void> {
+  put(key: Buffer, val: Buffer): Promise<void> {
     return new Promise((resolve, reject) => {
       this.originalTree.put(key, val, (err: string) => {
         if (err) {
@@ -58,7 +58,7 @@ export class MerklePatriciaTree {
    * @returns     A promise, containing the value if it exists, or null, if no
    * value was previously mapped to key.
    */
-  get(key: string): Promise<Buffer|null> {
+  get(key: Buffer): Promise<Buffer|null> {
     return new Promise((resolve, reject) => {
       this.originalTree.get(key, (err: string, val: Buffer|null) => {
         if (err) {
@@ -77,7 +77,7 @@ export class MerklePatriciaTree {
    *
    * @returns     A promise, resolved when the key is unmapped.
    */
-  del(key: string): Promise<void> {
+  del(key: Buffer): Promise<void> {
     return new Promise((resolve, reject) => {
       this.originalTree.del(key, (err: string) => {
         if (err) {
