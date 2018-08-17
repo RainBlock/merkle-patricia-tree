@@ -38,4 +38,4 @@ deploy:
   on:
     branch: master
     node: '10'
-    condition: "$TEST_SUITE = ''"
+    condition: "$TEST_SUITE = 'test:node'"
