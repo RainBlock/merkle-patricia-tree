@@ -12,7 +12,7 @@
     "test:browser": "karma start karma.conf.js",
     "test:node": "tape ./test/*.js",
     "build": "browserify --s Trie src/index_original.js > ./dist/trie.js",
-    "build:docs": "documentation --github  -f md src/index_original.js src/secure.js src/proof.js > ./docs/index-template.md",
+    "typedoc": "typedoc --out docs $(pwd)/src --target es6 --mode file --tsconfig ./tsconfig.json --excludePrivate --excludeProtected --exclude **/*.spec.ts",
     "check": "gts check",
     "clean": "gts clean",
     "compile": "tsc -p .",
@@ -48,7 +48,8 @@
     "readable-stream": "^2.0.0",
     "rlp": "^2.0.0",
     "rlp-stream": "^0.1.0",
-    "semaphore": ">=1.0.1"
+    "semaphore": ">=1.0.1",
+    "typedoc": "^0.12.0"
   },
   "devDependencies": {
     "@types/chai": "^4.1.4",
