@@ -10,6 +10,21 @@ interface OriginalTree {
   del: (key: Buffer, callback: (err: string) => void) => void;
 }
 
+
+/**
+ * An interface for a witness, which is a combination of a value and a proof
+ * (witnessed at a certain root)
+ */
+export interface Witness {
+  /** The value mapped to the key */
+  value: Buffer|null;
+  /**
+   * A proof, which consists of the list of nodes traversed to reach the node
+   * containing the value.
+   */
+  proof: Buffer[];
+}
+
 /** A Merkle Patricia Tree, as defined in the Ethereum Yellow Paper. */
 export class MerklePatriciaTree {
   /** The original tree. */
@@ -58,13 +73,22 @@ export class MerklePatriciaTree {
    * @returns     A promise, containing the value if it exists, or null, if no
    * value was previously mapped to key.
    */
-  get(key: Buffer): Promise<Buffer|null> {
+  get(key: Buffer): Promise<Witness> {
     return new Promise((resolve, reject) => {
-      this.originalTree.get(key, (err: string, val: Buffer|null) => {
+      this.originalTree.get(key, (err: string, value: Buffer|null) => {
         if (err) {
           reject(err);
         } else {
-          resolve(val);
+          try {
+            original.prove(
+                this.originalTree, key, (err: string, proof: Buffer[]) => {
+                  resolve({value, proof});
+                });
+          } catch (e) {
+            // TODO: rewrite proof interface. currently error is thrown if no
+            // node exists.
+            resolve({value: null, proof: []});
+          }
         }
       });
     });
@@ -88,4 +112,33 @@ export class MerklePatriciaTree {
       });
     });
   }
+}
+
+/**
+ * Verifies that a witness is correct for the given root and key.
+ *
+ * @param root      A buffer containing the root of the tree to check
+ * @param key       A buffer containing the key to check
+ * @param witness   The witness to verify
+ *
+ * @return          A promise, which is resolved if the witness was valid.
+ * Otherwise, the promise is completed exceptionally with the failure reason.
+ */
+export function VerifyWitness(
+    root: Buffer, key: Buffer, witness: Witness): Promise<void> {
+  return new Promise((resolve, reject) => {
+    original.verifyProof(
+        root, key, witness.proof, (err: string, val: Buffer) => {
+          if (err) {
+            reject(err);
+          } else {
+            if (val.equals(witness.value as Buffer)) {
+              resolve();
+            } else {
+              reject(new Error(`Expected value ${
+                  witness.value} to match value ${val} in proof`));
+            }
+          }
+        });
+  });
 }
