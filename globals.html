@@ -71,19 +71,25 @@
 							<h3>Classes</h3>
 							<ul class="tsd-index-list">
 								<li class="tsd-kind-class"><a href="classes/merklepatriciatree.html" class="tsd-kind-icon">Merkle<wbr>Patricia<wbr>Tree</a></li>
+								<li class="tsd-kind-class"><a href="classes/verificationerror.html" class="tsd-kind-icon">Verification<wbr>Error</a></li>
 							</ul>
 						</section>
 						<section class="tsd-index-section ">
 							<h3>Interfaces</h3>
 							<ul class="tsd-index-list">
 								<li class="tsd-kind-interface tsd-is-not-exported"><a href="interfaces/originaltree.html" class="tsd-kind-icon">Original<wbr>Tree</a></li>
+								<li class="tsd-kind-interface"><a href="interfaces/originaltreenode.html" class="tsd-kind-icon">Original<wbr>Tree<wbr>Node</a></li>
+								<li class="tsd-kind-interface"><a href="interfaces/searchresult.html" class="tsd-kind-icon">Search<wbr>Result</a></li>
 								<li class="tsd-kind-interface"><a href="interfaces/witness.html" class="tsd-kind-icon">Witness</a></li>
 							</ul>
 						</section>
 						<section class="tsd-index-section tsd-is-not-exported">
 							<h3>Variables</h3>
 							<ul class="tsd-index-list">
+								<li class="tsd-kind-variable tsd-is-not-exported"><a href="globals.html#ethutil" class="tsd-kind-icon">eth<wbr>Util</a></li>
+								<li class="tsd-kind-variable tsd-is-not-exported"><a href="globals.html#matchingnibblelength" class="tsd-kind-icon">matching<wbr>Nibble<wbr>Length</a></li>
 								<li class="tsd-kind-variable tsd-is-not-exported"><a href="globals.html#original" class="tsd-kind-icon">original</a></li>
+								<li class="tsd-kind-variable tsd-is-not-exported"><a href="globals.html#originalnode" class="tsd-kind-icon">original<wbr>Node</a></li>
 								<li class="tsd-kind-variable tsd-is-not-exported"><a href="globals.html#should" class="tsd-kind-icon">should</a></li>
 							</ul>
 						</section>
@@ -99,12 +105,42 @@
 			<section class="tsd-panel-group tsd-member-group tsd-is-not-exported">
 				<h2>Variables</h2>
 				<section class="tsd-panel tsd-member tsd-kind-variable tsd-is-not-exported">
+					<a name="ethutil" class="tsd-anchor"></a>
+					<h3><span class="tsd-flag ts-flagConst">Const</span> eth<wbr>Util</h3>
+					<div class="tsd-signature tsd-kind-icon">eth<wbr>Util<span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">any</span><span class="tsd-signature-symbol"> =&nbsp;require(&#x27;ethereumjs-util&#x27;)</span></div>
+					<aside class="tsd-sources">
+						<ul>
+							<li>Defined in <a href="https://github.com/RainBlock/merkle-patricia-tree/blob/79b7bf9/src/index.ts#L7">index.ts:7</a></li>
+						</ul>
+					</aside>
+				</section>
+				<section class="tsd-panel tsd-member tsd-kind-variable tsd-is-not-exported">
+					<a name="matchingnibblelength" class="tsd-anchor"></a>
+					<h3><span class="tsd-flag ts-flagConst">Const</span> matching<wbr>Nibble<wbr>Length</h3>
+					<div class="tsd-signature tsd-kind-icon">matching<wbr>Nibble<wbr>Length<span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">any</span><span class="tsd-signature-symbol"> =&nbsp;require(&#x27;./util&#x27;).matchingNibbleLength</span></div>
+					<aside class="tsd-sources">
+						<ul>
+							<li>Defined in <a href="https://github.com/RainBlock/merkle-patricia-tree/blob/79b7bf9/src/index.ts#L8">index.ts:8</a></li>
+						</ul>
+					</aside>
+				</section>
+				<section class="tsd-panel tsd-member tsd-kind-variable tsd-is-not-exported">
 					<a name="original" class="tsd-anchor"></a>
 					<h3><span class="tsd-flag ts-flagConst">Const</span> original</h3>
 					<div class="tsd-signature tsd-kind-icon">original<span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">any</span><span class="tsd-signature-symbol"> =&nbsp;require(&#x27;./index_original&#x27;)</span></div>
 					<aside class="tsd-sources">
 						<ul>
-							<li>Defined in <a href="https://github.com/RainBlock/merkle-patricia-tree/blob/e61c84c/src/index.ts#L4">index.ts:4</a></li>
+							<li>Defined in <a href="https://github.com/RainBlock/merkle-patricia-tree/blob/79b7bf9/src/index.ts#L5">index.ts:5</a></li>
+						</ul>
+					</aside>
+				</section>
+				<section class="tsd-panel tsd-member tsd-kind-variable tsd-is-not-exported">
+					<a name="originalnode" class="tsd-anchor"></a>
+					<h3><span class="tsd-flag ts-flagConst">Const</span> original<wbr>Node</h3>
+					<div class="tsd-signature tsd-kind-icon">original<wbr>Node<span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">any</span><span class="tsd-signature-symbol"> =&nbsp;require(&#x27;./trieNode&#x27;)</span></div>
+					<aside class="tsd-sources">
+						<ul>
+							<li>Defined in <a href="https://github.com/RainBlock/merkle-patricia-tree/blob/79b7bf9/src/index.ts#L6">index.ts:6</a></li>
 						</ul>
 					</aside>
 				</section>
@@ -114,8 +150,8 @@
 					<div class="tsd-signature tsd-kind-icon">should<span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">Should</span><span class="tsd-signature-symbol"> =&nbsp;chai.should()</span></div>
 					<aside class="tsd-sources">
 						<ul>
-							<li>Defined in <a href="https://github.com/RainBlock/merkle-patricia-tree/blob/e61c84c/src/index.spec.ts#L14">index.spec.ts:14</a></li>
-							<li>Defined in <a href="https://github.com/RainBlock/merkle-patricia-tree/blob/e61c84c/src/proof.spec.ts#L16">proof.spec.ts:16</a></li>
+							<li>Defined in <a href="https://github.com/RainBlock/merkle-patricia-tree/blob/79b7bf9/src/index.spec.ts#L14">index.spec.ts:14</a></li>
+							<li>Defined in <a href="https://github.com/RainBlock/merkle-patricia-tree/blob/79b7bf9/src/proof.spec.ts#L16">proof.spec.ts:16</a></li>
 						</ul>
 					</aside>
 				</section>
@@ -132,7 +168,7 @@
 						<li class="tsd-description">
 							<aside class="tsd-sources">
 								<ul>
-									<li>Defined in <a href="https://github.com/RainBlock/merkle-patricia-tree/blob/e61c84c/src/index.ts#L126">index.ts:126</a></li>
+									<li>Defined in <a href="https://github.com/RainBlock/merkle-patricia-tree/blob/79b7bf9/src/index.ts#L167">index.ts:167</a></li>
 								</ul>
 							</aside>
 							<div class="tsd-comment tsd-typography">
@@ -182,14 +218,32 @@
 					<li class=" tsd-kind-class">
 						<a href="classes/merklepatriciatree.html" class="tsd-kind-icon">Merkle<wbr>Patricia<wbr>Tree</a>
 					</li>
+					<li class=" tsd-kind-class">
+						<a href="classes/verificationerror.html" class="tsd-kind-icon">Verification<wbr>Error</a>
+					</li>
 					<li class=" tsd-kind-interface tsd-is-not-exported">
 						<a href="interfaces/originaltree.html" class="tsd-kind-icon">Original<wbr>Tree</a>
+					</li>
+					<li class=" tsd-kind-interface">
+						<a href="interfaces/originaltreenode.html" class="tsd-kind-icon">Original<wbr>Tree<wbr>Node</a>
+					</li>
+					<li class=" tsd-kind-interface">
+						<a href="interfaces/searchresult.html" class="tsd-kind-icon">Search<wbr>Result</a>
 					</li>
 					<li class=" tsd-kind-interface">
 						<a href="interfaces/witness.html" class="tsd-kind-icon">Witness</a>
 					</li>
 					<li class=" tsd-kind-variable tsd-is-not-exported">
+						<a href="globals.html#ethutil" class="tsd-kind-icon">eth<wbr>Util</a>
+					</li>
+					<li class=" tsd-kind-variable tsd-is-not-exported">
+						<a href="globals.html#matchingnibblelength" class="tsd-kind-icon">matching<wbr>Nibble<wbr>Length</a>
+					</li>
+					<li class=" tsd-kind-variable tsd-is-not-exported">
 						<a href="globals.html#original" class="tsd-kind-icon">original</a>
+					</li>
+					<li class=" tsd-kind-variable tsd-is-not-exported">
+						<a href="globals.html#originalnode" class="tsd-kind-icon">original<wbr>Node</a>
 					</li>
 					<li class=" tsd-kind-variable tsd-is-not-exported">
 						<a href="globals.html#should" class="tsd-kind-icon">should</a>

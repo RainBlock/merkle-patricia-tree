@@ -82,6 +82,7 @@
 							<h3>Properties</h3>
 							<ul class="tsd-index-list">
 								<li class="tsd-kind-property tsd-parent-kind-interface tsd-is-not-exported"><a href="originaltree.html#del" class="tsd-kind-icon">del</a></li>
+								<li class="tsd-kind-property tsd-parent-kind-interface tsd-is-not-exported"><a href="originaltree.html#findpath" class="tsd-kind-icon">find<wbr>Path</a></li>
 								<li class="tsd-kind-property tsd-parent-kind-interface tsd-is-not-exported"><a href="originaltree.html#get" class="tsd-kind-icon">get</a></li>
 								<li class="tsd-kind-property tsd-parent-kind-interface tsd-is-not-exported"><a href="originaltree.html#put" class="tsd-kind-icon">put</a></li>
 								<li class="tsd-kind-property tsd-parent-kind-interface tsd-is-not-exported"><a href="originaltree.html#root" class="tsd-kind-icon">root</a></li>
@@ -98,7 +99,7 @@
 					<div class="tsd-signature tsd-kind-icon">del<span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">function</span></div>
 					<aside class="tsd-sources">
 						<ul>
-							<li>Defined in <a href="https://github.com/RainBlock/merkle-patricia-tree/blob/e61c84c/src/index.ts#L10">index.ts:10</a></li>
+							<li>Defined in <a href="https://github.com/RainBlock/merkle-patricia-tree/blob/79b7bf9/src/index.ts#L21">index.ts:21</a></li>
 						</ul>
 					</aside>
 					<div class="tsd-type-declaration">
@@ -145,12 +146,73 @@
 					</div>
 				</section>
 				<section class="tsd-panel tsd-member tsd-kind-property tsd-parent-kind-interface tsd-is-not-exported">
+					<a name="findpath" class="tsd-anchor"></a>
+					<h3>find<wbr>Path</h3>
+					<div class="tsd-signature tsd-kind-icon">find<wbr>Path<span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">function</span></div>
+					<aside class="tsd-sources">
+						<ul>
+							<li>Defined in <a href="https://github.com/RainBlock/merkle-patricia-tree/blob/79b7bf9/src/index.ts#L22">index.ts:22</a></li>
+						</ul>
+					</aside>
+					<div class="tsd-type-declaration">
+						<h4>Type declaration</h4>
+						<ul class="tsd-parameters">
+							<li class="tsd-parameter-siganture">
+								<ul class="tsd-signatures tsd-kind-type-literal tsd-parent-kind-property tsd-is-not-exported">
+									<li class="tsd-signature tsd-kind-icon"><span class="tsd-signature-symbol">(</span>key<span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">Buffer</span>, callback<span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">function</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">void</span></li>
+								</ul>
+								<ul class="tsd-descriptions">
+									<li class="tsd-description">
+										<h4 class="tsd-parameters-title">Parameters</h4>
+										<ul class="tsd-parameters">
+											<li>
+												<h5>key: <span class="tsd-signature-type">Buffer</span></h5>
+											</li>
+											<li>
+												<h5>callback: <span class="tsd-signature-type">function</span></h5>
+												<ul class="tsd-parameters">
+													<li class="tsd-parameter-siganture">
+														<ul class="tsd-signatures tsd-kind-type-literal tsd-is-not-exported">
+															<li class="tsd-signature tsd-kind-icon"><span class="tsd-signature-symbol">(</span>err<span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">string</span>, node<span class="tsd-signature-symbol">: </span><a href="originaltreenode.html" class="tsd-signature-type">OriginalTreeNode</a><span class="tsd-signature-symbol"> | </span><span class="tsd-signature-type">null</span>, keyRemainder<span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">Buffer</span>, stack<span class="tsd-signature-symbol">: </span><a href="originaltreenode.html" class="tsd-signature-type">OriginalTreeNode</a><span class="tsd-signature-symbol">[]</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">void</span></li>
+														</ul>
+														<ul class="tsd-descriptions">
+															<li class="tsd-description">
+																<h4 class="tsd-parameters-title">Parameters</h4>
+																<ul class="tsd-parameters">
+																	<li>
+																		<h5>err: <span class="tsd-signature-type">string</span></h5>
+																	</li>
+																	<li>
+																		<h5>node: <a href="originaltreenode.html" class="tsd-signature-type">OriginalTreeNode</a><span class="tsd-signature-symbol"> | </span><span class="tsd-signature-type">null</span></h5>
+																	</li>
+																	<li>
+																		<h5>keyRemainder: <span class="tsd-signature-type">Buffer</span></h5>
+																	</li>
+																	<li>
+																		<h5>stack: <a href="originaltreenode.html" class="tsd-signature-type">OriginalTreeNode</a><span class="tsd-signature-symbol">[]</span></h5>
+																	</li>
+																</ul>
+																<h4 class="tsd-returns-title">Returns <span class="tsd-signature-type">void</span></h4>
+															</li>
+														</ul>
+													</li>
+												</ul>
+											</li>
+										</ul>
+										<h4 class="tsd-returns-title">Returns <span class="tsd-signature-type">void</span></h4>
+									</li>
+								</ul>
+							</li>
+						</ul>
+					</div>
+				</section>
+				<section class="tsd-panel tsd-member tsd-kind-property tsd-parent-kind-interface tsd-is-not-exported">
 					<a name="get" class="tsd-anchor"></a>
 					<h3>get</h3>
 					<div class="tsd-signature tsd-kind-icon">get<span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">function</span></div>
 					<aside class="tsd-sources">
 						<ul>
-							<li>Defined in <a href="https://github.com/RainBlock/merkle-patricia-tree/blob/e61c84c/src/index.ts#L9">index.ts:9</a></li>
+							<li>Defined in <a href="https://github.com/RainBlock/merkle-patricia-tree/blob/79b7bf9/src/index.ts#L20">index.ts:20</a></li>
 						</ul>
 					</aside>
 					<div class="tsd-type-declaration">
@@ -205,7 +267,7 @@
 					<div class="tsd-signature tsd-kind-icon">put<span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">function</span></div>
 					<aside class="tsd-sources">
 						<ul>
-							<li>Defined in <a href="https://github.com/RainBlock/merkle-patricia-tree/blob/e61c84c/src/index.ts#L8">index.ts:8</a></li>
+							<li>Defined in <a href="https://github.com/RainBlock/merkle-patricia-tree/blob/79b7bf9/src/index.ts#L19">index.ts:19</a></li>
 						</ul>
 					</aside>
 					<div class="tsd-type-declaration">
@@ -260,7 +322,7 @@
 					<div class="tsd-signature tsd-kind-icon">root<span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">Buffer</span></div>
 					<aside class="tsd-sources">
 						<ul>
-							<li>Defined in <a href="https://github.com/RainBlock/merkle-patricia-tree/blob/e61c84c/src/index.ts#L7">index.ts:7</a></li>
+							<li>Defined in <a href="https://github.com/RainBlock/merkle-patricia-tree/blob/79b7bf9/src/index.ts#L18">index.ts:18</a></li>
 						</ul>
 					</aside>
 				</section>
@@ -279,6 +341,9 @@
 					<li class=" tsd-kind-class">
 						<a href="../classes/merklepatriciatree.html" class="tsd-kind-icon">Merkle<wbr>Patricia<wbr>Tree</a>
 					</li>
+					<li class=" tsd-kind-class">
+						<a href="../classes/verificationerror.html" class="tsd-kind-icon">Verification<wbr>Error</a>
+					</li>
 				</ul>
 				<ul class="current">
 					<li class="current tsd-kind-interface tsd-is-not-exported">
@@ -286,6 +351,9 @@
 						<ul>
 							<li class=" tsd-kind-property tsd-parent-kind-interface tsd-is-not-exported">
 								<a href="originaltree.html#del" class="tsd-kind-icon">del</a>
+							</li>
+							<li class=" tsd-kind-property tsd-parent-kind-interface tsd-is-not-exported">
+								<a href="originaltree.html#findpath" class="tsd-kind-icon">find<wbr>Path</a>
 							</li>
 							<li class=" tsd-kind-property tsd-parent-kind-interface tsd-is-not-exported">
 								<a href="originaltree.html#get" class="tsd-kind-icon">get</a>
@@ -301,10 +369,25 @@
 				</ul>
 				<ul class="after-current">
 					<li class=" tsd-kind-interface">
+						<a href="originaltreenode.html" class="tsd-kind-icon">Original<wbr>Tree<wbr>Node</a>
+					</li>
+					<li class=" tsd-kind-interface">
+						<a href="searchresult.html" class="tsd-kind-icon">Search<wbr>Result</a>
+					</li>
+					<li class=" tsd-kind-interface">
 						<a href="witness.html" class="tsd-kind-icon">Witness</a>
 					</li>
 					<li class=" tsd-kind-variable tsd-is-not-exported">
+						<a href="../globals.html#ethutil" class="tsd-kind-icon">eth<wbr>Util</a>
+					</li>
+					<li class=" tsd-kind-variable tsd-is-not-exported">
+						<a href="../globals.html#matchingnibblelength" class="tsd-kind-icon">matching<wbr>Nibble<wbr>Length</a>
+					</li>
+					<li class=" tsd-kind-variable tsd-is-not-exported">
 						<a href="../globals.html#original" class="tsd-kind-icon">original</a>
+					</li>
+					<li class=" tsd-kind-variable tsd-is-not-exported">
+						<a href="../globals.html#originalnode" class="tsd-kind-icon">original<wbr>Node</a>
 					</li>
 					<li class=" tsd-kind-variable tsd-is-not-exported">
 						<a href="../globals.html#should" class="tsd-kind-icon">should</a>

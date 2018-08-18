@@ -3,7 +3,7 @@
 <head>
 	<meta charset="utf-8">
 	<meta http-equiv="X-UA-Compatible" content="IE=edge">
-	<title>Witness | merkle-patricia-tree</title>
+	<title>VerificationError | merkle-patricia-tree</title>
 	<meta name="description" content="">
 	<meta name="viewport" content="width=device-width, initial-scale=1">
 	<link rel="stylesheet" href="../assets/css/main.css">
@@ -56,29 +56,26 @@
 					<a href="../globals.html">Globals</a>
 				</li>
 				<li>
-					<a href="witness.html">Witness</a>
+					<a href="verificationerror.html">VerificationError</a>
 				</li>
 			</ul>
-			<h1>Interface Witness</h1>
+			<h1>Class VerificationError</h1>
 		</div>
 	</div>
 </header>
 <div class="container container-main">
 	<div class="row">
 		<div class="col-8 col-content">
-			<section class="tsd-panel tsd-comment">
-				<div class="tsd-comment tsd-typography">
-					<div class="lead">
-						<p>An interface for a witness, which is a combination of a value and a proof
-						(witnessed at a certain root)</p>
-					</div>
-				</div>
-			</section>
 			<section class="tsd-panel tsd-hierarchy">
 				<h3>Hierarchy</h3>
 				<ul class="tsd-hierarchy">
 					<li>
-						<span class="target">Witness</span>
+						<span class="tsd-signature-type">Error</span>
+						<ul class="tsd-hierarchy">
+							<li>
+								<span class="target">VerificationError</span>
+							</li>
+						</ul>
 					</li>
 				</ul>
 			</section>
@@ -89,8 +86,10 @@
 						<section class="tsd-index-section ">
 							<h3>Properties</h3>
 							<ul class="tsd-index-list">
-								<li class="tsd-kind-property tsd-parent-kind-interface"><a href="witness.html#proof" class="tsd-kind-icon">proof</a></li>
-								<li class="tsd-kind-property tsd-parent-kind-interface"><a href="witness.html#value" class="tsd-kind-icon">value</a></li>
+								<li class="tsd-kind-property tsd-parent-kind-class tsd-is-inherited"><a href="verificationerror.html#message" class="tsd-kind-icon">message</a></li>
+								<li class="tsd-kind-property tsd-parent-kind-class tsd-is-inherited"><a href="verificationerror.html#name" class="tsd-kind-icon">name</a></li>
+								<li class="tsd-kind-property tsd-parent-kind-class tsd-is-overwrite tsd-is-inherited"><a href="verificationerror.html#stack" class="tsd-kind-icon">stack</a></li>
+								<li class="tsd-kind-property tsd-parent-kind-class tsd-is-static"><a href="verificationerror.html#error" class="tsd-kind-icon">Error</a></li>
 							</ul>
 						</section>
 					</div>
@@ -98,36 +97,49 @@
 			</section>
 			<section class="tsd-panel-group tsd-member-group ">
 				<h2>Properties</h2>
-				<section class="tsd-panel tsd-member tsd-kind-property tsd-parent-kind-interface">
-					<a name="proof" class="tsd-anchor"></a>
-					<h3>proof</h3>
-					<div class="tsd-signature tsd-kind-icon">proof<span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">Buffer</span><span class="tsd-signature-symbol">[]</span></div>
+				<section class="tsd-panel tsd-member tsd-kind-property tsd-parent-kind-class tsd-is-inherited">
+					<a name="message" class="tsd-anchor"></a>
+					<h3>message</h3>
+					<div class="tsd-signature tsd-kind-icon">message<span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">string</span></div>
 					<aside class="tsd-sources">
+						<p>Inherited from Error.message</p>
 						<ul>
-							<li>Defined in <a href="https://github.com/RainBlock/merkle-patricia-tree/blob/79b7bf9/src/index.ts#L40">index.ts:40</a></li>
+							<li>Defined in /home/travis/build/RainBlock/merkle-patricia-tree/node_modules/typedoc/node_modules/typescript/lib/lib.es5.d.ts:904</li>
 						</ul>
 					</aside>
-					<div class="tsd-comment tsd-typography">
-						<div class="lead">
-							<p>A proof, which consists of the list of nodes traversed to reach the node
-							containing the value.</p>
-						</div>
-					</div>
 				</section>
-				<section class="tsd-panel tsd-member tsd-kind-property tsd-parent-kind-interface">
-					<a name="value" class="tsd-anchor"></a>
-					<h3>value</h3>
-					<div class="tsd-signature tsd-kind-icon">value<span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">Buffer</span><span class="tsd-signature-symbol"> | </span><span class="tsd-signature-type">null</span></div>
+				<section class="tsd-panel tsd-member tsd-kind-property tsd-parent-kind-class tsd-is-inherited">
+					<a name="name" class="tsd-anchor"></a>
+					<h3>name</h3>
+					<div class="tsd-signature tsd-kind-icon">name<span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">string</span></div>
 					<aside class="tsd-sources">
+						<p>Inherited from Error.name</p>
 						<ul>
-							<li>Defined in <a href="https://github.com/RainBlock/merkle-patricia-tree/blob/79b7bf9/src/index.ts#L35">index.ts:35</a></li>
+							<li>Defined in /home/travis/build/RainBlock/merkle-patricia-tree/node_modules/typedoc/node_modules/typescript/lib/lib.es5.d.ts:903</li>
 						</ul>
 					</aside>
-					<div class="tsd-comment tsd-typography">
-						<div class="lead">
-							<p>The value mapped to the key</p>
-						</div>
-					</div>
+				</section>
+				<section class="tsd-panel tsd-member tsd-kind-property tsd-parent-kind-class tsd-is-overwrite tsd-is-inherited">
+					<a name="stack" class="tsd-anchor"></a>
+					<h3><span class="tsd-flag ts-flagOptional">Optional</span> stack</h3>
+					<div class="tsd-signature tsd-kind-icon">stack<span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">undefined</span><span class="tsd-signature-symbol"> | </span><span class="tsd-signature-type">string</span></div>
+					<aside class="tsd-sources">
+						<p>Inherited from Error.stack</p>
+						<p>Overrides Error.stack</p>
+						<ul>
+							<li>Defined in /home/travis/build/RainBlock/merkle-patricia-tree/node_modules/typedoc/node_modules/typescript/lib/lib.es5.d.ts:905</li>
+						</ul>
+					</aside>
+				</section>
+				<section class="tsd-panel tsd-member tsd-kind-property tsd-parent-kind-class tsd-is-static">
+					<a name="error" class="tsd-anchor"></a>
+					<h3><span class="tsd-flag ts-flagStatic">Static</span> Error</h3>
+					<div class="tsd-signature tsd-kind-icon">Error<span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">ErrorConstructor</span></div>
+					<aside class="tsd-sources">
+						<ul>
+							<li>Defined in /home/travis/build/RainBlock/merkle-patricia-tree/node_modules/typedoc/node_modules/typescript/lib/lib.es5.d.ts:914</li>
+						</ul>
+					</aside>
 				</section>
 			</section>
 		</div>
@@ -142,35 +154,41 @@
 			<nav class="tsd-navigation secondary menu-sticky">
 				<ul class="before-current">
 					<li class=" tsd-kind-class">
-						<a href="../classes/merklepatriciatree.html" class="tsd-kind-icon">Merkle<wbr>Patricia<wbr>Tree</a>
-					</li>
-					<li class=" tsd-kind-class">
-						<a href="../classes/verificationerror.html" class="tsd-kind-icon">Verification<wbr>Error</a>
-					</li>
-					<li class=" tsd-kind-interface tsd-is-not-exported">
-						<a href="originaltree.html" class="tsd-kind-icon">Original<wbr>Tree</a>
-					</li>
-					<li class=" tsd-kind-interface">
-						<a href="originaltreenode.html" class="tsd-kind-icon">Original<wbr>Tree<wbr>Node</a>
-					</li>
-					<li class=" tsd-kind-interface">
-						<a href="searchresult.html" class="tsd-kind-icon">Search<wbr>Result</a>
+						<a href="merklepatriciatree.html" class="tsd-kind-icon">Merkle<wbr>Patricia<wbr>Tree</a>
 					</li>
 				</ul>
 				<ul class="current">
-					<li class="current tsd-kind-interface">
-						<a href="witness.html" class="tsd-kind-icon">Witness</a>
+					<li class="current tsd-kind-class">
+						<a href="verificationerror.html" class="tsd-kind-icon">Verification<wbr>Error</a>
 						<ul>
-							<li class=" tsd-kind-property tsd-parent-kind-interface">
-								<a href="witness.html#proof" class="tsd-kind-icon">proof</a>
+							<li class=" tsd-kind-property tsd-parent-kind-class tsd-is-inherited">
+								<a href="verificationerror.html#message" class="tsd-kind-icon">message</a>
 							</li>
-							<li class=" tsd-kind-property tsd-parent-kind-interface">
-								<a href="witness.html#value" class="tsd-kind-icon">value</a>
+							<li class=" tsd-kind-property tsd-parent-kind-class tsd-is-inherited">
+								<a href="verificationerror.html#name" class="tsd-kind-icon">name</a>
+							</li>
+							<li class=" tsd-kind-property tsd-parent-kind-class tsd-is-overwrite tsd-is-inherited">
+								<a href="verificationerror.html#stack" class="tsd-kind-icon">stack</a>
+							</li>
+							<li class=" tsd-kind-property tsd-parent-kind-class tsd-is-static">
+								<a href="verificationerror.html#error" class="tsd-kind-icon">Error</a>
 							</li>
 						</ul>
 					</li>
 				</ul>
 				<ul class="after-current">
+					<li class=" tsd-kind-interface tsd-is-not-exported">
+						<a href="../interfaces/originaltree.html" class="tsd-kind-icon">Original<wbr>Tree</a>
+					</li>
+					<li class=" tsd-kind-interface">
+						<a href="../interfaces/originaltreenode.html" class="tsd-kind-icon">Original<wbr>Tree<wbr>Node</a>
+					</li>
+					<li class=" tsd-kind-interface">
+						<a href="../interfaces/searchresult.html" class="tsd-kind-icon">Search<wbr>Result</a>
+					</li>
+					<li class=" tsd-kind-interface">
+						<a href="../interfaces/witness.html" class="tsd-kind-icon">Witness</a>
+					</li>
 					<li class=" tsd-kind-variable tsd-is-not-exported">
 						<a href="../globals.html#ethutil" class="tsd-kind-icon">eth<wbr>Util</a>
 					</li>
