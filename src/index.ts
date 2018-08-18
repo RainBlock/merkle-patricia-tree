@@ -164,8 +164,7 @@ export class VerificationError extends Error {}
  * @return          A promise, which is resolved if the witness was valid.
  * Otherwise, the promise is completed exceptionally with the failure reason.
  */
-export async function VerifyWitness(
-    root: Buffer, key: Buffer, witness: Witness) {
+export function VerifyWitness(root: Buffer, key: Buffer, witness: Witness) {
   let targetHash: Buffer = root;
   let currentKey: number[] = originalNode.stringToNibbles(key);
   let cld;
