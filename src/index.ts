@@ -1,15 +1,30 @@
 import {rejects} from 'assert';
+import {timingSafeEqual} from 'crypto';
 import {resolve} from 'url';
 
 const original = require('./index_original');
+const originalNode = require('./trieNode');
+const ethUtil = require('ethereumjs-util');
+const matchingNibbleLength = require('./util').matchingNibbleLength;
 
+export interface OriginalTreeNode {
+  value: Buffer;
+  type: string;
+  raw: Buffer[]|Buffer[][];
+  key: Buffer;
+  serialize(): Buffer;
+}
 interface OriginalTree {
   root: Buffer;
   put: (key: Buffer, val: Buffer, callback: (err: string) => void) => void;
   get: (key: Buffer, callback: (err: string, val: Buffer|null) => void) => void;
   del: (key: Buffer, callback: (err: string) => void) => void;
+  findPath:
+      (key: Buffer,
+       callback:
+           (err: string, node: OriginalTreeNode|null, keyRemainder: Buffer,
+            stack: OriginalTreeNode[]) => void) => void;
 }
-
 
 /**
  * An interface for a witness, which is a combination of a value and a proof
@@ -23,6 +38,12 @@ export interface Witness {
    * containing the value.
    */
   proof: Buffer[];
+}
+
+export interface SearchResult {
+  node: OriginalTreeNode|null;
+  remainder: Buffer;
+  stack: OriginalTreeNode[];
 }
 
 /** A Merkle Patricia Tree, as defined in the Ethereum Yellow Paper. */
@@ -72,25 +93,19 @@ export class MerklePatriciaTree {
    * @returns     A witness, with a proof of the value read (or a null value,
    * with a proof of the value's nonexistence).
    */
-  get(key: Buffer): Promise<Witness> {
-    return new Promise((resolve, reject) => {
-      this.originalTree.get(key, (err: string, value: Buffer|null) => {
-        if (err) {
-          reject(err);
-        } else {
-          try {
-            original.prove(
-                this.originalTree, key, (err: string, proof: Buffer[]) => {
-                  resolve({value, proof});
-                });
-          } catch (e) {
-            // TODO: rewrite proof interface. currently error is thrown if no
-            // node exists.
-            resolve({value: null, proof: []});
-          }
-        }
-      });
-    });
+  async get(key: Buffer): Promise<Witness> {
+    const search = await this.search(key);
+    const value = search.remainder.length === 0 && search.node !== null ?
+        search.node.value :
+        null;
+    const proof: Buffer[] = [];
+    for (const [idx, node] of search.stack.entries()) {
+      const rlp = node.serialize();
+      if (rlp.length >= 32 || (idx === 0)) {
+        proof.push(rlp);
+      }
+    }
+    return {value, proof};
   }
 
   /**
@@ -111,7 +126,33 @@ export class MerklePatriciaTree {
       });
     });
   }
+
+  search(key: Buffer): Promise<SearchResult> {
+    return new Promise((resolve, reject) => {
+      this.originalTree.findPath(
+          key,
+          (error: string, node: OriginalTreeNode|null, remainder: Buffer,
+           stack: OriginalTreeNode[]) => {
+            if (error) {
+              reject(error);
+            } else {
+              // Fixes bug in original code where remainder is undefined if tree
+              // is empty
+              if (remainder === undefined) {
+                remainder = key;
+              }
+              // Same with stack.
+              if (stack === undefined) {
+                stack = [];
+              }
+              resolve({node, remainder, stack});
+            }
+          });
+    });
+  }
 }
+
+export class VerificationError extends Error {}
 
 /**
  * Verifies that a witness is correct for the given root and key.
@@ -123,21 +164,87 @@ export class MerklePatriciaTree {
  * @return          A promise, which is resolved if the witness was valid.
  * Otherwise, the promise is completed exceptionally with the failure reason.
  */
-export function VerifyWitness(
-    root: Buffer, key: Buffer, witness: Witness): Promise<void> {
-  return new Promise((resolve, reject) => {
-    original.verifyProof(
-        root, key, witness.proof, (err: string, val: Buffer) => {
-          if (err) {
-            reject(err);
-          } else {
-            if (val.equals(witness.value as Buffer)) {
-              resolve();
-            } else {
-              reject(new Error(`Expected value ${
-                  witness.value} to match value ${val} in proof`));
-            }
-          }
-        });
-  });
+export async function VerifyWitness(
+    root: Buffer, key: Buffer, witness: Witness) {
+  let targetHash: Buffer = root;
+  let currentKey: number[] = originalNode.stringToNibbles(key);
+  let cld;
+
+  for (const [idx, serializedNode] of witness.proof.entries()) {
+    const hash = ethUtil.sha3(serializedNode);
+    if (Buffer.compare(hash, targetHash)) {
+      throw new VerificationError(`Hash mismatch: expected ${
+          targetHash.toString('hex')} got ${hash.toString('hex')}`);
+    }
+    const node: OriginalTreeNode =
+        new originalNode(ethUtil.rlp.decode(serializedNode));
+    if (node.type === 'branch') {
+      if (currentKey.length === 0) {
+        if (idx !== witness.proof.length - 1) {
+          throw new VerificationError(
+              `Proof length mismatch (branch): expected ${idx + 1} but got ${
+                  witness.proof.length}`);
+        }
+        if (!node.value.equals(witness.value!)) {
+          throw new VerificationError(`Value mismatch: expected ${
+              witness.value} but got ${node.value}`);
+        }
+        return;
+      }
+      cld = node.raw[currentKey[0]];
+      currentKey = currentKey.slice(1);
+      if (cld.length === 2) {
+        const embeddedNode = new originalNode(cld);
+        if (idx !== witness.proof.length - 1) {
+          throw new VerificationError(
+              `Proof length mismatch (embeddedNode): expected ${
+                  idx + 1} but got ${witness.proof.length}`);
+        }
+        if (matchingNibbleLength(embeddedNode.key, currentKey) !==
+            embeddedNode.key.length) {
+          throw new VerificationError(
+              `Key length mismatch (embeddedNode): expected ${
+                  matchingNibbleLength(
+                      embeddedNode.key,
+                      currentKey)} but got ${embeddedNode.key.length}`);
+        }
+        currentKey = currentKey.slice(embeddedNode.key.length);
+        if (currentKey.length !== 0) {
+          throw new VerificationError(
+              `Key does not match the proof (embeddedNode)`);
+        }
+        if (!embeddedNode.value.equals(witness.value!)) {
+          throw new VerificationError(`Value mismatch: expected ${
+              witness.value} but got ${embeddedNode.value}`);
+        }
+        return;
+      } else {
+        targetHash = cld as Buffer;
+      }
+    } else if ((node.type === 'extention') || (node.type === 'leaf')) {
+      if (matchingNibbleLength(node.key, currentKey) !== node.key.length) {
+        throw new VerificationError(`Key does not match the proof ${
+            node.type}: expected ${node.key}, but got ${currentKey}`);
+      }
+      cld = node.value;
+      currentKey = currentKey.slice(node.key.length);
+      if (currentKey.length === 0) {
+        if (idx !== witness.proof.length - 1) {
+          throw new VerificationError(
+              `Key length mismatch (${node.type}): expected ${
+                  idx + 1} but got ${witness.proof.length}`);
+        }
+        if (!cld.equals(witness.value!)) {
+          throw new VerificationError(
+              `Value mismatch: expected ${witness.value} but got ${cld}`);
+        }
+        return;
+      } else {
+        targetHash = cld as Buffer;
+      }
+    } else {
+      throw new VerificationError(`Unexpected node type ${node.type}`);
+    }
+  }
+  throw new VerificationError(`Unexpected end of proof`);
 }
