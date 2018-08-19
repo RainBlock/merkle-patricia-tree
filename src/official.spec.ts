@@ -1,15 +1,15 @@
 import 'mocha';
 
 import * as chai from 'chai';
-import * as fs from 'fs-extra';
-import * as path from 'path';
 import {RlpEncode, RlpList} from 'rlp-stream';
 
 const ethUtil = require('ethereumjs-util');
 
 import {MerklePatriciaTree} from './index';
-import {triggerAsyncId} from 'async_hooks';
 
+const testJson = require('../test/trietest') as {[testName: string]: TestData};
+const testJsonSecure =
+    require('../test/trietest_secureTrie') as {[testName: string]: TestData};
 
 // Needed for should.not.be.undefined.
 /* tslint:disable:no-unused-expression */
@@ -41,9 +41,6 @@ const secureTestDataToBuffer = (input: string): Buffer => {
 };
 
 describe('Run official tests', () => {
-  const testJson: {[testName: string]: TestData} =
-      fs.readJSONSync(path.join(__dirname, '../test/trietest.json'));
-
   for (const [testName, testData] of Object.entries(testJson)) {
     const tree = new MerklePatriciaTree();
 
@@ -57,9 +54,6 @@ describe('Run official tests', () => {
 });
 
 describe('Run official tests async', () => {
-  const testJson: {[testName: string]: TestData} =
-      fs.readJSONSync(path.join(__dirname, '../test/trietest.json'));
-
   for (const [testName, testData] of Object.entries(testJson)) {
     const tree = new MerklePatriciaTree();
 
@@ -76,10 +70,7 @@ describe('Run official tests async', () => {
 });
 
 describe('Run official tests (secure)', () => {
-  const testJson: {[testName: string]: TestData} =
-      fs.readJSONSync(path.join(__dirname, '../test/trietest_secureTrie.json'));
-
-  for (const [testName, testData] of Object.entries(testJson)) {
+  for (const [testName, testData] of Object.entries(testJsonSecure)) {
     const tree = new MerklePatriciaTree();
 
     it(`should pass official test ${testName}`, async () => {
@@ -93,10 +84,7 @@ describe('Run official tests (secure)', () => {
 });
 
 describe('Run official tests (secure) async', () => {
-  const testJson: {[testName: string]: TestData} =
-      fs.readJSONSync(path.join(__dirname, '../test/trietest_secureTrie.json'));
-
-  for (const [testName, testData] of Object.entries(testJson)) {
+  for (const [testName, testData] of Object.entries(testJsonSecure)) {
     const tree = new MerklePatriciaTree();
 
     it(`should pass official test ${testName}`, async () => {

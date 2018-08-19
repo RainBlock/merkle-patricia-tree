@@ -1,4 +1,1588 @@
-(function(f){if(typeof exports==="object"&&typeof module!=="undefined"){module.exports=f()}else if(typeof define==="function"&&define.amd){define([],f)}else{var g;if(typeof window!=="undefined"){g=window}else if(typeof global!=="undefined"){g=global}else if(typeof self!=="undefined"){g=self}else{g=this}g.Trie = f()}})(function(){var define,module,exports;return (function(){function r(e,n,t){function o(i,f){if(!n[i]){if(!e[i]){var c="function"==typeof require&&require;if(!f&&c)return c(i,!0);if(u)return u(i,!0);var a=new Error("Cannot find module '"+i+"'");throw a.code="MODULE_NOT_FOUND",a}var p=n[i]={exports:{}};e[i][0].call(p.exports,function(r){var n=e[i][1][r];return o(n||r)},p,p.exports,r,e,n,t)}return n[i].exports}for(var u="function"==typeof require&&require,i=0;i<t.length;i++)o(t[i]);return o}return r})()({1:[function(require,module,exports){
+(function(f){if(typeof exports==="object"&&typeof module!=="undefined"){module.exports=f()}else if(typeof define==="function"&&define.amd){define([],f)}else{var g;if(typeof window!=="undefined"){g=window}else if(typeof global!=="undefined"){g=global}else if(typeof self!=="undefined"){g=self}else{g=this}g.MerklePatriciaTree = f()}})(function(){var define,module,exports;return (function(){function r(e,n,t){function o(i,f){if(!n[i]){if(!e[i]){var c="function"==typeof require&&require;if(!f&&c)return c(i,!0);if(u)return u(i,!0);var a=new Error("Cannot find module '"+i+"'");throw a.code="MODULE_NOT_FOUND",a}var p=n[i]={exports:{}};e[i][0].call(p.exports,function(r){var n=e[i][1][r];return o(n||r)},p,p.exports,r,e,n,t)}return n[i].exports}for(var u="function"==typeof require&&require,i=0;i<t.length;i++)o(t[i]);return o}return r})()({1:[function(require,module,exports){
+const assert = require('assert')
+const levelup = require('levelup')
+const memdown = require('memdown')
+const async = require('async')
+const rlp = require('rlp')
+const ethUtil = require('ethereumjs-util')
+const semaphore = require('semaphore')
+const TrieNode = require('./trieNode')
+const ReadStream = require('./readStream')
+const PrioritizedTaskExecutor = require('./prioritizedTaskExecutor')
+const matchingNibbleLength = require('./util').matchingNibbleLength
+const doKeysMatch = require('./util').doKeysMatch
+const callTogether = require('./util').callTogether
+const asyncFirstSeries = require('./util').asyncFirstSeries
+
+module.exports = Trie
+
+/**
+ * Use `require('merkel-patricia-tree')` for the base interface. In Ethereum applications stick with the Secure Trie Overlay `require('merkel-patricia-tree/secure')`. The API for the raw and the secure interface are about the same
+ * @class Trie
+ * @param {Object} [db] An instance of [levelup](https://github.com/rvagg/node-levelup/) or a compatible API. If the db is `null` or left undefined, then the trie will be stored in memory via [memdown](https://github.com/rvagg/memdown)
+ * @param {Buffer|String} [root]` A hex `String` or `Buffer` for the root of a previously stored trie
+ * @prop {Buffer} root The current root of the `trie`
+ * @prop {Boolean} isCheckpoint  determines if you are saving to a checkpoint or directly to the db
+ * @prop {Buffer} EMPTY_TRIE_ROOT the Root for an empty trie
+ */
+function Trie (db, root) {
+  var self = this
+  this.EMPTY_TRIE_ROOT = ethUtil.SHA3_RLP
+  this.sem = semaphore(1)
+
+  // setup dbs
+  this.db = db ||
+    levelup('', {
+      db: memdown
+    })
+
+  this._getDBs = [this.db]
+  this._putDBs = [this.db]
+
+  Object.defineProperty(this, 'root', {
+    set: function (value) {
+      if (value) {
+        value = ethUtil.toBuffer(value)
+        assert(value.length === 32, 'Invalid root length. Roots are 32 bytes')
+      } else {
+        value = self.EMPTY_TRIE_ROOT
+      }
+
+      this._root = value
+    },
+    get: function () {
+      return this._root
+    }
+  })
+
+  this.root = root
+}
+
+/**
+ * Gets a value given a `key`
+ * @method get
+ * @param {Buffer|String} key - the key to search for
+ * @param {Function} cb A callback `Function` which is given the arguments `err` - for errors that may have occured and `value` - the found value in a `Buffer` or if no value was found `null`
+ */
+Trie.prototype.get = function (key, cb) {
+  var self = this
+
+  key = ethUtil.toBuffer(key)
+
+  self.findPath(key, function (err, node, remainder, stack) {
+    var value = null
+    if (node && remainder.length === 0) {
+      value = node.value
+    }
+
+    cb(err, value)
+  })
+}
+
+/**
+ * Stores a given `value` at the given `key`
+ * @method put
+ * @param {Buffer|String} key
+ * @param {Buffer|String} Value
+ * @param {Function} cb A callback `Function` which is given the argument `err` - for errors that may have occured
+ */
+Trie.prototype.put = function (key, value, cb) {
+  var self = this
+
+  key = ethUtil.toBuffer(key)
+  value = ethUtil.toBuffer(value)
+
+  if (!value || value.toString() === '') {
+    self.del(key, cb)
+  } else {
+    cb = callTogether(cb, self.sem.leave)
+
+    self.sem.take(function () {
+      if (self.root.toString('hex') !== ethUtil.SHA3_RLP.toString('hex')) {
+        // first try to find the give key or its nearst node
+        self.findPath(key, function (err, foundValue, keyRemainder, stack) {
+          if (err) {
+            return cb(err)
+          }
+          // then update
+          self._updateNode(key, value, keyRemainder, stack, cb)
+        })
+      } else {
+        self._createInitialNode(key, value, cb) // if no root initialize this trie
+      }
+    })
+  }
+}
+
+/**
+ * deletes a value given a `key`
+ * @method del
+ * @param {Buffer|String} key
+ * @param {Function} callback the callback `Function`
+ */
+Trie.prototype.del = function (key, cb) {
+  var self = this
+
+  key = ethUtil.toBuffer(key)
+  cb = callTogether(cb, self.sem.leave)
+
+  self.sem.take(function () {
+    self.findPath(key, function (err, foundValue, keyRemainder, stack) {
+      if (err) {
+        return cb(err)
+      }
+      if (foundValue) {
+        self._deleteNode(key, stack, cb)
+      } else {
+        cb()
+      }
+    })
+  })
+}
+
+/**
+ * Retrieves a raw value in the underlying db
+ * @method getRaw
+ * @param {Buffer} key
+ * @param {Function} callback A callback `Function`, which is given the arguments `err` - for errors that may have occured and `value` - the found value in a `Buffer` or if no value was found `null`.
+ */
+Trie.prototype.getRaw = function (key, cb) {
+  key = ethUtil.toBuffer(key)
+
+  function dbGet (db, cb2) {
+    db.get(key, {
+      keyEncoding: 'binary',
+      valueEncoding: 'binary'
+    }, function (err, foundNode) {
+      if (err || !foundNode) {
+        cb2(null, null)
+      } else {
+        cb2(null, foundNode)
+      }
+    })
+  }
+  asyncFirstSeries(this._getDBs, dbGet, cb)
+}
+
+// retrieves a node from dbs by hash
+Trie.prototype._lookupNode = function (node, cb) {
+  if (TrieNode.isRawNode(node)) {
+    cb(new TrieNode(node))
+  } else {
+    this.getRaw(node, function (err, value) {
+      if (err) {
+        throw err
+      }
+
+      if (value) {
+        value = new TrieNode(rlp.decode(value))
+      }
+
+      cb(value)
+    })
+  }
+}
+
+// TODO: remove the proxy method when changing the caching
+Trie.prototype._putRaw = function (key, val, cb) {
+  function dbPut (db, cb2) {
+    db.put(key, val, {
+      keyEncoding: 'binary',
+      valueEncoding: 'binary'
+    }, cb2)
+  }
+  async.each(this._putDBs, dbPut, cb)
+}
+
+/**
+ * Writes a value directly to the underlining db
+ * @method putRaw
+ * @param {Buffer|String} key The key as a `Buffer` or `String`
+ * @param {Buffer} value The value to be stored
+ * @param {Function} callback A callback `Function`, which is given the argument `err` - for errors that may have occured
+ */
+Trie.prototype.putRaw = Trie.prototype._putRaw
+
+/**
+ * Removes a raw value in the underlying db
+ * @method delRaw
+ * @param {Buffer|String} key
+ * @param {Function} callback A callback `Function`, which is given the argument `err` - for errors that may have occured
+ */
+Trie.prototype.delRaw = function (key, cb) {
+  function del (db, cb2) {
+    db.del(key, {
+      keyEncoding: 'binary'
+    }, cb2)
+  }
+  async.each(this._putDBs, del, cb)
+}
+
+// writes a single node to dbs
+Trie.prototype._putNode = function (node, cb) {
+  var hash = node.hash()
+  var serialized = node.serialize()
+  this._putRaw(hash, serialized, cb)
+}
+
+// writes many nodes to db
+Trie.prototype._batchNodes = function (opStack, cb) {
+  function dbBatch (db, cb) {
+    db.batch(opStack, {
+      keyEncoding: 'binary',
+      valueEncoding: 'binary'
+    }, cb)
+  }
+
+  async.each(this._putDBs, dbBatch, cb)
+}
+
+/**
+ * Trys to find a path to the node for the given key
+ * It returns a `stack` of nodes to the closet node
+ * @method findPath
+ * @param {String|Buffer} - key - the search key
+ * @param {Function} - cb - the callback function. Its is given the following
+ * arguments
+ *  - err - any errors encontered
+ *  - node - the last node found
+ *  - keyRemainder - the remaining key nibbles not accounted for
+ *  - stack - an array of nodes that forms the path to node we are searching for
+ */
+
+Trie.prototype.findPath = function (targetKey, cb) {
+  var self = this
+  var root = self.root
+  var stack = []
+  targetKey = TrieNode.stringToNibbles(targetKey)
+
+  this._walkTrie(root, processNode, cb)
+
+  function processNode (nodeRef, node, keyProgress, walkController) {
+    var nodeKey = node.key || []
+    var keyRemainder = targetKey.slice(matchingNibbleLength(keyProgress, targetKey))
+    var matchingLen = matchingNibbleLength(keyRemainder, nodeKey)
+
+    stack.push(node)
+
+    if (node.type === 'branch') {
+      if (keyRemainder.length === 0) {
+        walkController.return(null, node, [], stack)
+      // we exhausted the key without finding a node
+      } else {
+        var branchIndex = keyRemainder[0]
+        var branchNode = node.getValue(branchIndex)
+        if (!branchNode) {
+          // there are no more nodes to find and we didn't find the key
+          walkController.return(null, null, keyRemainder, stack)
+        } else {
+          // node found, continuing search
+          walkController.only(branchIndex)
+        }
+      }
+    } else if (node.type === 'leaf') {
+      if (doKeysMatch(keyRemainder, nodeKey)) {
+        // keys match, return node with empty key
+        walkController.return(null, node, [], stack)
+      } else {
+        // reached leaf but keys dont match
+        walkController.return(null, null, keyRemainder, stack)
+      }
+    } else if (node.type === 'extention') {
+      if (matchingLen !== nodeKey.length) {
+        // keys dont match, fail
+        walkController.return(null, null, keyRemainder, stack)
+      } else {
+        // keys match, continue search
+        walkController.next()
+      }
+    }
+  }
+}
+
+/*
+ * Finds all nodes that store k,v values
+ */
+Trie.prototype._findNode = function (key, root, stack, cb) {
+  this.findPath(key, function () {
+    cb.apply(null, arguments)
+  })
+}
+
+/*
+ * Finds all nodes that store k,v values
+ */
+Trie.prototype._findValueNodes = function (onFound, cb) {
+  this._walkTrie(this.root, function (nodeRef, node, key, walkController) {
+    var fullKey = key
+
+    if (node.key) {
+      fullKey = key.concat(node.key)
+    }
+
+    if (node.type === 'leaf') {
+      // found leaf node!
+      onFound(nodeRef, node, fullKey, walkController.next)
+    } else if (node.type === 'branch' && node.value) {
+      // found branch with value
+      onFound(nodeRef, node, fullKey, walkController.next)
+    } else {
+      // keep looking for value nodes
+      walkController.next()
+    }
+  }, cb)
+}
+
+/*
+ * Finds all nodes that are stored directly in the db
+ * (some nodes are stored raw inside other nodes)
+ */
+Trie.prototype._findDbNodes = function (onFound, cb) {
+  this._walkTrie(this.root, function (nodeRef, node, key, walkController) {
+    if (TrieNode.isRawNode(nodeRef)) {
+      walkController.next()
+    } else {
+      onFound(nodeRef, node, key, walkController.next)
+    }
+  }, cb)
+}
+
+/**
+ * Updates a node
+ * @method _updateNode
+ * @param {Buffer} key
+ * @param {Buffer| String} value
+ * @param {Array} keyRemainder
+ * @param {Array} stack -
+ * @param {Function} cb - the callback
+ */
+Trie.prototype._updateNode = function (key, value, keyRemainder, stack, cb) {
+  var toSave = []
+  var lastNode = stack.pop()
+
+  // add the new nodes
+  key = TrieNode.stringToNibbles(key)
+
+  // Check if the last node is a leaf and the key matches to this
+  var matchLeaf = false
+  if (lastNode.type === 'leaf') {
+    var l = 0
+    for (var i = 0; i < stack.length; i++) {
+      var n = stack[i]
+      if (n.type === 'branch') {
+        l++
+      } else {
+        l += n.key.length
+      }
+    }
+    if ((matchingNibbleLength(lastNode.key, key.slice(l)) === lastNode.key.length) && (keyRemainder.length === 0)) {
+      matchLeaf = true
+    }
+  }
+
+  if (matchLeaf) {
+    // just updating a found value
+    lastNode.value = value
+    stack.push(lastNode)
+  } else if (lastNode.type === 'branch') {
+    stack.push(lastNode)
+    if (keyRemainder !== 0) {
+      // add an extention to a branch node
+      keyRemainder.shift()
+      // create a new leaf
+      var newLeaf = new TrieNode('leaf', keyRemainder, value)
+      stack.push(newLeaf)
+    } else {
+      lastNode.value = value
+    }
+  } else {
+    // create a branch node
+    var lastKey = lastNode.key
+    var matchingLength = matchingNibbleLength(lastKey, keyRemainder)
+    var newBranchNode = new TrieNode('branch')
+
+    // create a new extention node
+    if (matchingLength !== 0) {
+      var newKey = lastNode.key.slice(0, matchingLength)
+      var newExtNode = new TrieNode('extention', newKey, value)
+      stack.push(newExtNode)
+      lastKey.splice(0, matchingLength)
+      keyRemainder.splice(0, matchingLength)
+    }
+
+    stack.push(newBranchNode)
+
+    if (lastKey.length !== 0) {
+      var branchKey = lastKey.shift()
+      if (lastKey.length !== 0 || lastNode.type === 'leaf') {
+        // shriking extention or leaf
+        lastNode.key = lastKey
+        var formatedNode = this._formatNode(lastNode, false, toSave)
+        newBranchNode.setValue(branchKey, formatedNode)
+      } else {
+        // remove extention or attaching
+        this._formatNode(lastNode, false, true, toSave)
+        newBranchNode.setValue(branchKey, lastNode.value)
+      }
+    } else {
+      newBranchNode.value = lastNode.value
+    }
+
+    if (keyRemainder.length !== 0) {
+      keyRemainder.shift()
+      // add a leaf node to the new branch node
+      var newLeafNode = new TrieNode('leaf', keyRemainder, value)
+      stack.push(newLeafNode)
+    } else {
+      newBranchNode.value = value
+    }
+  }
+
+  this._saveStack(key, stack, toSave, cb)
+}
+
+// walk tree
+
+Trie.prototype._walkTrie = function (root, onNode, onDone) {
+  var self = this
+  root = root || self.root
+  onDone = onDone || function () {}
+  var aborted = false
+  var returnValues = []
+
+  if (root.toString('hex') === ethUtil.SHA3_RLP.toString('hex')) {
+    return onDone()
+  }
+
+  self._lookupNode(root, function (node) {
+    processNode(root, node, null, function (err) {
+      if (err) {
+        return onDone(err)
+      }
+      onDone.apply(null, returnValues)
+    })
+  })
+
+  // the maximum pool size should be high enough to utilise the parallelizability of reading nodes from disk and
+  // low enough to utilize the prioritisation of node lookup.
+  var maxPoolSize = 500
+  var taskExecutor = new PrioritizedTaskExecutor(maxPoolSize)
+
+  function processNode (nodeRef, node, key, cb) {
+    if (!node) return cb()
+    if (aborted) return cb()
+    var stopped = false
+    key = key || []
+
+    var walkController = {
+      stop: function () {
+        stopped = true
+        cb()
+      },
+      // end all traversal and return values to the onDone cb
+      return: function () {
+        aborted = true
+        returnValues = arguments
+        cb()
+      },
+      next: function () {
+        if (aborted) {
+          return cb()
+        }
+        if (stopped) {
+          return cb()
+        }
+        var children = node.getChildren()
+        async.forEachOf(children, function (childData, index, cb) {
+          var keyExtension = childData[0]
+          var childRef = childData[1]
+          var childKey = key.concat(keyExtension)
+          var priority = childKey.length
+          taskExecutor.execute(priority, function (taskCallback) {
+            self._lookupNode(childRef, function (childNode) {
+              taskCallback()
+              processNode(childRef, childNode, childKey, cb)
+            })
+          })
+        }, cb)
+      },
+      only: function (childIndex) {
+        var childRef = node.getValue(childIndex)
+        var childKey = key.slice()
+        childKey.push(childIndex)
+        var priority = childKey.length
+        taskExecutor.execute(priority, function (taskCallback) {
+          self._lookupNode(childRef, function (childNode) {
+            taskCallback()
+            processNode(childRef, childNode, childKey, cb)
+          })
+        })
+      }
+    }
+    onNode(nodeRef, node, key, walkController)
+  }
+}
+
+/**
+ * saves a stack
+ * @method _saveStack
+ * @param {Array} key - the key. Should follow the stack
+ * @param {Array} stack - a stack of nodes to the value given by the key
+ * @param {Array} opStack - a stack of levelup operations to commit at the end of this funciton
+ * @param {Function} cb
+ */
+Trie.prototype._saveStack = function (key, stack, opStack, cb) {
+  var lastRoot
+
+  // update nodes
+  while (stack.length) {
+    var node = stack.pop()
+    if (node.type === 'leaf') {
+      key.splice(key.length - node.key.length)
+    } else if (node.type === 'extention') {
+      key.splice(key.length - node.key.length)
+      if (lastRoot) {
+        node.value = lastRoot
+      }
+    } else if (node.type === 'branch') {
+      if (lastRoot) {
+        var branchKey = key.pop()
+        node.setValue(branchKey, lastRoot)
+      }
+    }
+    lastRoot = this._formatNode(node, stack.length === 0, opStack)
+  }
+
+  if (lastRoot) {
+    this.root = lastRoot
+  }
+
+  this._batchNodes(opStack, cb)
+}
+
+Trie.prototype._deleteNode = function (key, stack, cb) {
+  function processBranchNode (key, branchKey, branchNode, parentNode, stack) {
+    // branchNode is the node ON the branch node not THE branch node
+    var branchNodeKey = branchNode.key
+    if (!parentNode || parentNode.type === 'branch') {
+      // branch->?
+      if (parentNode) {
+        stack.push(parentNode)
+      }
+
+      if (branchNode.type === 'branch') {
+        // create an extention node
+        // branch->extention->branch
+        var extentionNode = new TrieNode('extention', [branchKey], null)
+        stack.push(extentionNode)
+        key.push(branchKey)
+      } else {
+        // branch key is an extention or a leaf
+        // branch->(leaf or extention)
+        branchNodeKey.unshift(branchKey)
+        branchNode.key = branchNodeKey
+
+        // hackery. This is equvilant to array.concat except we need keep the
+        // rerfance to the `key` that was passed in.
+        branchNodeKey.unshift(0)
+        branchNodeKey.unshift(key.length)
+        key.splice.apply(key, branchNodeKey)
+      }
+      stack.push(branchNode)
+    } else {
+      // parent is a extention
+      var parentKey = parentNode.key
+      if (branchNode.type === 'branch') {
+        // ext->branch
+        parentKey.push(branchKey)
+        key.push(branchKey)
+        parentNode.key = parentKey
+        stack.push(parentNode)
+      } else {
+        // branch node is an leaf or extention and parent node is an exstention
+        // add two keys together
+        // dont push the parent node
+        branchNodeKey.unshift(branchKey)
+        key = key.concat(branchNodeKey)
+        parentKey = parentKey.concat(branchNodeKey)
+        branchNode.key = parentKey
+      }
+      stack.push(branchNode)
+    }
+
+    return key
+  }
+
+  var lastNode = stack.pop()
+  var parentNode = stack.pop()
+  var opStack = []
+  var self = this
+
+  if (!Array.isArray(key)) {
+    // convert key to nibbles
+    key = TrieNode.stringToNibbles(key)
+  }
+
+  if (!parentNode) {
+    // the root here has to be a leaf.
+    this.root = this.EMPTY_TRIE_ROOT
+    cb()
+  } else {
+    if (lastNode.type === 'branch') {
+      lastNode.value = null
+    } else {
+      // the lastNode has to be a leaf if its not a branch. And a leaf's parent
+      // if it has one must be a branch.
+      var lastNodeKey = lastNode.key
+      key.splice(key.length - lastNodeKey.length)
+      // delete the value
+      this._formatNode(lastNode, false, true, opStack)
+      parentNode.setValue(key.pop(), null)
+      lastNode = parentNode
+      parentNode = stack.pop()
+    }
+
+    // nodes on the branch
+    var branchNodes = []
+    // count the number of nodes on the branch
+    lastNode.raw.forEach(function (node, i) {
+      var val = lastNode.getValue(i)
+      if (val) branchNodes.push([i, val])
+    })
+
+    // if there is only one branch node left, collapse the branch node
+    if (branchNodes.length === 1) {
+      // add the one remaing branch node to node above it
+      var branchNode = branchNodes[0][1]
+      var branchNodeKey = branchNodes[0][0]
+
+      // look up node
+      this._lookupNode(branchNode, function (foundNode) {
+        key = processBranchNode(key, branchNodeKey, foundNode, parentNode, stack, opStack)
+        self._saveStack(key, stack, opStack, cb)
+      })
+    } else {
+      // simple removing a leaf and recaluclation the stack
+      if (parentNode) {
+        stack.push(parentNode)
+      }
+
+      stack.push(lastNode)
+      self._saveStack(key, stack, opStack, cb)
+    }
+  }
+}
+
+// Creates the initial node from an empty tree
+Trie.prototype._createInitialNode = function (key, value, cb) {
+  var newNode = new TrieNode('leaf', key, value)
+  this.root = newNode.hash()
+  this._putNode(newNode, cb)
+}
+
+// formats node to be saved by levelup.batch.
+// returns either the hash that will be used key or the rawNode
+Trie.prototype._formatNode = function (node, topLevel, remove, opStack) {
+  if (arguments.length === 3) {
+    opStack = remove
+    remove = false
+  }
+
+  var rlpNode = node.serialize()
+  if (rlpNode.length >= 32 || topLevel) {
+    var hashRoot = node.hash()
+
+    if (remove && this.isCheckpoint) {
+      opStack.push({
+        type: 'del',
+        key: hashRoot
+      })
+    } else {
+      opStack.push({
+        type: 'put',
+        key: hashRoot,
+        value: rlpNode
+      })
+    }
+    return hashRoot
+  }
+  return node.raw
+}
+
+/**
+ * The `data` event is given an `Object` hat has two properties; the `key` and the `value`. Both should be Buffers.
+ * @method createReadStream
+ * @return {stream.Readable} Returns a [stream](https://nodejs.org/dist/latest-v5.x/docs/api/stream.html#stream_class_stream_readable) of the contents of the `trie`
+ */
+Trie.prototype.createReadStream = function () {
+  return new ReadStream(this)
+}
+
+// creates a new trie backed by the same db
+// and starting at the same root
+Trie.prototype.copy = function () {
+  return new Trie(this.db, this.root)
+}
+
+/**
+ * The given hash of operations (key additions or deletions) are executed on the DB
+ * @method batch
+ * @example
+ * var ops = [
+ *    { type: 'del', key: 'father' }
+ *  , { type: 'put', key: 'name', value: 'Yuri Irsenovich Kim' }
+ *  , { type: 'put', key: 'dob', value: '16 February 1941' }
+ *  , { type: 'put', key: 'spouse', value: 'Kim Young-sook' }
+ *  , { type: 'put', key: 'occupation', value: 'Clown' }
+ * ]
+ * trie.batch(ops)
+ * @param {Array} ops
+ * @param {Function} cb
+ */
+Trie.prototype.batch = function (ops, cb) {
+  var self = this
+
+  async.eachSeries(ops, function (op, cb2) {
+    if (op.type === 'put') {
+      self.put(op.key, op.value, cb2)
+    } else if (op.type === 'del') {
+      self.del(op.key, cb2)
+    } else {
+      cb2()
+    }
+  }, cb)
+}
+
+/**
+ * Checks if a given root exists
+ * @method checkRoot
+ * @param {Buffer} root
+ * @param {Function} cb
+ */
+Trie.prototype.checkRoot = function (root, cb) {
+  root = ethUtil.toBuffer(root)
+  this._lookupNode(root, function (value) {
+    cb(null, !!value)
+  })
+}
+
+},{"./prioritizedTaskExecutor":5,"./readStream":6,"./trieNode":7,"./util":8,"assert":15,"async":19,"ethereumjs-util":50,"levelup":104,"memdown":110,"rlp":142,"semaphore":150}],2:[function(require,module,exports){
+const levelup = require('levelup')
+const memdown = require('memdown')
+const async = require('async')
+const inherits = require('util').inherits
+const Readable = require('readable-stream').Readable
+const levelws = require('level-ws')
+const callTogether = require('./util').callTogether
+
+module.exports = checkpointInterface
+
+function checkpointInterface (trie) {
+  this._scratch = null
+  trie._checkpoints = []
+
+  Object.defineProperty(trie, 'isCheckpoint', {
+    get: function () {
+      return !!trie._checkpoints.length
+    }
+  })
+
+  // new methods
+  trie.checkpoint = checkpoint
+  trie.commit = commit
+  trie.revert = revert
+  trie._enterCpMode = _enterCpMode
+  trie._exitCpMode = _exitCpMode
+  trie.createScratchReadStream = createScratchReadStream
+
+  // overwrites
+  trie.copy = copy.bind(trie, trie.copy.bind(trie))
+}
+
+/**
+ * Creates a checkpoint that can later be reverted to or committed. After this is called, no changes to the trie will be permanently saved until `commit` is called
+ * @method checkpoint
+ */
+function checkpoint () {
+  var self = this
+  var wasCheckpoint = self.isCheckpoint
+  self._checkpoints.push(self.root)
+  if (!wasCheckpoint && self.isCheckpoint) {
+    self._enterCpMode()
+  }
+}
+
+/**
+ * commits a checkpoint to disk
+ * @method commit
+ * @param {Function} cb the callback
+ */
+function commit (cb) {
+  var self = this
+  cb = callTogether(cb, self.sem.leave)
+
+  self.sem.take(function () {
+    if (self.isCheckpoint) {
+      self._checkpoints.pop()
+      if (!self.isCheckpoint) {
+        self._exitCpMode(true, cb)
+      } else {
+        cb()
+      }
+    } else {
+      throw new Error('trying to commit when not checkpointed')
+    }
+  })
+}
+
+/**
+ * Reverts the trie to the state it was at when `checkpoint` was first called.
+ * @method revert
+ * @param {Function} cb the callback
+ */
+function revert (cb) {
+  var self = this
+  cb = callTogether(cb, self.sem.leave)
+
+  self.sem.take(function () {
+    if (self.isCheckpoint) {
+      self.root = self._checkpoints.pop()
+      if (!self.isCheckpoint) {
+        self._exitCpMode(false, cb)
+        return
+      }
+    }
+
+    cb()
+  })
+}
+
+// enter into checkpoint mode
+function _enterCpMode () {
+  this._scratch = levelup('', {
+    db: memdown
+  })
+  this._getDBs = [this._scratch].concat(this._getDBs)
+  this.__putDBs = this._putDBs
+  this._putDBs = [this._scratch]
+  this._putRaw = this.putRaw
+  this.putRaw = putRaw
+}
+
+// exit from checkpoint mode
+function _exitCpMode (commitState, cb) {
+  var self = this
+  var scratch = this._scratch
+  this._scratch = null
+  this._getDBs = this._getDBs.slice(1)
+  this._putDBs = this.__putDBs
+  this.putRaw = this._putRaw
+
+  function flushScratch (db, cb) {
+    if (!db.createWriteStream) {
+      db = levelws(db)
+    }
+
+    self.createScratchReadStream(scratch)
+      .pipe(db.createWriteStream())
+      .on('close', cb)
+  }
+
+  if (commitState) {
+    async.map(this._putDBs, flushScratch, cb)
+  } else {
+    cb()
+  }
+}
+
+// adds the interface when copying the trie
+function copy (_super) {
+  var trie = _super()
+  checkpointInterface.call(trie, trie)
+  trie._scratch = this._scratch
+  // trie._checkpoints = this._checkpoints.slice()
+  return trie
+}
+
+function putRaw (key, val, cb) {
+  function dbPut (db, cb2) {
+    db.put(key, val, {
+      keyEncoding: 'binary',
+      valueEncoding: 'binary'
+    }, cb2)
+  }
+  async.each(this.__putDBs, dbPut, cb)
+}
+
+function createScratchReadStream (scratch) {
+  var trie = this.copy()
+  scratch = scratch || this._scratch
+  // only read from the scratch
+  trie._getDBs = [scratch]
+  trie._scratch = scratch
+  return new ScratchReadStream(trie)
+}
+
+// ScratchReadStream
+// this is used to minimally dump the scratch into the db
+
+inherits(ScratchReadStream, Readable)
+
+function ScratchReadStream (trie) {
+  this.trie = trie
+  this.next = null
+  Readable.call(this, {
+    objectMode: true
+  })
+}
+
+ScratchReadStream.prototype._read = function () {
+  var self = this
+  if (!self._started) {
+    self._started = true
+    self.trie._findDbNodes(function (nodeRef, node, key, next) {
+      self.push({
+        key: nodeRef,
+        value: node.serialize()
+      })
+      next()
+    }, function () {
+      // close stream
+      self.push(null)
+    })
+  }
+}
+
+},{"./util":8,"async":19,"level-ws":96,"levelup":104,"memdown":110,"readable-stream":138,"util":165}],3:[function(require,module,exports){
+(function (Buffer){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+const original = require('./index_original');
+const originalNode = require('./trieNode');
+const ethUtil = require('ethereumjs-util');
+const matchingNibbleLength = require('./util').matchingNibbleLength;
+/** A Merkle Patricia Tree, as defined in the Ethereum Yellow Paper. */
+class MerklePatriciaTree {
+    /**
+     * A buffer representing the root hash of the tree. Always 256-bits (32
+     * bytes).
+     */
+    get root() {
+        return this.originalTree.root;
+    }
+    /** Construct a new Merkle Patricia Tree. */
+    constructor() {
+        this.originalTree = new original();
+    }
+    /**
+     * Insert a new mapping into the tree. If the key is already mapped in the
+     * tree, it is updated with the new value.
+     *
+     * @param key   The key to insert.
+     * @param val   A buffer representing the value.
+     *
+     * @returns     A promise, resolved when the put is completed.
+     */
+    put(key, val) {
+        return new Promise((resolve, reject) => {
+            this.originalTree.put(key, val, (err) => {
+                if (err) {
+                    reject(err);
+                }
+                else {
+                    resolve();
+                }
+            });
+        });
+    }
+    /**
+     * Given a key, retrieve a witness for the mapping.
+     *
+     * @param key   The key to retrieve the witness for.
+     *
+     * @returns     A witness, with a proof of the value read (or a null value,
+     * with a proof of the value's nonexistence).
+     */
+    async get(key) {
+        const search = await this.search(key);
+        const value = search.remainder.length === 0 && search.node !== null ?
+            search.node.value :
+            null;
+        const proof = [];
+        for (const [idx, node] of search.stack.entries()) {
+            const rlp = node.serialize();
+            if (rlp.length >= 32 || (idx === 0)) {
+                proof.push(rlp);
+            }
+        }
+        return { value, proof };
+    }
+    /**
+     * Given a key, delete any mapping that exists for that key.
+     *
+     * @param key   The key to unmap.
+     *
+     * @returns     A promise, resolved when the key is unmapped.
+     */
+    del(key) {
+        return new Promise((resolve, reject) => {
+            this.originalTree.del(key, (err) => {
+                if (err) {
+                    reject(err);
+                }
+                else {
+                    resolve();
+                }
+            });
+        });
+    }
+    search(key) {
+        return new Promise((resolve, reject) => {
+            this.originalTree.findPath(key, (error, node, remainder, stack) => {
+                if (error) {
+                    reject(error);
+                }
+                else {
+                    // Fixes bug in original code where remainder is undefined if tree
+                    // is empty
+                    if (remainder === undefined) {
+                        remainder = key;
+                    }
+                    // Same with stack.
+                    if (stack === undefined) {
+                        stack = [];
+                    }
+                    resolve({ node, remainder, stack });
+                }
+            });
+        });
+    }
+}
+exports.MerklePatriciaTree = MerklePatriciaTree;
+/** This {Error} indicates that there was a problem verifying a witness. */
+class VerificationError extends Error {
+}
+exports.VerificationError = VerificationError;
+/**
+ * Verifies that a witness is correct for the given root and key.
+ *
+ * @param root                  A {Buffer} containing the root of the tree to
+ * check
+ * @param key                   A {Buffer} containing the key to check
+ * @param witness               The {Witness} to verify
+ *
+ * @throws {VerificationError}  If there was an error verifying the witness using the
+ *                              given key and root.
+ * @return                      A promise, which is resolved if the witness was
+ * valid. Otherwise, the promise is completed exceptionally with the failure
+ * reason.
+ */
+function VerifyWitness(root, key, witness) {
+    let targetHash = root;
+    let currentKey = originalNode.stringToNibbles(key);
+    let cld;
+    for (const [idx, serializedNode] of witness.proof.entries()) {
+        const hash = ethUtil.sha3(serializedNode);
+        if (Buffer.compare(hash, targetHash)) {
+            throw new VerificationError(`Hash mismatch: expected ${targetHash.toString('hex')} got ${hash.toString('hex')}`);
+        }
+        const node = new originalNode(ethUtil.rlp.decode(serializedNode));
+        if (node.type === 'branch') {
+            if (currentKey.length === 0) {
+                if (idx !== witness.proof.length - 1) {
+                    throw new VerificationError(`Proof length mismatch (branch): expected ${idx + 1} but got ${witness.proof.length}`);
+                }
+                if (!node.value.equals(witness.value)) {
+                    throw new VerificationError(`Value mismatch: expected ${witness.value} but got ${node.value}`);
+                }
+                return;
+            }
+            cld = node.raw[currentKey[0]];
+            currentKey = currentKey.slice(1);
+            if (cld.length === 2) {
+                const embeddedNode = new originalNode(cld);
+                if (idx !== witness.proof.length - 1) {
+                    throw new VerificationError(`Proof length mismatch (embeddedNode): expected ${idx + 1} but got ${witness.proof.length}`);
+                }
+                if (matchingNibbleLength(embeddedNode.key, currentKey) !==
+                    embeddedNode.key.length) {
+                    throw new VerificationError(`Key length mismatch (embeddedNode): expected ${matchingNibbleLength(embeddedNode.key, currentKey)} but got ${embeddedNode.key.length}`);
+                }
+                currentKey = currentKey.slice(embeddedNode.key.length);
+                if (currentKey.length !== 0) {
+                    throw new VerificationError(`Key does not match the proof (embeddedNode)`);
+                }
+                if (!embeddedNode.value.equals(witness.value)) {
+                    throw new VerificationError(`Value mismatch: expected ${witness.value} but got ${embeddedNode.value}`);
+                }
+                return;
+            }
+            else {
+                targetHash = cld;
+            }
+        }
+        else if ((node.type === 'extention') || (node.type === 'leaf')) {
+            if (matchingNibbleLength(node.key, currentKey) !== node.key.length) {
+                throw new VerificationError(`Key does not match the proof ${node.type}: expected ${node.key}, but got ${currentKey}`);
+            }
+            cld = node.value;
+            currentKey = currentKey.slice(node.key.length);
+            if (currentKey.length === 0) {
+                if (idx !== witness.proof.length - 1) {
+                    throw new VerificationError(`Key length mismatch (${node.type}): expected ${idx + 1} but got ${witness.proof.length}`);
+                }
+                if (!cld.equals(witness.value)) {
+                    throw new VerificationError(`Value mismatch: expected ${witness.value} but got ${cld}`);
+                }
+                return;
+            }
+            else {
+                targetHash = cld;
+            }
+        }
+        else {
+            throw new VerificationError(`Unexpected node type ${node.type}`);
+        }
+    }
+    throw new VerificationError(`Unexpected end of proof`);
+}
+exports.VerifyWitness = VerifyWitness;
+
+}).call(this,require("buffer").Buffer)
+},{"./index_original":4,"./trieNode":7,"./util":8,"buffer":25,"ethereumjs-util":50}],4:[function(require,module,exports){
+const BaseTrie = require('./baseTrie')
+const checkpointInterface = require('./checkpoint-interface')
+const inherits = require('util').inherits
+
+module.exports = CheckpointTrie
+
+inherits(CheckpointTrie, BaseTrie)
+
+function CheckpointTrie () {
+  BaseTrie.apply(this, arguments)
+  checkpointInterface.call(this, this)
+}
+},{"./baseTrie":1,"./checkpoint-interface":2,"util":165}],5:[function(require,module,exports){
+module.exports = PrioritizedTaskExecutor
+
+/**
+ * Executes tasks up to maxPoolSize at a time, other items are put in a priority queue.
+ * @class PrioritizedTaskExecutor
+ * @param {Number} maxPoolSize The maximum size of the pool
+ * @prop {Number} maxPoolSize The maximum size of the pool
+ * @prop {Number} currentPoolSize The current size of the pool
+ * @prop {Array} queue The task queue
+ */
+function PrioritizedTaskExecutor (maxPoolSize) {
+  this.maxPoolSize = maxPoolSize
+  this.currentPoolSize = 0
+  this.queue = []
+}
+
+/**
+ * Executes the task.
+ * @param {Number} priority The priority of the task
+ * @param {Function} task The function that accepts the callback, which must be called upon the task completion.
+ */
+PrioritizedTaskExecutor.prototype.execute = function (priority, task) {
+  var self = this
+
+  if (self.currentPoolSize < self.maxPoolSize) {
+    self.currentPoolSize++
+    task(function () {
+      self.currentPoolSize--
+      if (self.queue.length > 0) {
+        self.queue.sort(function (a, b) {
+          return b.priority - a.priority
+        })
+        var item = self.queue.shift()
+        self.execute(item.priority, item.task)
+      }
+    })
+  } else {
+    self.queue.push({
+      priority: priority,
+      task: task
+    })
+  }
+}
+
+},{}],6:[function(require,module,exports){
+const Readable = require('readable-stream').Readable
+const TrieNode = require('./trieNode')
+const util = require('util')
+
+module.exports = TrieReadStream
+
+function TrieReadStream (trie) {
+  this.trie = trie
+  this.next = null
+  Readable.call(this, {
+    objectMode: true
+  })
+}
+
+util.inherits(TrieReadStream, Readable)
+
+TrieReadStream.prototype._read = function () {
+  var self = this
+  if (!self._started) {
+    self._started = true
+    self.trie._findValueNodes(function (nodeRef, node, key, next) {
+      self.push({
+        key: TrieNode.nibblesToBuffer(key),
+        value: node.value
+      })
+      next()
+    }, function () {
+      // close stream
+      self.push(null)
+    })
+  }
+}
+
+},{"./trieNode":7,"readable-stream":138,"util":165}],7:[function(require,module,exports){
+(function (Buffer){
+const rlp = require('rlp')
+const ethUtil = require('ethereumjs-util')
+
+module.exports = TrieNode
+
+function TrieNode (type, key, value) {
+  if (Array.isArray(type)) {
+    // parse raw node
+    this.parseNode(type)
+  } else {
+    this.type = type
+    if (type === 'branch') {
+      var values = key
+      this.raw = Array.apply(null, Array(17))
+      if (values) {
+        values.forEach(function (keyVal) {
+          this.set.apply(this, keyVal)
+        })
+      }
+    } else {
+      this.raw = Array(2)
+      this.setValue(value)
+      this.setKey(key)
+    }
+  }
+}
+
+TrieNode.isRawNode = isRawNode
+TrieNode.addHexPrefix = addHexPrefix
+TrieNode.removeHexPrefix = removeHexPrefix
+TrieNode.isTerminator = isTerminator
+TrieNode.stringToNibbles = stringToNibbles
+TrieNode.nibblesToBuffer = nibblesToBuffer
+TrieNode.getNodeType = getNodeType
+
+Object.defineProperty(TrieNode.prototype, 'value', {
+  get: function () {
+    return this.getValue()
+  },
+  set: function (v) {
+    this.setValue(v)
+  }
+})
+
+Object.defineProperty(TrieNode.prototype, 'key', {
+  get: function () {
+    return this.getKey()
+  },
+  set: function (k) {
+    this.setKey(k)
+  }
+})
+
+// parses a raw node
+TrieNode.prototype.parseNode = function (rawNode) {
+  this.raw = rawNode
+  this.type = getNodeType(rawNode)
+}
+
+// sets the value of the node
+TrieNode.prototype.setValue = function (key, value) {
+  if (this.type !== 'branch') {
+    this.raw[1] = key
+  } else {
+    if (arguments.length === 1) {
+      value = key
+      key = 16
+    }
+    this.raw[key] = value
+  }
+}
+
+TrieNode.prototype.getValue = function (key) {
+  if (this.type === 'branch') {
+    if (arguments.length === 0) {
+      key = 16
+    }
+
+    var val = this.raw[key]
+    if (val !== null && val !== undefined && val.length !== 0) {
+      return val
+    }
+  } else {
+    return this.raw[1]
+  }
+}
+
+TrieNode.prototype.setKey = function (key) {
+  if (this.type !== 'branch') {
+    if (Buffer.isBuffer(key)) {
+      key = stringToNibbles(key)
+    } else {
+      key = key.slice(0) // copy the key
+    }
+
+    key = addHexPrefix(key, this.type === 'leaf')
+    this.raw[0] = nibblesToBuffer(key)
+  }
+}
+
+// returns the key as a nibble
+TrieNode.prototype.getKey = function () {
+  if (this.type !== 'branch') {
+    var key = this.raw[0]
+    key = removeHexPrefix(stringToNibbles(key))
+    return (key)
+  }
+}
+
+TrieNode.prototype.serialize = function () {
+  return rlp.encode(this.raw)
+}
+
+TrieNode.prototype.hash = function () {
+  return ethUtil.sha3(this.serialize())
+}
+
+TrieNode.prototype.toString = function () {
+  var out = this.type
+  out += ': ['
+  this.raw.forEach(function (el) {
+    if (Buffer.isBuffer(el)) {
+      out += el.toString('hex') + ', '
+    } else if (el) {
+      out += 'object, '
+    } else {
+      out += 'empty, '
+    }
+  })
+  out = out.slice(0, -2)
+  out += ']'
+  return out
+}
+
+TrieNode.prototype.getChildren = function () {
+  var children = []
+  switch (this.type) {
+    case 'leaf':
+      // no children
+      break
+    case 'extention':
+      // one child
+      children.push([this.key, this.getValue()])
+      break
+    case 'branch':
+      for (var index = 0, end = 16; index < end; index++) {
+        var value = this.getValue(index)
+        if (value) {
+          children.push([
+            [index], value
+          ])
+        }
+      }
+      break
+  }
+  return children
+}
+
+/**
+ * @param {Array} dataArr
+ * @returns {Buffer} - returns buffer of encoded data
+ * hexPrefix
+ **/
+function addHexPrefix (key, terminator) {
+  // odd
+  if (key.length % 2) {
+    key.unshift(1)
+  } else {
+    // even
+    key.unshift(0)
+    key.unshift(0)
+  }
+
+  if (terminator) {
+    key[0] += 2
+  }
+
+  return key
+}
+
+function removeHexPrefix (val) {
+  if (val[0] % 2) {
+    val = val.slice(1)
+  } else {
+    val = val.slice(2)
+  }
+
+  return val
+}
+
+/**
+ * Determines if a key has Arnold Schwarzenegger in it.
+ * @method isTerminator
+ * @param {Array} key - an hexprefixed array of nibbles
+ */
+function isTerminator (key) {
+  return key[0] > 1
+}
+
+/**
+ * Converts a string OR a buffer to a nibble array.
+ * @method stringToNibbles
+ * @param {Buffer| String} key
+ */
+function stringToNibbles (key) {
+  var bkey = new Buffer(key)
+  var nibbles = []
+
+  for (var i = 0; i < bkey.length; i++) {
+    var q = i * 2
+    nibbles[q] = bkey[i] >> 4
+    ++q
+    nibbles[q] = bkey[i] % 16
+  }
+  return nibbles
+}
+
+/**
+ * Converts a nibble array into a buffer.
+ * @method nibblesToBuffer
+ * @param arr
+ */
+function nibblesToBuffer (arr) {
+  var buf = new Buffer(arr.length / 2)
+  for (var i = 0; i < buf.length; i++) {
+    var q = i * 2
+    buf[i] = (arr[q] << 4) + arr[++q]
+  }
+  return buf
+}
+
+/**
+ * Determines the node type.
+ * @returns {String} - the node type
+ *   - leaf - if the node is a leaf
+ *   - branch - if the node is a branch
+ *   - extention - if the node is an extention
+ *   - unknown - if something else got borked
+ */
+function getNodeType (node) {
+  if (node.length === 17) {
+    return 'branch'
+  } else if (node.length === 2) {
+    var key = stringToNibbles(node[0])
+    if (isTerminator(key)) {
+      return 'leaf'
+    }
+
+    return 'extention'
+  }
+}
+
+function isRawNode (node) {
+  return Array.isArray(node) && !Buffer.isBuffer(node)
+}
+
+}).call(this,require("buffer").Buffer)
+},{"buffer":25,"ethereumjs-util":50,"rlp":142}],8:[function(require,module,exports){
+(function (process){
+const async = require('async')
+
+module.exports = {
+  matchingNibbleLength: matchingNibbleLength,
+  callTogether: callTogether,
+  asyncFirstSeries: asyncFirstSeries,
+  doKeysMatch: doKeysMatch
+}
+
+/**
+ * Returns the number of in order matching nibbles of two give nibble arrayes
+ * @method matchingNibbleLength
+ * @param {Array} nib1
+ * @param {Array} nib2
+ */
+function matchingNibbleLength (nib1, nib2) {
+  var i = 0
+  while (nib1[i] === nib2[i] && nib1.length > i) {
+    i++
+  }
+  return i
+}
+
+/**
+ * Compare two 'nibble array' keys
+ */
+function doKeysMatch (keyA, keyB) {
+  var length = matchingNibbleLength(keyA, keyB)
+  return length === keyA.length && length === keyB.length
+}
+
+/**
+ * Take two or more functions and returns a function  that will execute all of
+ * the given functions
+ */
+function callTogether () {
+  var funcs = arguments
+  var length = funcs.length
+  var index = length
+
+  if (!length) {
+    return function () {}
+  }
+
+  return function () {
+    length = index
+
+    while (length--) {
+      var fn = funcs[length]
+      if (typeof fn === 'function') {
+        var result = funcs[length].apply(this, arguments)
+      }
+    }
+    return result
+  }
+}
+
+/**
+ * Take a collection of async fns, call the cb on the first to return a truthy value.
+ * If all run without a truthy result, return undefined
+ */
+function asyncFirstSeries (array, iterator, cb) {
+  var didComplete = false
+  async.eachSeries(array, function (item, next) {
+    if (didComplete) return next
+    iterator(item, function (err, result) {
+      if (result) {
+        didComplete = true
+        process.nextTick(cb.bind(null, null, result))
+      }
+      next(err)
+    })
+  }, function () {
+    if (!didComplete) {
+      cb()
+    }
+  })
+}
+
+}).call(this,require('_process'))
+},{"_process":124,"async":19}],9:[function(require,module,exports){
 (function (process){
 /* Copyright (c) 2017 Rod Vagg, MIT License */
 
@@ -90,7 +1674,7 @@ AbstractChainedBatch.prototype.write = function (options, callback) {
 module.exports = AbstractChainedBatch
 
 }).call(this,require('_process'))
-},{"_process":116}],2:[function(require,module,exports){
+},{"_process":124}],10:[function(require,module,exports){
 (function (process){
 /* Copyright (c) 2017 Rod Vagg, MIT License */
 
@@ -143,7 +1727,7 @@ AbstractIterator.prototype.end = function (callback) {
 module.exports = AbstractIterator
 
 }).call(this,require('_process'))
-},{"_process":116}],3:[function(require,module,exports){
+},{"_process":124}],11:[function(require,module,exports){
 (function (Buffer,process){
 /* Copyright (c) 2017 Rod Vagg, MIT License */
 
@@ -418,13 +2002,13 @@ AbstractLevelDOWN.prototype._checkKey = function (obj, type) {
 module.exports = AbstractLevelDOWN
 
 }).call(this,{"isBuffer":require("../is-buffer/index.js")},require('_process'))
-},{"../is-buffer/index.js":68,"./abstract-chained-batch":1,"./abstract-iterator":2,"_process":116,"xtend":6}],4:[function(require,module,exports){
+},{"../is-buffer/index.js":76,"./abstract-chained-batch":9,"./abstract-iterator":10,"_process":124,"xtend":14}],12:[function(require,module,exports){
 exports.AbstractLevelDOWN    = require('./abstract-leveldown')
 exports.AbstractIterator     = require('./abstract-iterator')
 exports.AbstractChainedBatch = require('./abstract-chained-batch')
 exports.isLevelDOWN          = require('./is-leveldown')
 
-},{"./abstract-chained-batch":1,"./abstract-iterator":2,"./abstract-leveldown":3,"./is-leveldown":5}],5:[function(require,module,exports){
+},{"./abstract-chained-batch":9,"./abstract-iterator":10,"./abstract-leveldown":11,"./is-leveldown":13}],13:[function(require,module,exports){
 var AbstractLevelDOWN = require('./abstract-leveldown')
 
 function isLevelDOWN (db) {
@@ -440,7 +2024,7 @@ function isLevelDOWN (db) {
 
 module.exports = isLevelDOWN
 
-},{"./abstract-leveldown":3}],6:[function(require,module,exports){
+},{"./abstract-leveldown":11}],14:[function(require,module,exports){
 module.exports = extend
 
 var hasOwnProperty = Object.prototype.hasOwnProperty;
@@ -461,7 +2045,7 @@ function extend() {
     return target
 }
 
-},{}],7:[function(require,module,exports){
+},{}],15:[function(require,module,exports){
 (function (global){
 'use strict';
 
@@ -955,7 +2539,7 @@ var objectKeys = Object.keys || function (obj) {
 };
 
 }).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{"util/":10}],8:[function(require,module,exports){
+},{"util/":18}],16:[function(require,module,exports){
 if (typeof Object.create === 'function') {
   // implementation from standard node.js 'util' module
   module.exports = function inherits(ctor, superCtor) {
@@ -980,14 +2564,14 @@ if (typeof Object.create === 'function') {
   }
 }
 
-},{}],9:[function(require,module,exports){
+},{}],17:[function(require,module,exports){
 module.exports = function isBuffer(arg) {
   return arg && typeof arg === 'object'
     && typeof arg.copy === 'function'
     && typeof arg.fill === 'function'
     && typeof arg.readUInt8 === 'function';
 }
-},{}],10:[function(require,module,exports){
+},{}],18:[function(require,module,exports){
 (function (process,global){
 // Copyright Joyent, Inc. and other Node contributors.
 //
@@ -1577,7 +3161,7 @@ function hasOwnProperty(obj, prop) {
 }
 
 }).call(this,require('_process'),typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{"./support/isBuffer":9,"_process":116,"inherits":8}],11:[function(require,module,exports){
+},{"./support/isBuffer":17,"_process":124,"inherits":16}],19:[function(require,module,exports){
 (function (process,global,setImmediate){
 /*!
  * async
@@ -2846,7 +4430,7 @@ function hasOwnProperty(obj, prop) {
 }());
 
 }).call(this,require('_process'),typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {},require("timers").setImmediate)
-},{"_process":116,"timers":154}],12:[function(require,module,exports){
+},{"_process":124,"timers":162}],20:[function(require,module,exports){
 'use strict'
 
 exports.byteLength = byteLength
@@ -2999,7 +4583,7 @@ function fromByteArray (uint8) {
   return parts.join('')
 }
 
-},{}],13:[function(require,module,exports){
+},{}],21:[function(require,module,exports){
 // Reference https://github.com/bitcoin/bips/blob/master/bip-0066.mediawiki
 // Format: 0x30 [total-length] 0x02 [R-length] [R] 0x02 [S-length] [S]
 // NOTE: SIGHASH byte ignored AND restricted, truncate before use
@@ -3114,7 +4698,7 @@ module.exports = {
   encode: encode
 }
 
-},{"safe-buffer":135}],14:[function(require,module,exports){
+},{"safe-buffer":143}],22:[function(require,module,exports){
 (function (module, exports) {
   'use strict';
 
@@ -6543,7 +8127,7 @@ module.exports = {
   };
 })(typeof module === 'undefined' || module, this);
 
-},{"buffer":16}],15:[function(require,module,exports){
+},{"buffer":24}],23:[function(require,module,exports){
 var r;
 
 module.exports = function rand(len) {
@@ -6610,9 +8194,9 @@ if (typeof self === 'object') {
   }
 }
 
-},{"crypto":16}],16:[function(require,module,exports){
+},{"crypto":24}],24:[function(require,module,exports){
 
-},{}],17:[function(require,module,exports){
+},{}],25:[function(require,module,exports){
 (function (global){
 /*!
  * The buffer module from node.js, for the browser.
@@ -8405,14 +9989,14 @@ function isnan (val) {
 }
 
 }).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{"base64-js":12,"ieee754":60,"isarray":18}],18:[function(require,module,exports){
+},{"base64-js":20,"ieee754":68,"isarray":26}],26:[function(require,module,exports){
 var toString = {}.toString;
 
 module.exports = Array.isArray || function (arr) {
   return toString.call(arr) == '[object Array]';
 };
 
-},{}],19:[function(require,module,exports){
+},{}],27:[function(require,module,exports){
 var Buffer = require('safe-buffer').Buffer
 var Transform = require('stream').Transform
 var StringDecoder = require('string_decoder').StringDecoder
@@ -8513,7 +10097,7 @@ CipherBase.prototype._toString = function (value, enc, fin) {
 
 module.exports = CipherBase
 
-},{"inherits":67,"safe-buffer":135,"stream":151,"string_decoder":152}],20:[function(require,module,exports){
+},{"inherits":75,"safe-buffer":143,"stream":159,"string_decoder":160}],28:[function(require,module,exports){
 (function (Buffer){
 // Copyright Joyent, Inc. and other Node contributors.
 //
@@ -8624,7 +10208,7 @@ function objectToString(o) {
 }
 
 }).call(this,{"isBuffer":require("../../is-buffer/index.js")})
-},{"../../is-buffer/index.js":68}],21:[function(require,module,exports){
+},{"../../is-buffer/index.js":76}],29:[function(require,module,exports){
 'use strict'
 var inherits = require('inherits')
 var MD5 = require('md5.js')
@@ -8656,7 +10240,7 @@ module.exports = function createHash (alg) {
   return new Hash(sha(alg))
 }
 
-},{"cipher-base":19,"inherits":67,"md5.js":100,"ripemd160":133,"sha.js":144}],22:[function(require,module,exports){
+},{"cipher-base":27,"inherits":75,"md5.js":108,"ripemd160":141,"sha.js":152}],30:[function(require,module,exports){
 var util = require('util')
   , AbstractIterator = require('abstract-leveldown').AbstractIterator
 
@@ -8692,7 +10276,7 @@ DeferredIterator.prototype._operation = function (method, args) {
 
 module.exports = DeferredIterator;
 
-},{"abstract-leveldown":4,"util":157}],23:[function(require,module,exports){
+},{"abstract-leveldown":12,"util":165}],31:[function(require,module,exports){
 (function (Buffer,process){
 var util              = require('util')
   , AbstractLevelDOWN = require('abstract-leveldown').AbstractLevelDOWN
@@ -8752,7 +10336,7 @@ module.exports                  = DeferredLevelDOWN
 module.exports.DeferredIterator = DeferredIterator
 
 }).call(this,{"isBuffer":require("../is-buffer/index.js")},require('_process'))
-},{"../is-buffer/index.js":68,"./deferred-iterator":22,"_process":116,"abstract-leveldown":4,"util":157}],24:[function(require,module,exports){
+},{"../is-buffer/index.js":76,"./deferred-iterator":30,"_process":124,"abstract-leveldown":12,"util":165}],32:[function(require,module,exports){
 'use strict';
 
 var elliptic = exports;
@@ -8767,7 +10351,7 @@ elliptic.curves = require('./elliptic/curves');
 elliptic.ec = require('./elliptic/ec');
 elliptic.eddsa = require('./elliptic/eddsa');
 
-},{"../package.json":39,"./elliptic/curve":27,"./elliptic/curves":30,"./elliptic/ec":31,"./elliptic/eddsa":34,"./elliptic/utils":38,"brorand":15}],25:[function(require,module,exports){
+},{"../package.json":47,"./elliptic/curve":35,"./elliptic/curves":38,"./elliptic/ec":39,"./elliptic/eddsa":42,"./elliptic/utils":46,"brorand":23}],33:[function(require,module,exports){
 'use strict';
 
 var BN = require('bn.js');
@@ -9144,7 +10728,7 @@ BasePoint.prototype.dblp = function dblp(k) {
   return r;
 };
 
-},{"../../elliptic":24,"bn.js":14}],26:[function(require,module,exports){
+},{"../../elliptic":32,"bn.js":22}],34:[function(require,module,exports){
 'use strict';
 
 var curve = require('../curve');
@@ -9579,7 +11163,7 @@ Point.prototype.eqXToP = function eqXToP(x) {
 Point.prototype.toP = Point.prototype.normalize;
 Point.prototype.mixedAdd = Point.prototype.add;
 
-},{"../../elliptic":24,"../curve":27,"bn.js":14,"inherits":67}],27:[function(require,module,exports){
+},{"../../elliptic":32,"../curve":35,"bn.js":22,"inherits":75}],35:[function(require,module,exports){
 'use strict';
 
 var curve = exports;
@@ -9589,7 +11173,7 @@ curve.short = require('./short');
 curve.mont = require('./mont');
 curve.edwards = require('./edwards');
 
-},{"./base":25,"./edwards":26,"./mont":28,"./short":29}],28:[function(require,module,exports){
+},{"./base":33,"./edwards":34,"./mont":36,"./short":37}],36:[function(require,module,exports){
 'use strict';
 
 var curve = require('../curve');
@@ -9771,7 +11355,7 @@ Point.prototype.getX = function getX() {
   return this.x.fromRed();
 };
 
-},{"../../elliptic":24,"../curve":27,"bn.js":14,"inherits":67}],29:[function(require,module,exports){
+},{"../../elliptic":32,"../curve":35,"bn.js":22,"inherits":75}],37:[function(require,module,exports){
 'use strict';
 
 var curve = require('../curve');
@@ -10710,7 +12294,7 @@ JPoint.prototype.isInfinity = function isInfinity() {
   return this.z.cmpn(0) === 0;
 };
 
-},{"../../elliptic":24,"../curve":27,"bn.js":14,"inherits":67}],30:[function(require,module,exports){
+},{"../../elliptic":32,"../curve":35,"bn.js":22,"inherits":75}],38:[function(require,module,exports){
 'use strict';
 
 var curves = exports;
@@ -10917,7 +12501,7 @@ defineCurve('secp256k1', {
   ]
 });
 
-},{"../elliptic":24,"./precomputed/secp256k1":37,"hash.js":47}],31:[function(require,module,exports){
+},{"../elliptic":32,"./precomputed/secp256k1":45,"hash.js":55}],39:[function(require,module,exports){
 'use strict';
 
 var BN = require('bn.js');
@@ -11159,7 +12743,7 @@ EC.prototype.getKeyRecoveryParam = function(e, signature, Q, enc) {
   throw new Error('Unable to find valid recovery factor');
 };
 
-},{"../../elliptic":24,"./key":32,"./signature":33,"bn.js":14,"hmac-drbg":59}],32:[function(require,module,exports){
+},{"../../elliptic":32,"./key":40,"./signature":41,"bn.js":22,"hmac-drbg":67}],40:[function(require,module,exports){
 'use strict';
 
 var BN = require('bn.js');
@@ -11280,7 +12864,7 @@ KeyPair.prototype.inspect = function inspect() {
          ' pub: ' + (this.pub && this.pub.inspect()) + ' >';
 };
 
-},{"../../elliptic":24,"bn.js":14}],33:[function(require,module,exports){
+},{"../../elliptic":32,"bn.js":22}],41:[function(require,module,exports){
 'use strict';
 
 var BN = require('bn.js');
@@ -11417,7 +13001,7 @@ Signature.prototype.toDER = function toDER(enc) {
   return utils.encode(res, enc);
 };
 
-},{"../../elliptic":24,"bn.js":14}],34:[function(require,module,exports){
+},{"../../elliptic":32,"bn.js":22}],42:[function(require,module,exports){
 'use strict';
 
 var hash = require('hash.js');
@@ -11537,7 +13121,7 @@ EDDSA.prototype.isPoint = function isPoint(val) {
   return val instanceof this.pointClass;
 };
 
-},{"../../elliptic":24,"./key":35,"./signature":36,"hash.js":47}],35:[function(require,module,exports){
+},{"../../elliptic":32,"./key":43,"./signature":44,"hash.js":55}],43:[function(require,module,exports){
 'use strict';
 
 var elliptic = require('../../elliptic');
@@ -11635,7 +13219,7 @@ KeyPair.prototype.getPublic = function getPublic(enc) {
 
 module.exports = KeyPair;
 
-},{"../../elliptic":24}],36:[function(require,module,exports){
+},{"../../elliptic":32}],44:[function(require,module,exports){
 'use strict';
 
 var BN = require('bn.js');
@@ -11703,7 +13287,7 @@ Signature.prototype.toHex = function toHex() {
 
 module.exports = Signature;
 
-},{"../../elliptic":24,"bn.js":14}],37:[function(require,module,exports){
+},{"../../elliptic":32,"bn.js":22}],45:[function(require,module,exports){
 module.exports = {
   doubles: {
     step: 4,
@@ -12485,7 +14069,7 @@ module.exports = {
   }
 };
 
-},{}],38:[function(require,module,exports){
+},{}],46:[function(require,module,exports){
 'use strict';
 
 var utils = exports;
@@ -12607,7 +14191,7 @@ function intFromLE(bytes) {
 utils.intFromLE = intFromLE;
 
 
-},{"bn.js":14,"minimalistic-assert":109,"minimalistic-crypto-utils":110}],39:[function(require,module,exports){
+},{"bn.js":22,"minimalistic-assert":117,"minimalistic-crypto-utils":118}],47:[function(require,module,exports){
 module.exports={
   "_from": "elliptic@^6.2.3",
   "_id": "elliptic@6.4.1",
@@ -12697,7 +14281,7 @@ module.exports={
   "version": "6.4.1"
 }
 
-},{}],40:[function(require,module,exports){
+},{}],48:[function(require,module,exports){
 var prr = require('prr')
 
 function init (type, message, cause) {
@@ -12756,7 +14340,7 @@ module.exports = function (errno) {
   }
 }
 
-},{"prr":117}],41:[function(require,module,exports){
+},{"prr":125}],49:[function(require,module,exports){
 var all = module.exports.all = [
   {
     errno: -2,
@@ -13071,7 +14655,7 @@ all.forEach(function (error) {
 module.exports.custom = require('./custom')(module.exports)
 module.exports.create = module.exports.custom.createError
 
-},{"./custom":40}],42:[function(require,module,exports){
+},{"./custom":48}],50:[function(require,module,exports){
 'use strict';
 
 var _typeof = typeof Symbol === "function" && typeof Symbol.iterator === "symbol" ? function (obj) { return typeof obj; } : function (obj) { return obj && typeof Symbol === "function" && obj.constructor === Symbol && obj !== Symbol.prototype ? "symbol" : typeof obj; };
@@ -13787,7 +15371,7 @@ exports.defineProperties = function (self, fields, data) {
     }
   }
 };
-},{"assert":7,"bn.js":14,"create-hash":21,"ethjs-util":43,"keccak":71,"rlp":134,"safe-buffer":135,"secp256k1":136}],43:[function(require,module,exports){
+},{"assert":15,"bn.js":22,"create-hash":29,"ethjs-util":51,"keccak":79,"rlp":142,"safe-buffer":143,"secp256k1":144}],51:[function(require,module,exports){
 (function (Buffer){
 'use strict';
 
@@ -14010,7 +15594,7 @@ module.exports = {
   isHexString: isHexString
 };
 }).call(this,require("buffer").Buffer)
-},{"buffer":17,"is-hex-prefixed":69,"strip-hex-prefix":153}],44:[function(require,module,exports){
+},{"buffer":25,"is-hex-prefixed":77,"strip-hex-prefix":161}],52:[function(require,module,exports){
 // Copyright Joyent, Inc. and other Node contributors.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a
@@ -14314,7 +15898,7 @@ function isUndefined(arg) {
   return arg === void 0;
 }
 
-},{}],45:[function(require,module,exports){
+},{}],53:[function(require,module,exports){
 "use strict"
 
 module.exports = createRBTree
@@ -15311,7 +16895,7 @@ function defaultCompare(a, b) {
 function createRBTree(compare) {
   return new RedBlackTree(compare || defaultCompare, null)
 }
-},{}],46:[function(require,module,exports){
+},{}],54:[function(require,module,exports){
 'use strict'
 var Buffer = require('safe-buffer').Buffer
 var Transform = require('stream').Transform
@@ -15408,7 +16992,7 @@ HashBase.prototype._digest = function () {
 
 module.exports = HashBase
 
-},{"inherits":67,"safe-buffer":135,"stream":151}],47:[function(require,module,exports){
+},{"inherits":75,"safe-buffer":143,"stream":159}],55:[function(require,module,exports){
 var hash = exports;
 
 hash.utils = require('./hash/utils');
@@ -15425,7 +17009,7 @@ hash.sha384 = hash.sha.sha384;
 hash.sha512 = hash.sha.sha512;
 hash.ripemd160 = hash.ripemd.ripemd160;
 
-},{"./hash/common":48,"./hash/hmac":49,"./hash/ripemd":50,"./hash/sha":51,"./hash/utils":58}],48:[function(require,module,exports){
+},{"./hash/common":56,"./hash/hmac":57,"./hash/ripemd":58,"./hash/sha":59,"./hash/utils":66}],56:[function(require,module,exports){
 'use strict';
 
 var utils = require('./utils');
@@ -15519,7 +17103,7 @@ BlockHash.prototype._pad = function pad() {
   return res;
 };
 
-},{"./utils":58,"minimalistic-assert":109}],49:[function(require,module,exports){
+},{"./utils":66,"minimalistic-assert":117}],57:[function(require,module,exports){
 'use strict';
 
 var utils = require('./utils');
@@ -15568,7 +17152,7 @@ Hmac.prototype.digest = function digest(enc) {
   return this.outer.digest(enc);
 };
 
-},{"./utils":58,"minimalistic-assert":109}],50:[function(require,module,exports){
+},{"./utils":66,"minimalistic-assert":117}],58:[function(require,module,exports){
 'use strict';
 
 var utils = require('./utils');
@@ -15716,7 +17300,7 @@ var sh = [
   8, 5, 12, 9, 12, 5, 14, 6, 8, 13, 6, 5, 15, 13, 11, 11
 ];
 
-},{"./common":48,"./utils":58}],51:[function(require,module,exports){
+},{"./common":56,"./utils":66}],59:[function(require,module,exports){
 'use strict';
 
 exports.sha1 = require('./sha/1');
@@ -15725,7 +17309,7 @@ exports.sha256 = require('./sha/256');
 exports.sha384 = require('./sha/384');
 exports.sha512 = require('./sha/512');
 
-},{"./sha/1":52,"./sha/224":53,"./sha/256":54,"./sha/384":55,"./sha/512":56}],52:[function(require,module,exports){
+},{"./sha/1":60,"./sha/224":61,"./sha/256":62,"./sha/384":63,"./sha/512":64}],60:[function(require,module,exports){
 'use strict';
 
 var utils = require('../utils');
@@ -15801,7 +17385,7 @@ SHA1.prototype._digest = function digest(enc) {
     return utils.split32(this.h, 'big');
 };
 
-},{"../common":48,"../utils":58,"./common":57}],53:[function(require,module,exports){
+},{"../common":56,"../utils":66,"./common":65}],61:[function(require,module,exports){
 'use strict';
 
 var utils = require('../utils');
@@ -15833,7 +17417,7 @@ SHA224.prototype._digest = function digest(enc) {
 };
 
 
-},{"../utils":58,"./256":54}],54:[function(require,module,exports){
+},{"../utils":66,"./256":62}],62:[function(require,module,exports){
 'use strict';
 
 var utils = require('../utils');
@@ -15940,7 +17524,7 @@ SHA256.prototype._digest = function digest(enc) {
     return utils.split32(this.h, 'big');
 };
 
-},{"../common":48,"../utils":58,"./common":57,"minimalistic-assert":109}],55:[function(require,module,exports){
+},{"../common":56,"../utils":66,"./common":65,"minimalistic-assert":117}],63:[function(require,module,exports){
 'use strict';
 
 var utils = require('../utils');
@@ -15977,7 +17561,7 @@ SHA384.prototype._digest = function digest(enc) {
     return utils.split32(this.h.slice(0, 12), 'big');
 };
 
-},{"../utils":58,"./512":56}],56:[function(require,module,exports){
+},{"../utils":66,"./512":64}],64:[function(require,module,exports){
 'use strict';
 
 var utils = require('../utils');
@@ -16309,7 +17893,7 @@ function g1_512_lo(xh, xl) {
   return r;
 }
 
-},{"../common":48,"../utils":58,"minimalistic-assert":109}],57:[function(require,module,exports){
+},{"../common":56,"../utils":66,"minimalistic-assert":117}],65:[function(require,module,exports){
 'use strict';
 
 var utils = require('../utils');
@@ -16360,7 +17944,7 @@ function g1_256(x) {
 }
 exports.g1_256 = g1_256;
 
-},{"../utils":58}],58:[function(require,module,exports){
+},{"../utils":66}],66:[function(require,module,exports){
 'use strict';
 
 var assert = require('minimalistic-assert');
@@ -16615,7 +18199,7 @@ function shr64_lo(ah, al, num) {
 }
 exports.shr64_lo = shr64_lo;
 
-},{"inherits":67,"minimalistic-assert":109}],59:[function(require,module,exports){
+},{"inherits":75,"minimalistic-assert":117}],67:[function(require,module,exports){
 'use strict';
 
 var hash = require('hash.js');
@@ -16730,7 +18314,7 @@ HmacDRBG.prototype.generate = function generate(len, enc, add, addEnc) {
   return utils.encode(res, enc);
 };
 
-},{"hash.js":47,"minimalistic-assert":109,"minimalistic-crypto-utils":110}],60:[function(require,module,exports){
+},{"hash.js":55,"minimalistic-assert":117,"minimalistic-crypto-utils":118}],68:[function(require,module,exports){
 exports.read = function (buffer, offset, isLE, mLen, nBytes) {
   var e, m
   var eLen = (nBytes * 8) - mLen - 1
@@ -16816,7 +18400,7 @@ exports.write = function (buffer, value, offset, isLE, mLen, nBytes) {
   buffer[offset + i - d] |= s * 128
 }
 
-},{}],61:[function(require,module,exports){
+},{}],69:[function(require,module,exports){
 'use strict';
 var types = [
   require('./nextTick'),
@@ -16914,7 +18498,7 @@ function immediate(task) {
   }
 }
 
-},{"./messageChannel":62,"./mutation.js":63,"./nextTick":64,"./stateChange":65,"./timeout":66}],62:[function(require,module,exports){
+},{"./messageChannel":70,"./mutation.js":71,"./nextTick":72,"./stateChange":73,"./timeout":74}],70:[function(require,module,exports){
 (function (global){
 'use strict';
 
@@ -16935,7 +18519,7 @@ exports.install = function (func) {
   };
 };
 }).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{}],63:[function(require,module,exports){
+},{}],71:[function(require,module,exports){
 (function (global){
 'use strict';
 //based off rsvp https://github.com/tildeio/rsvp.js
@@ -16960,7 +18544,7 @@ exports.install = function (handle) {
   };
 };
 }).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{}],64:[function(require,module,exports){
+},{}],72:[function(require,module,exports){
 (function (process){
 'use strict';
 exports.test = function () {
@@ -16975,7 +18559,7 @@ exports.install = function (func) {
 };
 
 }).call(this,require('_process'))
-},{"_process":116}],65:[function(require,module,exports){
+},{"_process":124}],73:[function(require,module,exports){
 (function (global){
 'use strict';
 
@@ -17002,7 +18586,7 @@ exports.install = function (handle) {
   };
 };
 }).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{}],66:[function(require,module,exports){
+},{}],74:[function(require,module,exports){
 'use strict';
 exports.test = function () {
   return true;
@@ -17013,9 +18597,9 @@ exports.install = function (t) {
     setTimeout(t, 0);
   };
 };
-},{}],67:[function(require,module,exports){
-arguments[4][8][0].apply(exports,arguments)
-},{"dup":8}],68:[function(require,module,exports){
+},{}],75:[function(require,module,exports){
+arguments[4][16][0].apply(exports,arguments)
+},{"dup":16}],76:[function(require,module,exports){
 /*!
  * Determine if an object is a Buffer
  *
@@ -17038,7 +18622,7 @@ function isSlowBuffer (obj) {
   return typeof obj.readFloatLE === 'function' && typeof obj.slice === 'function' && isBuffer(obj.slice(0, 0))
 }
 
-},{}],69:[function(require,module,exports){
+},{}],77:[function(require,module,exports){
 /**
  * Returns a `Boolean` on whether or not the a `String` starts with '0x'
  * @param {String} str the string input value
@@ -17053,16 +18637,16 @@ module.exports = function isHexPrefixed(str) {
   return str.slice(0, 2) === '0x';
 }
 
-},{}],70:[function(require,module,exports){
+},{}],78:[function(require,module,exports){
 module.exports = Array.isArray || function (arr) {
   return Object.prototype.toString.call(arr) == '[object Array]';
 };
 
-},{}],71:[function(require,module,exports){
+},{}],79:[function(require,module,exports){
 'use strict'
 module.exports = require('./lib/api')(require('./lib/keccak'))
 
-},{"./lib/api":72,"./lib/keccak":76}],72:[function(require,module,exports){
+},{"./lib/api":80,"./lib/keccak":84}],80:[function(require,module,exports){
 'use strict'
 var createKeccak = require('./keccak')
 var createShake = require('./shake')
@@ -17092,7 +18676,7 @@ module.exports = function (KeccakState) {
   }
 }
 
-},{"./keccak":73,"./shake":74}],73:[function(require,module,exports){
+},{"./keccak":81,"./shake":82}],81:[function(require,module,exports){
 'use strict'
 var Buffer = require('safe-buffer').Buffer
 var Transform = require('stream').Transform
@@ -17178,7 +18762,7 @@ module.exports = function (KeccakState) {
   return Keccak
 }
 
-},{"inherits":67,"safe-buffer":135,"stream":151}],74:[function(require,module,exports){
+},{"inherits":75,"safe-buffer":143,"stream":159}],82:[function(require,module,exports){
 'use strict'
 var Buffer = require('safe-buffer').Buffer
 var Transform = require('stream').Transform
@@ -17255,7 +18839,7 @@ module.exports = function (KeccakState) {
   return Shake
 }
 
-},{"inherits":67,"safe-buffer":135,"stream":151}],75:[function(require,module,exports){
+},{"inherits":75,"safe-buffer":143,"stream":159}],83:[function(require,module,exports){
 'use strict'
 var P1600_ROUND_CONSTANTS = [1, 0, 32898, 0, 32906, 2147483648, 2147516416, 2147483648, 32907, 0, 2147483649, 0, 2147516545, 2147483648, 32777, 2147483648, 138, 0, 136, 0, 2147516425, 0, 2147483658, 0, 2147516555, 0, 139, 2147483648, 32905, 2147483648, 32771, 2147483648, 32770, 2147483648, 128, 2147483648, 32778, 0, 2147483658, 2147483648, 2147516545, 2147483648, 32896, 2147483648, 2147483649, 0, 2147516424, 2147483648]
 
@@ -17444,7 +19028,7 @@ exports.p1600 = function (s) {
   }
 }
 
-},{}],76:[function(require,module,exports){
+},{}],84:[function(require,module,exports){
 'use strict'
 var Buffer = require('safe-buffer').Buffer
 var keccakState = require('./keccak-state-unroll')
@@ -17516,7 +19100,7 @@ Keccak.prototype.copy = function (dest) {
 
 module.exports = Keccak
 
-},{"./keccak-state-unroll":75,"safe-buffer":135}],77:[function(require,module,exports){
+},{"./keccak-state-unroll":83,"safe-buffer":143}],85:[function(require,module,exports){
 var encodings = require('./lib/encodings');
 
 module.exports = Codec;
@@ -17624,7 +19208,7 @@ Codec.prototype.valueAsBuffer = function(opts){
 };
 
 
-},{"./lib/encodings":78}],78:[function(require,module,exports){
+},{"./lib/encodings":86}],86:[function(require,module,exports){
 (function (Buffer){
 exports.utf8 = exports['utf-8'] = {
   encode: function(data){
@@ -17704,7 +19288,7 @@ function isBinary(data){
 }
 
 }).call(this,require("buffer").Buffer)
-},{"buffer":17}],79:[function(require,module,exports){
+},{"buffer":25}],87:[function(require,module,exports){
 /* Copyright (c) 2012-2017 LevelUP contributors
  * See list at <https://github.com/rvagg/node-levelup#contributing>
  * MIT License
@@ -17728,7 +19312,7 @@ module.exports = {
   , EncodingError       : createError('EncodingError', LevelUPError)
 }
 
-},{"errno":41}],80:[function(require,module,exports){
+},{"errno":49}],88:[function(require,module,exports){
 var inherits = require('inherits');
 var Readable = require('readable-stream').Readable;
 var extend = require('xtend');
@@ -17786,7 +19370,7 @@ ReadStream.prototype._cleanup = function(){
 };
 
 
-},{"inherits":67,"level-errors":79,"readable-stream":86,"xtend":87}],81:[function(require,module,exports){
+},{"inherits":75,"level-errors":87,"readable-stream":94,"xtend":95}],89:[function(require,module,exports){
 (function (process){
 // Copyright Joyent, Inc. and other Node contributors.
 //
@@ -17879,7 +19463,7 @@ function forEach (xs, f) {
 }
 
 }).call(this,require('_process'))
-},{"./_stream_readable":83,"./_stream_writable":85,"_process":116,"core-util-is":20,"inherits":67}],82:[function(require,module,exports){
+},{"./_stream_readable":91,"./_stream_writable":93,"_process":124,"core-util-is":28,"inherits":75}],90:[function(require,module,exports){
 // Copyright Joyent, Inc. and other Node contributors.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a
@@ -17927,7 +19511,7 @@ PassThrough.prototype._transform = function(chunk, encoding, cb) {
   cb(null, chunk);
 };
 
-},{"./_stream_transform":84,"core-util-is":20,"inherits":67}],83:[function(require,module,exports){
+},{"./_stream_transform":92,"core-util-is":28,"inherits":75}],91:[function(require,module,exports){
 (function (process){
 // Copyright Joyent, Inc. and other Node contributors.
 //
@@ -18882,7 +20466,7 @@ function indexOf (xs, x) {
 }
 
 }).call(this,require('_process'))
-},{"./_stream_duplex":81,"_process":116,"buffer":17,"core-util-is":20,"events":44,"inherits":67,"isarray":70,"stream":151,"string_decoder/":152,"util":16}],84:[function(require,module,exports){
+},{"./_stream_duplex":89,"_process":124,"buffer":25,"core-util-is":28,"events":52,"inherits":75,"isarray":78,"stream":159,"string_decoder/":160,"util":24}],92:[function(require,module,exports){
 // Copyright Joyent, Inc. and other Node contributors.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a
@@ -19093,7 +20677,7 @@ function done(stream, er) {
   return stream.push(null);
 }
 
-},{"./_stream_duplex":81,"core-util-is":20,"inherits":67}],85:[function(require,module,exports){
+},{"./_stream_duplex":89,"core-util-is":28,"inherits":75}],93:[function(require,module,exports){
 (function (process){
 // Copyright Joyent, Inc. and other Node contributors.
 //
@@ -19574,7 +21158,7 @@ function endWritable(stream, state, cb) {
 }
 
 }).call(this,require('_process'))
-},{"./_stream_duplex":81,"_process":116,"buffer":17,"core-util-is":20,"inherits":67,"stream":151}],86:[function(require,module,exports){
+},{"./_stream_duplex":89,"_process":124,"buffer":25,"core-util-is":28,"inherits":75,"stream":159}],94:[function(require,module,exports){
 (function (process){
 exports = module.exports = require('./lib/_stream_readable.js');
 exports.Stream = require('stream');
@@ -19588,9 +21172,9 @@ if (!process.browser && process.env.READABLE_STREAM === 'disable') {
 }
 
 }).call(this,require('_process'))
-},{"./lib/_stream_duplex.js":81,"./lib/_stream_passthrough.js":82,"./lib/_stream_readable.js":83,"./lib/_stream_transform.js":84,"./lib/_stream_writable.js":85,"_process":116,"stream":151}],87:[function(require,module,exports){
-arguments[4][6][0].apply(exports,arguments)
-},{"dup":6}],88:[function(require,module,exports){
+},{"./lib/_stream_duplex.js":89,"./lib/_stream_passthrough.js":90,"./lib/_stream_readable.js":91,"./lib/_stream_transform.js":92,"./lib/_stream_writable.js":93,"_process":124,"stream":159}],95:[function(require,module,exports){
+arguments[4][14][0].apply(exports,arguments)
+},{"dup":14}],96:[function(require,module,exports){
 (function (process){
 /* Copyright (c) 2013 LevelUP contributors
  * See list at <https://github.com/rvagg/node-levelup#contributing>
@@ -19747,11 +21331,11 @@ module.exports = function (db) {
 
 module.exports.WriteStream = WriteStream
 }).call(this,require('_process'))
-},{"_process":116,"readable-stream":94,"stream":151,"util":157,"xtend":159}],89:[function(require,module,exports){
-arguments[4][81][0].apply(exports,arguments)
-},{"./_stream_readable":91,"./_stream_writable":93,"_process":116,"core-util-is":20,"dup":81,"inherits":67}],90:[function(require,module,exports){
-arguments[4][82][0].apply(exports,arguments)
-},{"./_stream_transform":92,"core-util-is":20,"dup":82,"inherits":67}],91:[function(require,module,exports){
+},{"_process":124,"readable-stream":102,"stream":159,"util":165,"xtend":167}],97:[function(require,module,exports){
+arguments[4][89][0].apply(exports,arguments)
+},{"./_stream_readable":99,"./_stream_writable":101,"_process":124,"core-util-is":28,"dup":89,"inherits":75}],98:[function(require,module,exports){
+arguments[4][90][0].apply(exports,arguments)
+},{"./_stream_transform":100,"core-util-is":28,"dup":90,"inherits":75}],99:[function(require,module,exports){
 (function (process){
 // Copyright Joyent, Inc. and other Node contributors.
 //
@@ -20737,7 +22321,7 @@ function indexOf (xs, x) {
 }
 
 }).call(this,require('_process'))
-},{"_process":116,"buffer":17,"core-util-is":20,"events":44,"inherits":67,"isarray":70,"stream":151,"string_decoder/":152}],92:[function(require,module,exports){
+},{"_process":124,"buffer":25,"core-util-is":28,"events":52,"inherits":75,"isarray":78,"stream":159,"string_decoder/":160}],100:[function(require,module,exports){
 // Copyright Joyent, Inc. and other Node contributors.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a
@@ -20949,7 +22533,7 @@ function done(stream, er) {
   return stream.push(null);
 }
 
-},{"./_stream_duplex":89,"core-util-is":20,"inherits":67}],93:[function(require,module,exports){
+},{"./_stream_duplex":97,"core-util-is":28,"inherits":75}],101:[function(require,module,exports){
 (function (process){
 // Copyright Joyent, Inc. and other Node contributors.
 //
@@ -21339,7 +22923,7 @@ function endWritable(stream, state, cb) {
 }
 
 }).call(this,require('_process'))
-},{"./_stream_duplex":89,"_process":116,"buffer":17,"core-util-is":20,"inherits":67,"stream":151}],94:[function(require,module,exports){
+},{"./_stream_duplex":97,"_process":124,"buffer":25,"core-util-is":28,"inherits":75,"stream":159}],102:[function(require,module,exports){
 (function (process){
 var Stream = require('stream'); // hack to fix a circular dependency issue when used with browserify
 exports = module.exports = require('./lib/_stream_readable.js');
@@ -21354,7 +22938,7 @@ if (!process.browser && process.env.READABLE_STREAM === 'disable') {
 }
 
 }).call(this,require('_process'))
-},{"./lib/_stream_duplex.js":89,"./lib/_stream_passthrough.js":90,"./lib/_stream_readable.js":91,"./lib/_stream_transform.js":92,"./lib/_stream_writable.js":93,"_process":116,"stream":151}],95:[function(require,module,exports){
+},{"./lib/_stream_duplex.js":97,"./lib/_stream_passthrough.js":98,"./lib/_stream_readable.js":99,"./lib/_stream_transform.js":100,"./lib/_stream_writable.js":101,"_process":124,"stream":159}],103:[function(require,module,exports){
 /* Copyright (c) 2012-2016 LevelUP contributors
  * See list at <https://github.com/level/levelup#contributing>
  * MIT License
@@ -21439,7 +23023,7 @@ Batch.prototype.write = function (callback) {
 
 module.exports = Batch
 
-},{"./util":97,"level-errors":79}],96:[function(require,module,exports){
+},{"./util":105,"level-errors":87}],104:[function(require,module,exports){
 (function (process){
 /* Copyright (c) 2012-2016 LevelUP contributors
  * See list at <https://github.com/level/levelup#contributing>
@@ -21806,7 +23390,7 @@ module.exports.repair = deprecate(
 )
 
 }).call(this,require('_process'))
-},{"./batch":95,"./leveldown":16,"./util":97,"_process":116,"deferred-leveldown":23,"events":44,"level-codec":77,"level-errors":79,"level-iterator-stream":80,"prr":117,"util":157,"xtend":98}],97:[function(require,module,exports){
+},{"./batch":103,"./leveldown":24,"./util":105,"_process":124,"deferred-leveldown":31,"events":52,"level-codec":85,"level-errors":87,"level-iterator-stream":88,"prr":125,"util":165,"xtend":106}],105:[function(require,module,exports){
 /* Copyright (c) 2012-2016 LevelUP contributors
  * See list at <https://github.com/level/levelup#contributing>
  * MIT License
@@ -21842,9 +23426,9 @@ module.exports = {
   isDefined: isDefined
 }
 
-},{}],98:[function(require,module,exports){
-arguments[4][6][0].apply(exports,arguments)
-},{"dup":6}],99:[function(require,module,exports){
+},{}],106:[function(require,module,exports){
+arguments[4][14][0].apply(exports,arguments)
+},{"dup":14}],107:[function(require,module,exports){
 (function (Buffer){
 
 exports.compare = function (a, b) {
@@ -22013,7 +23597,7 @@ exports.filter = function (range, compare) {
 
 
 }).call(this,{"isBuffer":require("../is-buffer/index.js")})
-},{"../is-buffer/index.js":68}],100:[function(require,module,exports){
+},{"../is-buffer/index.js":76}],108:[function(require,module,exports){
 (function (Buffer){
 'use strict'
 var inherits = require('inherits')
@@ -22162,10 +23746,10 @@ function fnI (a, b, c, d, m, k, s) {
 module.exports = MD5
 
 }).call(this,require("buffer").Buffer)
-},{"buffer":17,"hash-base":46,"inherits":67}],101:[function(require,module,exports){
+},{"buffer":25,"hash-base":54,"inherits":75}],109:[function(require,module,exports){
 module.exports = require('immediate')
 
-},{"immediate":61}],102:[function(require,module,exports){
+},{"immediate":69}],110:[function(require,module,exports){
 var inherits = require('inherits')
 var AbstractLevelDOWN = require('abstract-leveldown').AbstractLevelDOWN
 var AbstractIterator = require('abstract-leveldown').AbstractIterator
@@ -22396,11 +23980,11 @@ MemDOWN.destroy = function (name, callback) {
 
 module.exports = MemDOWN.default = MemDOWN
 
-},{"./immediate":101,"abstract-leveldown":106,"functional-red-black-tree":45,"inherits":67,"ltgt":99,"safe-buffer":135}],103:[function(require,module,exports){
-arguments[4][1][0].apply(exports,arguments)
-},{"_process":116,"dup":1}],104:[function(require,module,exports){
-arguments[4][2][0].apply(exports,arguments)
-},{"_process":116,"dup":2}],105:[function(require,module,exports){
+},{"./immediate":109,"abstract-leveldown":114,"functional-red-black-tree":53,"inherits":75,"ltgt":107,"safe-buffer":143}],111:[function(require,module,exports){
+arguments[4][9][0].apply(exports,arguments)
+},{"_process":124,"dup":9}],112:[function(require,module,exports){
+arguments[4][10][0].apply(exports,arguments)
+},{"_process":124,"dup":10}],113:[function(require,module,exports){
 (function (Buffer,process){
 /* Copyright (c) 2017 Rod Vagg, MIT License */
 
@@ -22675,13 +24259,13 @@ AbstractLevelDOWN.prototype._checkKey = function (obj, type) {
 module.exports = AbstractLevelDOWN
 
 }).call(this,{"isBuffer":require("../../../is-buffer/index.js")},require('_process'))
-},{"../../../is-buffer/index.js":68,"./abstract-chained-batch":103,"./abstract-iterator":104,"_process":116,"xtend":108}],106:[function(require,module,exports){
-arguments[4][4][0].apply(exports,arguments)
-},{"./abstract-chained-batch":103,"./abstract-iterator":104,"./abstract-leveldown":105,"./is-leveldown":107,"dup":4}],107:[function(require,module,exports){
-arguments[4][5][0].apply(exports,arguments)
-},{"./abstract-leveldown":105,"dup":5}],108:[function(require,module,exports){
-arguments[4][6][0].apply(exports,arguments)
-},{"dup":6}],109:[function(require,module,exports){
+},{"../../../is-buffer/index.js":76,"./abstract-chained-batch":111,"./abstract-iterator":112,"_process":124,"xtend":116}],114:[function(require,module,exports){
+arguments[4][12][0].apply(exports,arguments)
+},{"./abstract-chained-batch":111,"./abstract-iterator":112,"./abstract-leveldown":113,"./is-leveldown":115,"dup":12}],115:[function(require,module,exports){
+arguments[4][13][0].apply(exports,arguments)
+},{"./abstract-leveldown":113,"dup":13}],116:[function(require,module,exports){
+arguments[4][14][0].apply(exports,arguments)
+},{"dup":14}],117:[function(require,module,exports){
 module.exports = assert;
 
 function assert(val, msg) {
@@ -22694,7 +24278,7 @@ assert.equal = function assertEqual(l, r, msg) {
     throw new Error(msg || ('Assertion failed: ' + l + ' != ' + r));
 };
 
-},{}],110:[function(require,module,exports){
+},{}],118:[function(require,module,exports){
 'use strict';
 
 var utils = exports;
@@ -22754,7 +24338,7 @@ utils.encode = function encode(arr, enc) {
     return arr;
 };
 
-},{}],111:[function(require,module,exports){
+},{}],119:[function(require,module,exports){
 var hasOwn = Object.prototype.hasOwnProperty;
 var toString = Object.prototype.toString;
 
@@ -22796,11 +24380,11 @@ module.exports = function forEach(obj, fn) {
 };
 
 
-},{}],112:[function(require,module,exports){
+},{}],120:[function(require,module,exports){
 module.exports = Object.keys || require('./shim');
 
 
-},{"./shim":114}],113:[function(require,module,exports){
+},{"./shim":122}],121:[function(require,module,exports){
 var toString = Object.prototype.toString;
 
 module.exports = function isArguments(value) {
@@ -22818,7 +24402,7 @@ module.exports = function isArguments(value) {
 };
 
 
-},{}],114:[function(require,module,exports){
+},{}],122:[function(require,module,exports){
 (function () {
 	"use strict";
 
@@ -22882,7 +24466,7 @@ module.exports = function isArguments(value) {
 }());
 
 
-},{"./foreach":111,"./isArguments":113}],115:[function(require,module,exports){
+},{"./foreach":119,"./isArguments":121}],123:[function(require,module,exports){
 (function (process){
 'use strict';
 
@@ -22930,7 +24514,7 @@ function nextTick(fn, arg1, arg2, arg3) {
 
 
 }).call(this,require('_process'))
-},{"_process":116}],116:[function(require,module,exports){
+},{"_process":124}],124:[function(require,module,exports){
 // shim for using process in browser
 var process = module.exports = {};
 
@@ -23116,7 +24700,7 @@ process.chdir = function (dir) {
 };
 process.umask = function() { return 0; };
 
-},{}],117:[function(require,module,exports){
+},{}],125:[function(require,module,exports){
 /*!
   * prr
   * (c) 2013 Rod Vagg <rod@vagg.org>
@@ -23180,10 +24764,10 @@ process.umask = function() { return 0; };
 
   return prr
 })
-},{}],118:[function(require,module,exports){
+},{}],126:[function(require,module,exports){
 module.exports = require('./lib/_stream_duplex.js');
 
-},{"./lib/_stream_duplex.js":119}],119:[function(require,module,exports){
+},{"./lib/_stream_duplex.js":127}],127:[function(require,module,exports){
 // Copyright Joyent, Inc. and other Node contributors.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a
@@ -23315,7 +24899,7 @@ Duplex.prototype._destroy = function (err, cb) {
 
   pna.nextTick(cb, err);
 };
-},{"./_stream_readable":121,"./_stream_writable":123,"core-util-is":20,"inherits":67,"process-nextick-args":115}],120:[function(require,module,exports){
+},{"./_stream_readable":129,"./_stream_writable":131,"core-util-is":28,"inherits":75,"process-nextick-args":123}],128:[function(require,module,exports){
 // Copyright Joyent, Inc. and other Node contributors.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a
@@ -23363,7 +24947,7 @@ function PassThrough(options) {
 PassThrough.prototype._transform = function (chunk, encoding, cb) {
   cb(null, chunk);
 };
-},{"./_stream_transform":122,"core-util-is":20,"inherits":67}],121:[function(require,module,exports){
+},{"./_stream_transform":130,"core-util-is":28,"inherits":75}],129:[function(require,module,exports){
 (function (process,global){
 // Copyright Joyent, Inc. and other Node contributors.
 //
@@ -24385,7 +25969,7 @@ function indexOf(xs, x) {
   return -1;
 }
 }).call(this,require('_process'),typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{"./_stream_duplex":119,"./internal/streams/BufferList":124,"./internal/streams/destroy":125,"./internal/streams/stream":126,"_process":116,"core-util-is":20,"events":44,"inherits":67,"isarray":127,"process-nextick-args":115,"safe-buffer":135,"string_decoder/":128,"util":16}],122:[function(require,module,exports){
+},{"./_stream_duplex":127,"./internal/streams/BufferList":132,"./internal/streams/destroy":133,"./internal/streams/stream":134,"_process":124,"core-util-is":28,"events":52,"inherits":75,"isarray":135,"process-nextick-args":123,"safe-buffer":143,"string_decoder/":136,"util":24}],130:[function(require,module,exports){
 // Copyright Joyent, Inc. and other Node contributors.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a
@@ -24600,7 +26184,7 @@ function done(stream, er, data) {
 
   return stream.push(null);
 }
-},{"./_stream_duplex":119,"core-util-is":20,"inherits":67}],123:[function(require,module,exports){
+},{"./_stream_duplex":127,"core-util-is":28,"inherits":75}],131:[function(require,module,exports){
 (function (process,global,setImmediate){
 // Copyright Joyent, Inc. and other Node contributors.
 //
@@ -25290,7 +26874,7 @@ Writable.prototype._destroy = function (err, cb) {
   cb(err);
 };
 }).call(this,require('_process'),typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {},require("timers").setImmediate)
-},{"./_stream_duplex":119,"./internal/streams/destroy":125,"./internal/streams/stream":126,"_process":116,"core-util-is":20,"inherits":67,"process-nextick-args":115,"safe-buffer":135,"timers":154,"util-deprecate":155}],124:[function(require,module,exports){
+},{"./_stream_duplex":127,"./internal/streams/destroy":133,"./internal/streams/stream":134,"_process":124,"core-util-is":28,"inherits":75,"process-nextick-args":123,"safe-buffer":143,"timers":162,"util-deprecate":163}],132:[function(require,module,exports){
 'use strict';
 
 function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
@@ -25370,7 +26954,7 @@ if (util && util.inspect && util.inspect.custom) {
     return this.constructor.name + ' ' + obj;
   };
 }
-},{"safe-buffer":135,"util":16}],125:[function(require,module,exports){
+},{"safe-buffer":143,"util":24}],133:[function(require,module,exports){
 'use strict';
 
 /*<replacement>*/
@@ -25445,12 +27029,12 @@ module.exports = {
   destroy: destroy,
   undestroy: undestroy
 };
-},{"process-nextick-args":115}],126:[function(require,module,exports){
+},{"process-nextick-args":123}],134:[function(require,module,exports){
 module.exports = require('events').EventEmitter;
 
-},{"events":44}],127:[function(require,module,exports){
-arguments[4][18][0].apply(exports,arguments)
-},{"dup":18}],128:[function(require,module,exports){
+},{"events":52}],135:[function(require,module,exports){
+arguments[4][26][0].apply(exports,arguments)
+},{"dup":26}],136:[function(require,module,exports){
 // Copyright Joyent, Inc. and other Node contributors.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a
@@ -25747,10 +27331,10 @@ function simpleWrite(buf) {
 function simpleEnd(buf) {
   return buf && buf.length ? this.write(buf) : '';
 }
-},{"safe-buffer":135}],129:[function(require,module,exports){
+},{"safe-buffer":143}],137:[function(require,module,exports){
 module.exports = require('./readable').PassThrough
 
-},{"./readable":130}],130:[function(require,module,exports){
+},{"./readable":138}],138:[function(require,module,exports){
 exports = module.exports = require('./lib/_stream_readable.js');
 exports.Stream = exports;
 exports.Readable = exports;
@@ -25759,13 +27343,13 @@ exports.Duplex = require('./lib/_stream_duplex.js');
 exports.Transform = require('./lib/_stream_transform.js');
 exports.PassThrough = require('./lib/_stream_passthrough.js');
 
-},{"./lib/_stream_duplex.js":119,"./lib/_stream_passthrough.js":120,"./lib/_stream_readable.js":121,"./lib/_stream_transform.js":122,"./lib/_stream_writable.js":123}],131:[function(require,module,exports){
+},{"./lib/_stream_duplex.js":127,"./lib/_stream_passthrough.js":128,"./lib/_stream_readable.js":129,"./lib/_stream_transform.js":130,"./lib/_stream_writable.js":131}],139:[function(require,module,exports){
 module.exports = require('./readable').Transform
 
-},{"./readable":130}],132:[function(require,module,exports){
+},{"./readable":138}],140:[function(require,module,exports){
 module.exports = require('./lib/_stream_writable.js');
 
-},{"./lib/_stream_writable.js":123}],133:[function(require,module,exports){
+},{"./lib/_stream_writable.js":131}],141:[function(require,module,exports){
 'use strict'
 var Buffer = require('buffer').Buffer
 var inherits = require('inherits')
@@ -25930,7 +27514,7 @@ function fn5 (a, b, c, d, e, m, k, s) {
 
 module.exports = RIPEMD160
 
-},{"buffer":17,"hash-base":46,"inherits":67}],134:[function(require,module,exports){
+},{"buffer":25,"hash-base":54,"inherits":75}],142:[function(require,module,exports){
 const assert = require('assert')
 const Buffer = require('safe-buffer').Buffer
 /**
@@ -26162,7 +27746,7 @@ function toBuffer (v) {
   return v
 }
 
-},{"assert":7,"safe-buffer":135}],135:[function(require,module,exports){
+},{"assert":15,"safe-buffer":143}],143:[function(require,module,exports){
 /* eslint-disable node/no-deprecated-api */
 var buffer = require('buffer')
 var Buffer = buffer.Buffer
@@ -26226,11 +27810,11 @@ SafeBuffer.allocUnsafeSlow = function (size) {
   return buffer.SlowBuffer(size)
 }
 
-},{"buffer":17}],136:[function(require,module,exports){
+},{"buffer":25}],144:[function(require,module,exports){
 'use strict'
 module.exports = require('./lib')(require('./lib/elliptic'))
 
-},{"./lib":140,"./lib/elliptic":139}],137:[function(require,module,exports){
+},{"./lib":148,"./lib/elliptic":147}],145:[function(require,module,exports){
 (function (Buffer){
 'use strict'
 var toString = Object.prototype.toString
@@ -26278,7 +27862,7 @@ exports.isNumberInInterval = function (number, x, y, message) {
 }
 
 }).call(this,{"isBuffer":require("../../is-buffer/index.js")})
-},{"../../is-buffer/index.js":68}],138:[function(require,module,exports){
+},{"../../is-buffer/index.js":76}],146:[function(require,module,exports){
 'use strict'
 var Buffer = require('safe-buffer').Buffer
 var bip66 = require('bip66')
@@ -26473,7 +28057,7 @@ exports.signatureImportLax = function (sig) {
   return { r: r, s: s }
 }
 
-},{"bip66":13,"safe-buffer":135}],139:[function(require,module,exports){
+},{"bip66":21,"safe-buffer":143}],147:[function(require,module,exports){
 'use strict'
 var Buffer = require('safe-buffer').Buffer
 var createHash = require('create-hash')
@@ -26735,7 +28319,7 @@ exports.ecdhUnsafe = function (publicKey, privateKey, compressed) {
   return Buffer.from(pair.pub.mul(scalar).encode(true, compressed))
 }
 
-},{"../messages.json":141,"bn.js":14,"create-hash":21,"elliptic":24,"safe-buffer":135}],140:[function(require,module,exports){
+},{"../messages.json":149,"bn.js":22,"create-hash":29,"elliptic":32,"safe-buffer":143}],148:[function(require,module,exports){
 'use strict'
 var assert = require('./assert')
 var der = require('./der')
@@ -26982,7 +28566,7 @@ module.exports = function (secp256k1) {
   }
 }
 
-},{"./assert":137,"./der":138,"./messages.json":141}],141:[function(require,module,exports){
+},{"./assert":145,"./der":146,"./messages.json":149}],149:[function(require,module,exports){
 module.exports={
   "COMPRESSED_TYPE_INVALID": "compressed should be a boolean",
   "EC_PRIVATE_KEY_TYPE_INVALID": "private key should be a Buffer",
@@ -27021,7 +28605,7 @@ module.exports={
   "TWEAK_LENGTH_INVALID": "tweak length is invalid"
 }
 
-},{}],142:[function(require,module,exports){
+},{}],150:[function(require,module,exports){
 (function (process){
 ;(function(global) {
 
@@ -27126,7 +28710,7 @@ if (typeof exports === 'object') {
 }(this));
 
 }).call(this,require('_process'))
-},{"_process":116}],143:[function(require,module,exports){
+},{"_process":124}],151:[function(require,module,exports){
 var Buffer = require('safe-buffer').Buffer
 
 // prototype class for hash functions
@@ -27209,7 +28793,7 @@ Hash.prototype._update = function () {
 
 module.exports = Hash
 
-},{"safe-buffer":135}],144:[function(require,module,exports){
+},{"safe-buffer":143}],152:[function(require,module,exports){
 var exports = module.exports = function SHA (algorithm) {
   algorithm = algorithm.toLowerCase()
 
@@ -27226,7 +28810,7 @@ exports.sha256 = require('./sha256')
 exports.sha384 = require('./sha384')
 exports.sha512 = require('./sha512')
 
-},{"./sha":145,"./sha1":146,"./sha224":147,"./sha256":148,"./sha384":149,"./sha512":150}],145:[function(require,module,exports){
+},{"./sha":153,"./sha1":154,"./sha224":155,"./sha256":156,"./sha384":157,"./sha512":158}],153:[function(require,module,exports){
 /*
  * A JavaScript implementation of the Secure Hash Algorithm, SHA-0, as defined
  * in FIPS PUB 180-1
@@ -27322,7 +28906,7 @@ Sha.prototype._hash = function () {
 
 module.exports = Sha
 
-},{"./hash":143,"inherits":67,"safe-buffer":135}],146:[function(require,module,exports){
+},{"./hash":151,"inherits":75,"safe-buffer":143}],154:[function(require,module,exports){
 /*
  * A JavaScript implementation of the Secure Hash Algorithm, SHA-1, as defined
  * in FIPS PUB 180-1
@@ -27423,7 +29007,7 @@ Sha1.prototype._hash = function () {
 
 module.exports = Sha1
 
-},{"./hash":143,"inherits":67,"safe-buffer":135}],147:[function(require,module,exports){
+},{"./hash":151,"inherits":75,"safe-buffer":143}],155:[function(require,module,exports){
 /**
  * A JavaScript implementation of the Secure Hash Algorithm, SHA-256, as defined
  * in FIPS 180-2
@@ -27478,7 +29062,7 @@ Sha224.prototype._hash = function () {
 
 module.exports = Sha224
 
-},{"./hash":143,"./sha256":148,"inherits":67,"safe-buffer":135}],148:[function(require,module,exports){
+},{"./hash":151,"./sha256":156,"inherits":75,"safe-buffer":143}],156:[function(require,module,exports){
 /**
  * A JavaScript implementation of the Secure Hash Algorithm, SHA-256, as defined
  * in FIPS 180-2
@@ -27615,7 +29199,7 @@ Sha256.prototype._hash = function () {
 
 module.exports = Sha256
 
-},{"./hash":143,"inherits":67,"safe-buffer":135}],149:[function(require,module,exports){
+},{"./hash":151,"inherits":75,"safe-buffer":143}],157:[function(require,module,exports){
 var inherits = require('inherits')
 var SHA512 = require('./sha512')
 var Hash = require('./hash')
@@ -27674,7 +29258,7 @@ Sha384.prototype._hash = function () {
 
 module.exports = Sha384
 
-},{"./hash":143,"./sha512":150,"inherits":67,"safe-buffer":135}],150:[function(require,module,exports){
+},{"./hash":151,"./sha512":158,"inherits":75,"safe-buffer":143}],158:[function(require,module,exports){
 var inherits = require('inherits')
 var Hash = require('./hash')
 var Buffer = require('safe-buffer').Buffer
@@ -27936,7 +29520,7 @@ Sha512.prototype._hash = function () {
 
 module.exports = Sha512
 
-},{"./hash":143,"inherits":67,"safe-buffer":135}],151:[function(require,module,exports){
+},{"./hash":151,"inherits":75,"safe-buffer":143}],159:[function(require,module,exports){
 // Copyright Joyent, Inc. and other Node contributors.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a
@@ -28065,7 +29649,7 @@ Stream.prototype.pipe = function(dest, options) {
   return dest;
 };
 
-},{"events":44,"inherits":67,"readable-stream/duplex.js":118,"readable-stream/passthrough.js":129,"readable-stream/readable.js":130,"readable-stream/transform.js":131,"readable-stream/writable.js":132}],152:[function(require,module,exports){
+},{"events":52,"inherits":75,"readable-stream/duplex.js":126,"readable-stream/passthrough.js":137,"readable-stream/readable.js":138,"readable-stream/transform.js":139,"readable-stream/writable.js":140}],160:[function(require,module,exports){
 // Copyright Joyent, Inc. and other Node contributors.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a
@@ -28288,7 +29872,7 @@ function base64DetectIncompleteChar(buffer) {
   this.charLength = this.charReceived ? 3 : 0;
 }
 
-},{"buffer":17}],153:[function(require,module,exports){
+},{"buffer":25}],161:[function(require,module,exports){
 var isHexPrefixed = require('is-hex-prefixed');
 
 /**
@@ -28304,7 +29888,7 @@ module.exports = function stripHexPrefix(str) {
   return isHexPrefixed(str) ? str.slice(2) : str;
 }
 
-},{"is-hex-prefixed":69}],154:[function(require,module,exports){
+},{"is-hex-prefixed":77}],162:[function(require,module,exports){
 (function (setImmediate,clearImmediate){
 var nextTick = require('process/browser.js').nextTick;
 var apply = Function.prototype.apply;
@@ -28383,7 +29967,7 @@ exports.clearImmediate = typeof clearImmediate === "function" ? clearImmediate :
   delete immediateIds[id];
 };
 }).call(this,require("timers").setImmediate,require("timers").clearImmediate)
-},{"process/browser.js":116,"timers":154}],155:[function(require,module,exports){
+},{"process/browser.js":124,"timers":162}],163:[function(require,module,exports){
 (function (global){
 
 /**
@@ -28454,11 +30038,11 @@ function config (name) {
 }
 
 }).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{}],156:[function(require,module,exports){
-arguments[4][9][0].apply(exports,arguments)
-},{"dup":9}],157:[function(require,module,exports){
-arguments[4][10][0].apply(exports,arguments)
-},{"./support/isBuffer":156,"_process":116,"dup":10,"inherits":67}],158:[function(require,module,exports){
+},{}],164:[function(require,module,exports){
+arguments[4][17][0].apply(exports,arguments)
+},{"dup":17}],165:[function(require,module,exports){
+arguments[4][18][0].apply(exports,arguments)
+},{"./support/isBuffer":164,"_process":124,"dup":18,"inherits":75}],166:[function(require,module,exports){
 module.exports = hasKeys
 
 function hasKeys(source) {
@@ -28467,7 +30051,7 @@ function hasKeys(source) {
         typeof source === "function")
 }
 
-},{}],159:[function(require,module,exports){
+},{}],167:[function(require,module,exports){
 var Keys = require("object-keys")
 var hasKeys = require("./has-keys")
 
@@ -28494,1497 +30078,5 @@ function extend() {
     return target
 }
 
-},{"./has-keys":158,"object-keys":112}],160:[function(require,module,exports){
-const assert = require('assert')
-const levelup = require('levelup')
-const memdown = require('memdown')
-const async = require('async')
-const rlp = require('rlp')
-const ethUtil = require('ethereumjs-util')
-const semaphore = require('semaphore')
-const TrieNode = require('./trieNode')
-const ReadStream = require('./readStream')
-const PrioritizedTaskExecutor = require('./prioritizedTaskExecutor')
-const matchingNibbleLength = require('./util').matchingNibbleLength
-const doKeysMatch = require('./util').doKeysMatch
-const callTogether = require('./util').callTogether
-const asyncFirstSeries = require('./util').asyncFirstSeries
-
-module.exports = Trie
-
-/**
- * Use `require('merkel-patricia-tree')` for the base interface. In Ethereum applications stick with the Secure Trie Overlay `require('merkel-patricia-tree/secure')`. The API for the raw and the secure interface are about the same
- * @class Trie
- * @param {Object} [db] An instance of [levelup](https://github.com/rvagg/node-levelup/) or a compatible API. If the db is `null` or left undefined, then the trie will be stored in memory via [memdown](https://github.com/rvagg/memdown)
- * @param {Buffer|String} [root]` A hex `String` or `Buffer` for the root of a previously stored trie
- * @prop {Buffer} root The current root of the `trie`
- * @prop {Boolean} isCheckpoint  determines if you are saving to a checkpoint or directly to the db
- * @prop {Buffer} EMPTY_TRIE_ROOT the Root for an empty trie
- */
-function Trie (db, root) {
-  var self = this
-  this.EMPTY_TRIE_ROOT = ethUtil.SHA3_RLP
-  this.sem = semaphore(1)
-
-  // setup dbs
-  this.db = db ||
-    levelup('', {
-      db: memdown
-    })
-
-  this._getDBs = [this.db]
-  this._putDBs = [this.db]
-
-  Object.defineProperty(this, 'root', {
-    set: function (value) {
-      if (value) {
-        value = ethUtil.toBuffer(value)
-        assert(value.length === 32, 'Invalid root length. Roots are 32 bytes')
-      } else {
-        value = self.EMPTY_TRIE_ROOT
-      }
-
-      this._root = value
-    },
-    get: function () {
-      return this._root
-    }
-  })
-
-  this.root = root
-}
-
-/**
- * Gets a value given a `key`
- * @method get
- * @param {Buffer|String} key - the key to search for
- * @param {Function} cb A callback `Function` which is given the arguments `err` - for errors that may have occured and `value` - the found value in a `Buffer` or if no value was found `null`
- */
-Trie.prototype.get = function (key, cb) {
-  var self = this
-
-  key = ethUtil.toBuffer(key)
-
-  self.findPath(key, function (err, node, remainder, stack) {
-    var value = null
-    if (node && remainder.length === 0) {
-      value = node.value
-    }
-
-    cb(err, value)
-  })
-}
-
-/**
- * Stores a given `value` at the given `key`
- * @method put
- * @param {Buffer|String} key
- * @param {Buffer|String} Value
- * @param {Function} cb A callback `Function` which is given the argument `err` - for errors that may have occured
- */
-Trie.prototype.put = function (key, value, cb) {
-  var self = this
-
-  key = ethUtil.toBuffer(key)
-  value = ethUtil.toBuffer(value)
-
-  if (!value || value.toString() === '') {
-    self.del(key, cb)
-  } else {
-    cb = callTogether(cb, self.sem.leave)
-
-    self.sem.take(function () {
-      if (self.root.toString('hex') !== ethUtil.SHA3_RLP.toString('hex')) {
-        // first try to find the give key or its nearst node
-        self.findPath(key, function (err, foundValue, keyRemainder, stack) {
-          if (err) {
-            return cb(err)
-          }
-          // then update
-          self._updateNode(key, value, keyRemainder, stack, cb)
-        })
-      } else {
-        self._createInitialNode(key, value, cb) // if no root initialize this trie
-      }
-    })
-  }
-}
-
-/**
- * deletes a value given a `key`
- * @method del
- * @param {Buffer|String} key
- * @param {Function} callback the callback `Function`
- */
-Trie.prototype.del = function (key, cb) {
-  var self = this
-
-  key = ethUtil.toBuffer(key)
-  cb = callTogether(cb, self.sem.leave)
-
-  self.sem.take(function () {
-    self.findPath(key, function (err, foundValue, keyRemainder, stack) {
-      if (err) {
-        return cb(err)
-      }
-      if (foundValue) {
-        self._deleteNode(key, stack, cb)
-      } else {
-        cb()
-      }
-    })
-  })
-}
-
-/**
- * Retrieves a raw value in the underlying db
- * @method getRaw
- * @param {Buffer} key
- * @param {Function} callback A callback `Function`, which is given the arguments `err` - for errors that may have occured and `value` - the found value in a `Buffer` or if no value was found `null`.
- */
-Trie.prototype.getRaw = function (key, cb) {
-  key = ethUtil.toBuffer(key)
-
-  function dbGet (db, cb2) {
-    db.get(key, {
-      keyEncoding: 'binary',
-      valueEncoding: 'binary'
-    }, function (err, foundNode) {
-      if (err || !foundNode) {
-        cb2(null, null)
-      } else {
-        cb2(null, foundNode)
-      }
-    })
-  }
-  asyncFirstSeries(this._getDBs, dbGet, cb)
-}
-
-// retrieves a node from dbs by hash
-Trie.prototype._lookupNode = function (node, cb) {
-  if (TrieNode.isRawNode(node)) {
-    cb(new TrieNode(node))
-  } else {
-    this.getRaw(node, function (err, value) {
-      if (err) {
-        throw err
-      }
-
-      if (value) {
-        value = new TrieNode(rlp.decode(value))
-      }
-
-      cb(value)
-    })
-  }
-}
-
-// TODO: remove the proxy method when changing the caching
-Trie.prototype._putRaw = function (key, val, cb) {
-  function dbPut (db, cb2) {
-    db.put(key, val, {
-      keyEncoding: 'binary',
-      valueEncoding: 'binary'
-    }, cb2)
-  }
-  async.each(this._putDBs, dbPut, cb)
-}
-
-/**
- * Writes a value directly to the underlining db
- * @method putRaw
- * @param {Buffer|String} key The key as a `Buffer` or `String`
- * @param {Buffer} value The value to be stored
- * @param {Function} callback A callback `Function`, which is given the argument `err` - for errors that may have occured
- */
-Trie.prototype.putRaw = Trie.prototype._putRaw
-
-/**
- * Removes a raw value in the underlying db
- * @method delRaw
- * @param {Buffer|String} key
- * @param {Function} callback A callback `Function`, which is given the argument `err` - for errors that may have occured
- */
-Trie.prototype.delRaw = function (key, cb) {
-  function del (db, cb2) {
-    db.del(key, {
-      keyEncoding: 'binary'
-    }, cb2)
-  }
-  async.each(this._putDBs, del, cb)
-}
-
-// writes a single node to dbs
-Trie.prototype._putNode = function (node, cb) {
-  var hash = node.hash()
-  var serialized = node.serialize()
-  this._putRaw(hash, serialized, cb)
-}
-
-// writes many nodes to db
-Trie.prototype._batchNodes = function (opStack, cb) {
-  function dbBatch (db, cb) {
-    db.batch(opStack, {
-      keyEncoding: 'binary',
-      valueEncoding: 'binary'
-    }, cb)
-  }
-
-  async.each(this._putDBs, dbBatch, cb)
-}
-
-/**
- * Trys to find a path to the node for the given key
- * It returns a `stack` of nodes to the closet node
- * @method findPath
- * @param {String|Buffer} - key - the search key
- * @param {Function} - cb - the callback function. Its is given the following
- * arguments
- *  - err - any errors encontered
- *  - node - the last node found
- *  - keyRemainder - the remaining key nibbles not accounted for
- *  - stack - an array of nodes that forms the path to node we are searching for
- */
-
-Trie.prototype.findPath = function (targetKey, cb) {
-  var self = this
-  var root = self.root
-  var stack = []
-  targetKey = TrieNode.stringToNibbles(targetKey)
-
-  this._walkTrie(root, processNode, cb)
-
-  function processNode (nodeRef, node, keyProgress, walkController) {
-    var nodeKey = node.key || []
-    var keyRemainder = targetKey.slice(matchingNibbleLength(keyProgress, targetKey))
-    var matchingLen = matchingNibbleLength(keyRemainder, nodeKey)
-
-    stack.push(node)
-
-    if (node.type === 'branch') {
-      if (keyRemainder.length === 0) {
-        walkController.return(null, node, [], stack)
-      // we exhausted the key without finding a node
-      } else {
-        var branchIndex = keyRemainder[0]
-        var branchNode = node.getValue(branchIndex)
-        if (!branchNode) {
-          // there are no more nodes to find and we didn't find the key
-          walkController.return(null, null, keyRemainder, stack)
-        } else {
-          // node found, continuing search
-          walkController.only(branchIndex)
-        }
-      }
-    } else if (node.type === 'leaf') {
-      if (doKeysMatch(keyRemainder, nodeKey)) {
-        // keys match, return node with empty key
-        walkController.return(null, node, [], stack)
-      } else {
-        // reached leaf but keys dont match
-        walkController.return(null, null, keyRemainder, stack)
-      }
-    } else if (node.type === 'extention') {
-      if (matchingLen !== nodeKey.length) {
-        // keys dont match, fail
-        walkController.return(null, null, keyRemainder, stack)
-      } else {
-        // keys match, continue search
-        walkController.next()
-      }
-    }
-  }
-}
-
-/*
- * Finds all nodes that store k,v values
- */
-Trie.prototype._findNode = function (key, root, stack, cb) {
-  this.findPath(key, function () {
-    cb.apply(null, arguments)
-  })
-}
-
-/*
- * Finds all nodes that store k,v values
- */
-Trie.prototype._findValueNodes = function (onFound, cb) {
-  this._walkTrie(this.root, function (nodeRef, node, key, walkController) {
-    var fullKey = key
-
-    if (node.key) {
-      fullKey = key.concat(node.key)
-    }
-
-    if (node.type === 'leaf') {
-      // found leaf node!
-      onFound(nodeRef, node, fullKey, walkController.next)
-    } else if (node.type === 'branch' && node.value) {
-      // found branch with value
-      onFound(nodeRef, node, fullKey, walkController.next)
-    } else {
-      // keep looking for value nodes
-      walkController.next()
-    }
-  }, cb)
-}
-
-/*
- * Finds all nodes that are stored directly in the db
- * (some nodes are stored raw inside other nodes)
- */
-Trie.prototype._findDbNodes = function (onFound, cb) {
-  this._walkTrie(this.root, function (nodeRef, node, key, walkController) {
-    if (TrieNode.isRawNode(nodeRef)) {
-      walkController.next()
-    } else {
-      onFound(nodeRef, node, key, walkController.next)
-    }
-  }, cb)
-}
-
-/**
- * Updates a node
- * @method _updateNode
- * @param {Buffer} key
- * @param {Buffer| String} value
- * @param {Array} keyRemainder
- * @param {Array} stack -
- * @param {Function} cb - the callback
- */
-Trie.prototype._updateNode = function (key, value, keyRemainder, stack, cb) {
-  var toSave = []
-  var lastNode = stack.pop()
-
-  // add the new nodes
-  key = TrieNode.stringToNibbles(key)
-
-  // Check if the last node is a leaf and the key matches to this
-  var matchLeaf = false
-  if (lastNode.type === 'leaf') {
-    var l = 0
-    for (var i = 0; i < stack.length; i++) {
-      var n = stack[i]
-      if (n.type === 'branch') {
-        l++
-      } else {
-        l += n.key.length
-      }
-    }
-    if ((matchingNibbleLength(lastNode.key, key.slice(l)) === lastNode.key.length) && (keyRemainder.length === 0)) {
-      matchLeaf = true
-    }
-  }
-
-  if (matchLeaf) {
-    // just updating a found value
-    lastNode.value = value
-    stack.push(lastNode)
-  } else if (lastNode.type === 'branch') {
-    stack.push(lastNode)
-    if (keyRemainder !== 0) {
-      // add an extention to a branch node
-      keyRemainder.shift()
-      // create a new leaf
-      var newLeaf = new TrieNode('leaf', keyRemainder, value)
-      stack.push(newLeaf)
-    } else {
-      lastNode.value = value
-    }
-  } else {
-    // create a branch node
-    var lastKey = lastNode.key
-    var matchingLength = matchingNibbleLength(lastKey, keyRemainder)
-    var newBranchNode = new TrieNode('branch')
-
-    // create a new extention node
-    if (matchingLength !== 0) {
-      var newKey = lastNode.key.slice(0, matchingLength)
-      var newExtNode = new TrieNode('extention', newKey, value)
-      stack.push(newExtNode)
-      lastKey.splice(0, matchingLength)
-      keyRemainder.splice(0, matchingLength)
-    }
-
-    stack.push(newBranchNode)
-
-    if (lastKey.length !== 0) {
-      var branchKey = lastKey.shift()
-      if (lastKey.length !== 0 || lastNode.type === 'leaf') {
-        // shriking extention or leaf
-        lastNode.key = lastKey
-        var formatedNode = this._formatNode(lastNode, false, toSave)
-        newBranchNode.setValue(branchKey, formatedNode)
-      } else {
-        // remove extention or attaching
-        this._formatNode(lastNode, false, true, toSave)
-        newBranchNode.setValue(branchKey, lastNode.value)
-      }
-    } else {
-      newBranchNode.value = lastNode.value
-    }
-
-    if (keyRemainder.length !== 0) {
-      keyRemainder.shift()
-      // add a leaf node to the new branch node
-      var newLeafNode = new TrieNode('leaf', keyRemainder, value)
-      stack.push(newLeafNode)
-    } else {
-      newBranchNode.value = value
-    }
-  }
-
-  this._saveStack(key, stack, toSave, cb)
-}
-
-// walk tree
-
-Trie.prototype._walkTrie = function (root, onNode, onDone) {
-  var self = this
-  root = root || self.root
-  onDone = onDone || function () {}
-  var aborted = false
-  var returnValues = []
-
-  if (root.toString('hex') === ethUtil.SHA3_RLP.toString('hex')) {
-    return onDone()
-  }
-
-  self._lookupNode(root, function (node) {
-    processNode(root, node, null, function (err) {
-      if (err) {
-        return onDone(err)
-      }
-      onDone.apply(null, returnValues)
-    })
-  })
-
-  // the maximum pool size should be high enough to utilise the parallelizability of reading nodes from disk and
-  // low enough to utilize the prioritisation of node lookup.
-  var maxPoolSize = 500
-  var taskExecutor = new PrioritizedTaskExecutor(maxPoolSize)
-
-  function processNode (nodeRef, node, key, cb) {
-    if (!node) return cb()
-    if (aborted) return cb()
-    var stopped = false
-    key = key || []
-
-    var walkController = {
-      stop: function () {
-        stopped = true
-        cb()
-      },
-      // end all traversal and return values to the onDone cb
-      return: function () {
-        aborted = true
-        returnValues = arguments
-        cb()
-      },
-      next: function () {
-        if (aborted) {
-          return cb()
-        }
-        if (stopped) {
-          return cb()
-        }
-        var children = node.getChildren()
-        async.forEachOf(children, function (childData, index, cb) {
-          var keyExtension = childData[0]
-          var childRef = childData[1]
-          var childKey = key.concat(keyExtension)
-          var priority = childKey.length
-          taskExecutor.execute(priority, function (taskCallback) {
-            self._lookupNode(childRef, function (childNode) {
-              taskCallback()
-              processNode(childRef, childNode, childKey, cb)
-            })
-          })
-        }, cb)
-      },
-      only: function (childIndex) {
-        var childRef = node.getValue(childIndex)
-        var childKey = key.slice()
-        childKey.push(childIndex)
-        var priority = childKey.length
-        taskExecutor.execute(priority, function (taskCallback) {
-          self._lookupNode(childRef, function (childNode) {
-            taskCallback()
-            processNode(childRef, childNode, childKey, cb)
-          })
-        })
-      }
-    }
-    onNode(nodeRef, node, key, walkController)
-  }
-}
-
-/**
- * saves a stack
- * @method _saveStack
- * @param {Array} key - the key. Should follow the stack
- * @param {Array} stack - a stack of nodes to the value given by the key
- * @param {Array} opStack - a stack of levelup operations to commit at the end of this funciton
- * @param {Function} cb
- */
-Trie.prototype._saveStack = function (key, stack, opStack, cb) {
-  var lastRoot
-
-  // update nodes
-  while (stack.length) {
-    var node = stack.pop()
-    if (node.type === 'leaf') {
-      key.splice(key.length - node.key.length)
-    } else if (node.type === 'extention') {
-      key.splice(key.length - node.key.length)
-      if (lastRoot) {
-        node.value = lastRoot
-      }
-    } else if (node.type === 'branch') {
-      if (lastRoot) {
-        var branchKey = key.pop()
-        node.setValue(branchKey, lastRoot)
-      }
-    }
-    lastRoot = this._formatNode(node, stack.length === 0, opStack)
-  }
-
-  if (lastRoot) {
-    this.root = lastRoot
-  }
-
-  this._batchNodes(opStack, cb)
-}
-
-Trie.prototype._deleteNode = function (key, stack, cb) {
-  function processBranchNode (key, branchKey, branchNode, parentNode, stack) {
-    // branchNode is the node ON the branch node not THE branch node
-    var branchNodeKey = branchNode.key
-    if (!parentNode || parentNode.type === 'branch') {
-      // branch->?
-      if (parentNode) {
-        stack.push(parentNode)
-      }
-
-      if (branchNode.type === 'branch') {
-        // create an extention node
-        // branch->extention->branch
-        var extentionNode = new TrieNode('extention', [branchKey], null)
-        stack.push(extentionNode)
-        key.push(branchKey)
-      } else {
-        // branch key is an extention or a leaf
-        // branch->(leaf or extention)
-        branchNodeKey.unshift(branchKey)
-        branchNode.key = branchNodeKey
-
-        // hackery. This is equvilant to array.concat except we need keep the
-        // rerfance to the `key` that was passed in.
-        branchNodeKey.unshift(0)
-        branchNodeKey.unshift(key.length)
-        key.splice.apply(key, branchNodeKey)
-      }
-      stack.push(branchNode)
-    } else {
-      // parent is a extention
-      var parentKey = parentNode.key
-      if (branchNode.type === 'branch') {
-        // ext->branch
-        parentKey.push(branchKey)
-        key.push(branchKey)
-        parentNode.key = parentKey
-        stack.push(parentNode)
-      } else {
-        // branch node is an leaf or extention and parent node is an exstention
-        // add two keys together
-        // dont push the parent node
-        branchNodeKey.unshift(branchKey)
-        key = key.concat(branchNodeKey)
-        parentKey = parentKey.concat(branchNodeKey)
-        branchNode.key = parentKey
-      }
-      stack.push(branchNode)
-    }
-
-    return key
-  }
-
-  var lastNode = stack.pop()
-  var parentNode = stack.pop()
-  var opStack = []
-  var self = this
-
-  if (!Array.isArray(key)) {
-    // convert key to nibbles
-    key = TrieNode.stringToNibbles(key)
-  }
-
-  if (!parentNode) {
-    // the root here has to be a leaf.
-    this.root = this.EMPTY_TRIE_ROOT
-    cb()
-  } else {
-    if (lastNode.type === 'branch') {
-      lastNode.value = null
-    } else {
-      // the lastNode has to be a leaf if its not a branch. And a leaf's parent
-      // if it has one must be a branch.
-      var lastNodeKey = lastNode.key
-      key.splice(key.length - lastNodeKey.length)
-      // delete the value
-      this._formatNode(lastNode, false, true, opStack)
-      parentNode.setValue(key.pop(), null)
-      lastNode = parentNode
-      parentNode = stack.pop()
-    }
-
-    // nodes on the branch
-    var branchNodes = []
-    // count the number of nodes on the branch
-    lastNode.raw.forEach(function (node, i) {
-      var val = lastNode.getValue(i)
-      if (val) branchNodes.push([i, val])
-    })
-
-    // if there is only one branch node left, collapse the branch node
-    if (branchNodes.length === 1) {
-      // add the one remaing branch node to node above it
-      var branchNode = branchNodes[0][1]
-      var branchNodeKey = branchNodes[0][0]
-
-      // look up node
-      this._lookupNode(branchNode, function (foundNode) {
-        key = processBranchNode(key, branchNodeKey, foundNode, parentNode, stack, opStack)
-        self._saveStack(key, stack, opStack, cb)
-      })
-    } else {
-      // simple removing a leaf and recaluclation the stack
-      if (parentNode) {
-        stack.push(parentNode)
-      }
-
-      stack.push(lastNode)
-      self._saveStack(key, stack, opStack, cb)
-    }
-  }
-}
-
-// Creates the initial node from an empty tree
-Trie.prototype._createInitialNode = function (key, value, cb) {
-  var newNode = new TrieNode('leaf', key, value)
-  this.root = newNode.hash()
-  this._putNode(newNode, cb)
-}
-
-// formats node to be saved by levelup.batch.
-// returns either the hash that will be used key or the rawNode
-Trie.prototype._formatNode = function (node, topLevel, remove, opStack) {
-  if (arguments.length === 3) {
-    opStack = remove
-    remove = false
-  }
-
-  var rlpNode = node.serialize()
-  if (rlpNode.length >= 32 || topLevel) {
-    var hashRoot = node.hash()
-
-    if (remove && this.isCheckpoint) {
-      opStack.push({
-        type: 'del',
-        key: hashRoot
-      })
-    } else {
-      opStack.push({
-        type: 'put',
-        key: hashRoot,
-        value: rlpNode
-      })
-    }
-    return hashRoot
-  }
-  return node.raw
-}
-
-/**
- * The `data` event is given an `Object` hat has two properties; the `key` and the `value`. Both should be Buffers.
- * @method createReadStream
- * @return {stream.Readable} Returns a [stream](https://nodejs.org/dist/latest-v5.x/docs/api/stream.html#stream_class_stream_readable) of the contents of the `trie`
- */
-Trie.prototype.createReadStream = function () {
-  return new ReadStream(this)
-}
-
-// creates a new trie backed by the same db
-// and starting at the same root
-Trie.prototype.copy = function () {
-  return new Trie(this.db, this.root)
-}
-
-/**
- * The given hash of operations (key additions or deletions) are executed on the DB
- * @method batch
- * @example
- * var ops = [
- *    { type: 'del', key: 'father' }
- *  , { type: 'put', key: 'name', value: 'Yuri Irsenovich Kim' }
- *  , { type: 'put', key: 'dob', value: '16 February 1941' }
- *  , { type: 'put', key: 'spouse', value: 'Kim Young-sook' }
- *  , { type: 'put', key: 'occupation', value: 'Clown' }
- * ]
- * trie.batch(ops)
- * @param {Array} ops
- * @param {Function} cb
- */
-Trie.prototype.batch = function (ops, cb) {
-  var self = this
-
-  async.eachSeries(ops, function (op, cb2) {
-    if (op.type === 'put') {
-      self.put(op.key, op.value, cb2)
-    } else if (op.type === 'del') {
-      self.del(op.key, cb2)
-    } else {
-      cb2()
-    }
-  }, cb)
-}
-
-/**
- * Checks if a given root exists
- * @method checkRoot
- * @param {Buffer} root
- * @param {Function} cb
- */
-Trie.prototype.checkRoot = function (root, cb) {
-  root = ethUtil.toBuffer(root)
-  this._lookupNode(root, function (value) {
-    cb(null, !!value)
-  })
-}
-
-},{"./prioritizedTaskExecutor":163,"./readStream":165,"./trieNode":166,"./util":167,"assert":7,"async":11,"ethereumjs-util":42,"levelup":96,"memdown":102,"rlp":134,"semaphore":142}],161:[function(require,module,exports){
-const levelup = require('levelup')
-const memdown = require('memdown')
-const async = require('async')
-const inherits = require('util').inherits
-const Readable = require('readable-stream').Readable
-const levelws = require('level-ws')
-const callTogether = require('./util').callTogether
-
-module.exports = checkpointInterface
-
-function checkpointInterface (trie) {
-  this._scratch = null
-  trie._checkpoints = []
-
-  Object.defineProperty(trie, 'isCheckpoint', {
-    get: function () {
-      return !!trie._checkpoints.length
-    }
-  })
-
-  // new methods
-  trie.checkpoint = checkpoint
-  trie.commit = commit
-  trie.revert = revert
-  trie._enterCpMode = _enterCpMode
-  trie._exitCpMode = _exitCpMode
-  trie.createScratchReadStream = createScratchReadStream
-
-  // overwrites
-  trie.copy = copy.bind(trie, trie.copy.bind(trie))
-}
-
-/**
- * Creates a checkpoint that can later be reverted to or committed. After this is called, no changes to the trie will be permanently saved until `commit` is called
- * @method checkpoint
- */
-function checkpoint () {
-  var self = this
-  var wasCheckpoint = self.isCheckpoint
-  self._checkpoints.push(self.root)
-  if (!wasCheckpoint && self.isCheckpoint) {
-    self._enterCpMode()
-  }
-}
-
-/**
- * commits a checkpoint to disk
- * @method commit
- * @param {Function} cb the callback
- */
-function commit (cb) {
-  var self = this
-  cb = callTogether(cb, self.sem.leave)
-
-  self.sem.take(function () {
-    if (self.isCheckpoint) {
-      self._checkpoints.pop()
-      if (!self.isCheckpoint) {
-        self._exitCpMode(true, cb)
-      } else {
-        cb()
-      }
-    } else {
-      throw new Error('trying to commit when not checkpointed')
-    }
-  })
-}
-
-/**
- * Reverts the trie to the state it was at when `checkpoint` was first called.
- * @method revert
- * @param {Function} cb the callback
- */
-function revert (cb) {
-  var self = this
-  cb = callTogether(cb, self.sem.leave)
-
-  self.sem.take(function () {
-    if (self.isCheckpoint) {
-      self.root = self._checkpoints.pop()
-      if (!self.isCheckpoint) {
-        self._exitCpMode(false, cb)
-        return
-      }
-    }
-
-    cb()
-  })
-}
-
-// enter into checkpoint mode
-function _enterCpMode () {
-  this._scratch = levelup('', {
-    db: memdown
-  })
-  this._getDBs = [this._scratch].concat(this._getDBs)
-  this.__putDBs = this._putDBs
-  this._putDBs = [this._scratch]
-  this._putRaw = this.putRaw
-  this.putRaw = putRaw
-}
-
-// exit from checkpoint mode
-function _exitCpMode (commitState, cb) {
-  var self = this
-  var scratch = this._scratch
-  this._scratch = null
-  this._getDBs = this._getDBs.slice(1)
-  this._putDBs = this.__putDBs
-  this.putRaw = this._putRaw
-
-  function flushScratch (db, cb) {
-    if (!db.createWriteStream) {
-      db = levelws(db)
-    }
-
-    self.createScratchReadStream(scratch)
-      .pipe(db.createWriteStream())
-      .on('close', cb)
-  }
-
-  if (commitState) {
-    async.map(this._putDBs, flushScratch, cb)
-  } else {
-    cb()
-  }
-}
-
-// adds the interface when copying the trie
-function copy (_super) {
-  var trie = _super()
-  checkpointInterface.call(trie, trie)
-  trie._scratch = this._scratch
-  // trie._checkpoints = this._checkpoints.slice()
-  return trie
-}
-
-function putRaw (key, val, cb) {
-  function dbPut (db, cb2) {
-    db.put(key, val, {
-      keyEncoding: 'binary',
-      valueEncoding: 'binary'
-    }, cb2)
-  }
-  async.each(this.__putDBs, dbPut, cb)
-}
-
-function createScratchReadStream (scratch) {
-  var trie = this.copy()
-  scratch = scratch || this._scratch
-  // only read from the scratch
-  trie._getDBs = [scratch]
-  trie._scratch = scratch
-  return new ScratchReadStream(trie)
-}
-
-// ScratchReadStream
-// this is used to minimally dump the scratch into the db
-
-inherits(ScratchReadStream, Readable)
-
-function ScratchReadStream (trie) {
-  this.trie = trie
-  this.next = null
-  Readable.call(this, {
-    objectMode: true
-  })
-}
-
-ScratchReadStream.prototype._read = function () {
-  var self = this
-  if (!self._started) {
-    self._started = true
-    self.trie._findDbNodes(function (nodeRef, node, key, next) {
-      self.push({
-        key: nodeRef,
-        value: node.serialize()
-      })
-      next()
-    }, function () {
-      // close stream
-      self.push(null)
-    })
-  }
-}
-
-},{"./util":167,"async":11,"level-ws":88,"levelup":96,"memdown":102,"readable-stream":130,"util":157}],162:[function(require,module,exports){
-const BaseTrie = require('./baseTrie')
-const checkpointInterface = require('./checkpoint-interface')
-const inherits = require('util').inherits
-const proof = require('./proof.js')
-
-module.exports = CheckpointTrie
-
-inherits(CheckpointTrie, BaseTrie)
-
-function CheckpointTrie () {
-  BaseTrie.apply(this, arguments)
-  checkpointInterface.call(this, this)
-}
-
-CheckpointTrie.prove = proof.prove
-CheckpointTrie.verifyProof = proof.verifyProof
-
-},{"./baseTrie":160,"./checkpoint-interface":161,"./proof.js":164,"util":157}],163:[function(require,module,exports){
-module.exports = PrioritizedTaskExecutor
-
-/**
- * Executes tasks up to maxPoolSize at a time, other items are put in a priority queue.
- * @class PrioritizedTaskExecutor
- * @param {Number} maxPoolSize The maximum size of the pool
- * @prop {Number} maxPoolSize The maximum size of the pool
- * @prop {Number} currentPoolSize The current size of the pool
- * @prop {Array} queue The task queue
- */
-function PrioritizedTaskExecutor (maxPoolSize) {
-  this.maxPoolSize = maxPoolSize
-  this.currentPoolSize = 0
-  this.queue = []
-}
-
-/**
- * Executes the task.
- * @param {Number} priority The priority of the task
- * @param {Function} task The function that accepts the callback, which must be called upon the task completion.
- */
-PrioritizedTaskExecutor.prototype.execute = function (priority, task) {
-  var self = this
-
-  if (self.currentPoolSize < self.maxPoolSize) {
-    self.currentPoolSize++
-    task(function () {
-      self.currentPoolSize--
-      if (self.queue.length > 0) {
-        self.queue.sort(function (a, b) {
-          return b.priority - a.priority
-        })
-        var item = self.queue.shift()
-        self.execute(item.priority, item.task)
-      }
-    })
-  } else {
-    self.queue.push({
-      priority: priority,
-      task: task
-    })
-  }
-}
-
-},{}],164:[function(require,module,exports){
-(function (Buffer){
-const TrieNode = require('./trieNode')
-const ethUtil = require('ethereumjs-util')
-const matchingNibbleLength = require('./util').matchingNibbleLength
-
-/**
- * Returns a merkle proof for a given key
- * @method Trie.prove
- * @param {Trie} trie
- * @param {String} key
- * @param {Function} cb A callback `Function` (arguments {Error} `err`, {Array.<TrieNode>} `proof`)
- */
-exports.prove = function (trie, key, cb) {
-  var nodes
-
-  trie.findPath(key, function (err, node, remaining, stack) {
-    if (err) return cb(err)
-    if (remaining.length > 0) return cb(new Error('Node does not contain the key'))
-    nodes = stack
-    var p = []
-    for (var i = 0; i < nodes.length; i++) {
-      var rlpNode = nodes[i].serialize()
-
-      if ((rlpNode.length >= 32) || (i === 0)) {
-        p.push(rlpNode)
-      }
-    }
-    cb(null, p)
-  })
-}
-
-/**
- * Verifies a merkle proof for a given key
- * @method Trie.verifyProof
- * @param {Buffer} rootHash
- * @param {String} key
- * @param {Array.<TrieNode>} proof
- * @param {Function} cb A callback `Function` (arguments {Error} `err`, {String} `val`)
- */
-exports.verifyProof = function (rootHash, key, proof, cb) {
-  key = TrieNode.stringToNibbles(key)
-  var wantHash = ethUtil.toBuffer(rootHash)
-  for (var i = 0; i < proof.length; i++) {
-    var p = ethUtil.toBuffer(proof[i])
-    var hash = ethUtil.sha3(proof[i])
-    if (Buffer.compare(hash, wantHash)) {
-      return cb(new Error('Bad proof node ' + i + ': hash mismatch'))
-    }
-    var node = new TrieNode(ethUtil.rlp.decode(p))
-    var cld
-    if (node.type === 'branch') {
-      if (key.length === 0) {
-        if (i !== proof.length - 1) {
-          return cb(new Error('Additional nodes at end of proof (branch)'))
-        }
-        return cb(null, node.value)
-      }
-      cld = node.raw[key[0]]
-      key = key.slice(1)
-      if (cld.length === 2) {
-        var embeddedNode = new TrieNode(cld)
-        if (i !== proof.length - 1) {
-          return cb(new Error('Additional nodes at end of proof (embeddedNode)'))
-        }
-
-        if (matchingNibbleLength(embeddedNode.key, key) !== embeddedNode.key.length) {
-          return cb(new Error('Key length does not match with the proof one (embeddedNode)'))
-        }
-        key = key.slice(embeddedNode.key.length)
-        if (key.length !== 0) {
-          return cb(new Error('Key does not match with the proof one (embeddedNode)'))
-        }
-        return cb(null, embeddedNode.value)
-      } else {
-        wantHash = cld
-      }
-    } else if ((node.type === 'extention') || (node.type === 'leaf')) {
-      if (matchingNibbleLength(node.key, key) !== node.key.length) {
-        return cb(new Error('Key does not match with the proof one (extention|leaf)'))
-      }
-      cld = node.value
-      key = key.slice(node.key.length)
-      if (key.length === 0) {
-        if (i !== proof.length - 1) {
-          return cb(new Error('Additional nodes at end of proof (extention|leaf)'))
-        }
-        return cb(null, cld)
-      } else {
-        wantHash = cld
-      }
-    } else {
-      return cb(new Error('Invalid node type'))
-    }
-  }
-  cb(new Error('Unexpected end of proof'))
-}
-
-}).call(this,require("buffer").Buffer)
-},{"./trieNode":166,"./util":167,"buffer":17,"ethereumjs-util":42}],165:[function(require,module,exports){
-const Readable = require('readable-stream').Readable
-const TrieNode = require('./trieNode')
-const util = require('util')
-
-module.exports = TrieReadStream
-
-function TrieReadStream (trie) {
-  this.trie = trie
-  this.next = null
-  Readable.call(this, {
-    objectMode: true
-  })
-}
-
-util.inherits(TrieReadStream, Readable)
-
-TrieReadStream.prototype._read = function () {
-  var self = this
-  if (!self._started) {
-    self._started = true
-    self.trie._findValueNodes(function (nodeRef, node, key, next) {
-      self.push({
-        key: TrieNode.nibblesToBuffer(key),
-        value: node.value
-      })
-      next()
-    }, function () {
-      // close stream
-      self.push(null)
-    })
-  }
-}
-
-},{"./trieNode":166,"readable-stream":130,"util":157}],166:[function(require,module,exports){
-(function (Buffer){
-const rlp = require('rlp')
-const ethUtil = require('ethereumjs-util')
-
-module.exports = TrieNode
-
-function TrieNode (type, key, value) {
-  if (Array.isArray(type)) {
-    // parse raw node
-    this.parseNode(type)
-  } else {
-    this.type = type
-    if (type === 'branch') {
-      var values = key
-      this.raw = Array.apply(null, Array(17))
-      if (values) {
-        values.forEach(function (keyVal) {
-          this.set.apply(this, keyVal)
-        })
-      }
-    } else {
-      this.raw = Array(2)
-      this.setValue(value)
-      this.setKey(key)
-    }
-  }
-}
-
-TrieNode.isRawNode = isRawNode
-TrieNode.addHexPrefix = addHexPrefix
-TrieNode.removeHexPrefix = removeHexPrefix
-TrieNode.isTerminator = isTerminator
-TrieNode.stringToNibbles = stringToNibbles
-TrieNode.nibblesToBuffer = nibblesToBuffer
-TrieNode.getNodeType = getNodeType
-
-Object.defineProperty(TrieNode.prototype, 'value', {
-  get: function () {
-    return this.getValue()
-  },
-  set: function (v) {
-    this.setValue(v)
-  }
-})
-
-Object.defineProperty(TrieNode.prototype, 'key', {
-  get: function () {
-    return this.getKey()
-  },
-  set: function (k) {
-    this.setKey(k)
-  }
-})
-
-// parses a raw node
-TrieNode.prototype.parseNode = function (rawNode) {
-  this.raw = rawNode
-  this.type = getNodeType(rawNode)
-}
-
-// sets the value of the node
-TrieNode.prototype.setValue = function (key, value) {
-  if (this.type !== 'branch') {
-    this.raw[1] = key
-  } else {
-    if (arguments.length === 1) {
-      value = key
-      key = 16
-    }
-    this.raw[key] = value
-  }
-}
-
-TrieNode.prototype.getValue = function (key) {
-  if (this.type === 'branch') {
-    if (arguments.length === 0) {
-      key = 16
-    }
-
-    var val = this.raw[key]
-    if (val !== null && val !== undefined && val.length !== 0) {
-      return val
-    }
-  } else {
-    return this.raw[1]
-  }
-}
-
-TrieNode.prototype.setKey = function (key) {
-  if (this.type !== 'branch') {
-    if (Buffer.isBuffer(key)) {
-      key = stringToNibbles(key)
-    } else {
-      key = key.slice(0) // copy the key
-    }
-
-    key = addHexPrefix(key, this.type === 'leaf')
-    this.raw[0] = nibblesToBuffer(key)
-  }
-}
-
-// returns the key as a nibble
-TrieNode.prototype.getKey = function () {
-  if (this.type !== 'branch') {
-    var key = this.raw[0]
-    key = removeHexPrefix(stringToNibbles(key))
-    return (key)
-  }
-}
-
-TrieNode.prototype.serialize = function () {
-  return rlp.encode(this.raw)
-}
-
-TrieNode.prototype.hash = function () {
-  return ethUtil.sha3(this.serialize())
-}
-
-TrieNode.prototype.toString = function () {
-  var out = this.type
-  out += ': ['
-  this.raw.forEach(function (el) {
-    if (Buffer.isBuffer(el)) {
-      out += el.toString('hex') + ', '
-    } else if (el) {
-      out += 'object, '
-    } else {
-      out += 'empty, '
-    }
-  })
-  out = out.slice(0, -2)
-  out += ']'
-  return out
-}
-
-TrieNode.prototype.getChildren = function () {
-  var children = []
-  switch (this.type) {
-    case 'leaf':
-      // no children
-      break
-    case 'extention':
-      // one child
-      children.push([this.key, this.getValue()])
-      break
-    case 'branch':
-      for (var index = 0, end = 16; index < end; index++) {
-        var value = this.getValue(index)
-        if (value) {
-          children.push([
-            [index], value
-          ])
-        }
-      }
-      break
-  }
-  return children
-}
-
-/**
- * @param {Array} dataArr
- * @returns {Buffer} - returns buffer of encoded data
- * hexPrefix
- **/
-function addHexPrefix (key, terminator) {
-  // odd
-  if (key.length % 2) {
-    key.unshift(1)
-  } else {
-    // even
-    key.unshift(0)
-    key.unshift(0)
-  }
-
-  if (terminator) {
-    key[0] += 2
-  }
-
-  return key
-}
-
-function removeHexPrefix (val) {
-  if (val[0] % 2) {
-    val = val.slice(1)
-  } else {
-    val = val.slice(2)
-  }
-
-  return val
-}
-
-/**
- * Determines if a key has Arnold Schwarzenegger in it.
- * @method isTerminator
- * @param {Array} key - an hexprefixed array of nibbles
- */
-function isTerminator (key) {
-  return key[0] > 1
-}
-
-/**
- * Converts a string OR a buffer to a nibble array.
- * @method stringToNibbles
- * @param {Buffer| String} key
- */
-function stringToNibbles (key) {
-  var bkey = new Buffer(key)
-  var nibbles = []
-
-  for (var i = 0; i < bkey.length; i++) {
-    var q = i * 2
-    nibbles[q] = bkey[i] >> 4
-    ++q
-    nibbles[q] = bkey[i] % 16
-  }
-  return nibbles
-}
-
-/**
- * Converts a nibble array into a buffer.
- * @method nibblesToBuffer
- * @param arr
- */
-function nibblesToBuffer (arr) {
-  var buf = new Buffer(arr.length / 2)
-  for (var i = 0; i < buf.length; i++) {
-    var q = i * 2
-    buf[i] = (arr[q] << 4) + arr[++q]
-  }
-  return buf
-}
-
-/**
- * Determines the node type.
- * @returns {String} - the node type
- *   - leaf - if the node is a leaf
- *   - branch - if the node is a branch
- *   - extention - if the node is an extention
- *   - unknown - if something else got borked
- */
-function getNodeType (node) {
-  if (node.length === 17) {
-    return 'branch'
-  } else if (node.length === 2) {
-    var key = stringToNibbles(node[0])
-    if (isTerminator(key)) {
-      return 'leaf'
-    }
-
-    return 'extention'
-  }
-}
-
-function isRawNode (node) {
-  return Array.isArray(node) && !Buffer.isBuffer(node)
-}
-
-}).call(this,require("buffer").Buffer)
-},{"buffer":17,"ethereumjs-util":42,"rlp":134}],167:[function(require,module,exports){
-(function (process){
-const async = require('async')
-
-module.exports = {
-  matchingNibbleLength: matchingNibbleLength,
-  callTogether: callTogether,
-  asyncFirstSeries: asyncFirstSeries,
-  doKeysMatch: doKeysMatch
-}
-
-/**
- * Returns the number of in order matching nibbles of two give nibble arrayes
- * @method matchingNibbleLength
- * @param {Array} nib1
- * @param {Array} nib2
- */
-function matchingNibbleLength (nib1, nib2) {
-  var i = 0
-  while (nib1[i] === nib2[i] && nib1.length > i) {
-    i++
-  }
-  return i
-}
-
-/**
- * Compare two 'nibble array' keys
- */
-function doKeysMatch (keyA, keyB) {
-  var length = matchingNibbleLength(keyA, keyB)
-  return length === keyA.length && length === keyB.length
-}
-
-/**
- * Take two or more functions and returns a function  that will execute all of
- * the given functions
- */
-function callTogether () {
-  var funcs = arguments
-  var length = funcs.length
-  var index = length
-
-  if (!length) {
-    return function () {}
-  }
-
-  return function () {
-    length = index
-
-    while (length--) {
-      var fn = funcs[length]
-      if (typeof fn === 'function') {
-        var result = funcs[length].apply(this, arguments)
-      }
-    }
-    return result
-  }
-}
-
-/**
- * Take a collection of async fns, call the cb on the first to return a truthy value.
- * If all run without a truthy result, return undefined
- */
-function asyncFirstSeries (array, iterator, cb) {
-  var didComplete = false
-  async.eachSeries(array, function (item, next) {
-    if (didComplete) return next
-    iterator(item, function (err, result) {
-      if (result) {
-        didComplete = true
-        process.nextTick(cb.bind(null, null, result))
-      }
-      next(err)
-    })
-  }, function () {
-    if (!didComplete) {
-      cb()
-    }
-  })
-}
-
-}).call(this,require('_process'))
-},{"_process":116,"async":11}]},{},[162])(162)
+},{"./has-keys":166,"object-keys":120}]},{},[3])(3)
 });
