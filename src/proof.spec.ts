@@ -35,9 +35,9 @@ describe(
         const w2 = await tree.get(Buffer.from('key2bb'));
         const w3 = await tree.get(Buffer.from('key3cc'));
 
-        await VerifyWitness(tree.root, Buffer.from('key1aa'), w1);
-        await VerifyWitness(tree.root, Buffer.from('key2bb'), w2);
-        await VerifyWitness(tree.root, Buffer.from('key3cc'), w3);
+        VerifyWitness(tree.root, Buffer.from('key1aa'), w1);
+        VerifyWitness(tree.root, Buffer.from('key2bb'), w2);
+        VerifyWitness(tree.root, Buffer.from('key3cc'), w3);
       });
 
       it('should create a merkle proof and verify it with a single long key',
@@ -46,14 +46,14 @@ describe(
                Buffer.from('key1aa'),
                Buffer.from('0123456789012345678901234567890123456789xx'));
            const w1 = await tree.get(Buffer.from('key1aa'));
-           await VerifyWitness(tree.root, Buffer.from('key1aa'), w1);
+           VerifyWitness(tree.root, Buffer.from('key1aa'), w1);
          });
 
       it('should create a merkle proof and verify it with a single short key',
          async () => {
            await tree.put(Buffer.from('key1aa'), Buffer.from('01234'));
            const w1 = await tree.get(Buffer.from('key1aa'));
-           await VerifyWitness(tree.root, Buffer.from('key1aa'), w1);
+           VerifyWitness(tree.root, Buffer.from('key1aa'), w1);
          });
 
       it('should create a merkle proof with keys in the middle', async () => {
@@ -74,8 +74,8 @@ describe(
         const w2 = await tree.get(Buffer.from('key2'));
         const w3 = await tree.get(Buffer.from('key3'));
 
-        await VerifyWitness(tree.root, Buffer.from('key1'), w1);
-        await VerifyWitness(tree.root, Buffer.from('key2'), w2);
-        await VerifyWitness(tree.root, Buffer.from('key3'), w3);
+        VerifyWitness(tree.root, Buffer.from('key1'), w1);
+        VerifyWitness(tree.root, Buffer.from('key2'), w2);
+        VerifyWitness(tree.root, Buffer.from('key3'), w3);
       });
     });
