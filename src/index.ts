@@ -152,17 +152,22 @@ export class MerklePatriciaTree {
   }
 }
 
+/** This {Error} indicates that there was a problem verifying a witness. */
 export class VerificationError extends Error {}
 
 /**
  * Verifies that a witness is correct for the given root and key.
  *
- * @param root      A buffer containing the root of the tree to check
- * @param key       A buffer containing the key to check
- * @param witness   The witness to verify
+ * @param root                  A {Buffer} containing the root of the tree to
+ * check
+ * @param key                   A {Buffer} containing the key to check
+ * @param witness               The {Witness} to verify
  *
- * @return          A promise, which is resolved if the witness was valid.
- * Otherwise, the promise is completed exceptionally with the failure reason.
+ * @throws {VerificationError}  If there was an error verifying the witness using the
+ *                              given key and root.
+ * @return                      A promise, which is resolved if the witness was
+ * valid. Otherwise, the promise is completed exceptionally with the failure
+ * reason.
  */
 export function VerifyWitness(root: Buffer, key: Buffer, witness: Witness) {
   let targetHash: Buffer = root;
