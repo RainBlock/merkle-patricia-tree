@@ -72,6 +72,10 @@ API documentation can be found [here](https://rainblock.github.io/merkle-patrici
 # TESTING
 `npm test`
 
+# BENCHMARKS
+
+Benchmarks can be run by executing `npm run benchmark` from the package directory.
+
 # REFERENCES
 
 - ["Exploring Ethereum's state trie with Node.js"](https://wanderer.github.io/ethereum/nodejs/code/2014/05/21/using-ethereums-tries-with-node/) blog post
