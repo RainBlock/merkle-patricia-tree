@@ -230,15 +230,21 @@ export function VerifyWitness(root: Buffer, key: Buffer, witness: Witness) {
         throw new VerificationError(`Key does not match the proof ${
             node.type}: expected ${node.key}, but got ${currentKey}`);
       }
-      cld = node.value;
+      cld = node.value as (Buffer | Buffer[][]);
       currentKey = currentKey.slice(node.key.length);
-      if (currentKey.length === 0) {
+      if (currentKey.length === 0 ||
+          (cld.length === 17 && currentKey.length === 1)) {
+        // The value is in an embedded branch. Extract it.
+        if (cld.length === 17) {
+          cld = (cld[currentKey[0]] as Buffer[])[1];
+          currentKey = currentKey.slice(1);
+        }
         if (idx !== witness.proof.length - 1) {
           throw new VerificationError(
               `Key length mismatch (${node.type}): expected ${
                   idx + 1} but got ${witness.proof.length}`);
         }
-        if (!cld.equals(witness.value!)) {
+        if (!(cld as Buffer).equals(witness.value!)) {
           throw new VerificationError(
               `Value mismatch: expected ${witness.value} but got ${cld}`);
         }
