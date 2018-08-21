@@ -4,7 +4,8 @@ import * as chai from 'chai';
 import * as path from 'path';
 import {RlpEncode, RlpList} from 'rlp-stream';
 
-import {MerklePatriciaTree} from './index';
+import {MerklePatriciaTree, VerifyWitness} from './index';
+
 
 
 // Needed for should.not.be.undefined.
@@ -13,7 +14,7 @@ import {MerklePatriciaTree} from './index';
 chai.should();
 const should = chai.should();
 
-describe('Try original simple-save-retrieve', async () => {
+describe('Try original simple-save-retrieve', () => {
   const tree: MerklePatriciaTree = new MerklePatriciaTree();
 
   const one = Buffer.from('one');
@@ -70,7 +71,7 @@ describe('Try original simple-save-retrieve', async () => {
 });
 
 
-describe('Try original storing larger values', async () => {
+describe('Try original storing larger values', () => {
   const tree: MerklePatriciaTree = new MerklePatriciaTree();
 
   const longString = 'this will be a really really really long value';
@@ -98,7 +99,7 @@ describe('Try original storing larger values', async () => {
 });
 
 
-describe('Try original extensions and branches', async () => {
+describe('Try original extensions and branches', () => {
   const tree: MerklePatriciaTree = new MerklePatriciaTree();
 
   it('should store a value', async () => {
@@ -118,7 +119,7 @@ describe('Try original extensions and branches', async () => {
   });
 });
 
-describe('Try original extensions and branches - reverse', async () => {
+describe('Try original extensions and branches - reverse', () => {
   const tree: MerklePatriciaTree = new MerklePatriciaTree();
 
   it('should create an extension', async () => {
@@ -138,7 +139,7 @@ describe('Try original extensions and branches - reverse', async () => {
   });
 });
 
-describe('Try original deletions tests', async () => {
+describe('Try original deletions tests', () => {
   let tree: MerklePatriciaTree;
 
   before(async () => {
@@ -200,7 +201,7 @@ describe('Try original deletions tests', async () => {
 });
 
 
-describe('Creating the ethereum genesis block', async () => {
+describe('Creating the ethereum genesis block', () => {
   const g = Buffer.from('8a40bfaa73256b60764c1bf40675a99083efb075', 'hex');
   const j = Buffer.from('e6716f9544a56c530d868e4bfbacb172315bdead', 'hex');
   const v = Buffer.from('1e12515ce3e0f817a4ddef9ca55788a1d66bd2df', 'hex');
@@ -228,5 +229,79 @@ describe('Creating the ethereum genesis block', async () => {
     await tree.put(v, rlpAccount);
     await tree.put(a, rlpAccount);
     tree.root.toString('hex').should.equal(genesisStateRoot);
+  });
+
+  const treeBatch: MerklePatriciaTree = new MerklePatriciaTree();
+
+  it('should match the original genesis root in batch mode', async () => {
+    const root = await treeBatch.batch([
+      {key: g, val: rlpAccount},
+      {key: j, val: rlpAccount},
+      {key: v, val: rlpAccount},
+      {key: a, val: rlpAccount},
+    ]);
+    root.toString('hex').should.equal(genesisStateRoot);
+  });
+});
+
+describe('Try batch operations', () => {
+  it('put a simple batch', async () => {
+    const tree = new MerklePatriciaTree();
+    const root = await tree.batch([
+      {key: Buffer.from('a'), val: Buffer.from('a')},
+      {key: Buffer.from('b'), val: Buffer.from('b')},
+      {key: Buffer.from('c'), val: Buffer.from('c')}
+    ]);
+
+    const w1 = await tree.get(Buffer.from('a'));
+    const w2 = await tree.get(Buffer.from('b'));
+    const w3 = await tree.get(Buffer.from('c'));
+
+    VerifyWitness(root, Buffer.from('a'), w1);
+    VerifyWitness(root, Buffer.from('b'), w2);
+    VerifyWitness(root, Buffer.from('c'), w3);
+  });
+
+  it('put and del a simple batch', async () => {
+    const tree = new MerklePatriciaTree();
+    await tree.put(Buffer.from('d'), Buffer.from('d'));
+
+    const root = await tree.batch(
+        [
+          {key: Buffer.from('a'), val: Buffer.from('a')},
+          {key: Buffer.from('b'), val: Buffer.from('b')},
+          {key: Buffer.from('c'), val: Buffer.from('c')}
+        ],
+        [Buffer.from('d')]);
+
+    const w1 = await tree.get(Buffer.from('a'));
+    const w2 = await tree.get(Buffer.from('b'));
+    const w3 = await tree.get(Buffer.from('c'));
+
+    VerifyWitness(root, Buffer.from('a'), w1);
+    VerifyWitness(root, Buffer.from('b'), w2);
+    VerifyWitness(root, Buffer.from('c'), w3);
+
+    const w4 = await tree.get(Buffer.from('d'));
+    should.not.exist(w4.value);
+  });
+
+  it('put and del a simple batch with overlap', async () => {
+    const tree = new MerklePatriciaTree();
+    const root = await tree.batch(
+        [
+          {key: Buffer.from('a'), val: Buffer.from('a')},
+          {key: Buffer.from('b'), val: Buffer.from('b')},
+          {key: Buffer.from('c'), val: Buffer.from('c')}
+        ],
+        [Buffer.from('c')]);
+
+    const w1 = await tree.get(Buffer.from('a'));
+    const w2 = await tree.get(Buffer.from('b'));
+    const w3 = await tree.get(Buffer.from('c'));
+
+    VerifyWitness(root, Buffer.from('a'), w1);
+    VerifyWitness(root, Buffer.from('b'), w2);
+    should.not.exist(w3.value);
   });
 });
