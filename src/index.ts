@@ -1,6 +1,4 @@
-import {rejects} from 'assert';
-import {timingSafeEqual} from 'crypto';
-import {resolve} from 'url';
+import {RlpEncode} from 'rlp-stream';
 
 const original = require('./index_original');
 const originalNode = require('./trieNode');
@@ -19,6 +17,7 @@ interface OriginalTree {
   put: (key: Buffer, val: Buffer, callback: (err: string) => void) => void;
   get: (key: Buffer, callback: (err: string, val: Buffer|null) => void) => void;
   del: (key: Buffer, callback: (err: string) => void) => void;
+  batch: (ops: OriginalBatchOp[], callback: (err: string) => void) => void;
   findPath:
       (key: Buffer,
        callback:
@@ -44,6 +43,20 @@ export interface SearchResult {
   node: OriginalTreeNode|null;
   remainder: Buffer;
   stack: OriginalTreeNode[];
+}
+
+/** Describes a key value pair used in a batched put operation. */
+export interface BatchPut {
+  /** The key to insert. */
+  key: Buffer;
+  /** The value to insert */
+  val: Buffer;
+}
+
+interface OriginalBatchOp {
+  type: string;
+  key: Buffer;
+  value?: Buffer;
 }
 
 /** A Merkle Patricia Tree, as defined in the Ethereum Yellow Paper. */
@@ -127,6 +140,46 @@ export class MerklePatriciaTree {
     });
   }
 
+  /**
+   * Execute a batch of put and delete operations. The execution is batched,
+   * so calling this function with multiple updates provides more opportunities
+   * for optimization and can be faster than call put() and del() multiple
+   * times.
+   *
+   * @param putOps  An array of put operations on the tree, of type
+   * [[BatchPut]].
+   * @param delOps  An optional array of keys to delete from the tree.
+   *
+   * @returns       A promise, resolved with the root that results from this
+   *                set of operations.
+   */
+  batch(putOps: BatchPut[], delOps: Buffer[] = []): Promise<Buffer> {
+    return new Promise((resolve, reject) => {
+      const originalBatchOps = [];
+      for (const put of putOps) {
+        originalBatchOps.push(
+            {type: 'put', key: put.key, value: put.val} as OriginalBatchOp);
+      }
+      for (const del of delOps) {
+        originalBatchOps.push({type: 'del', key: del});
+      }
+      this.originalTree.batch(originalBatchOps, (err) => {
+        if (err) {
+          reject(err);
+        } else {
+          resolve(this.root);
+        }
+      });
+    });
+  }
+
+  /**
+   * Search for the given key, returning a [[SearchResult]] which contains the
+   * path traversed to search for the key.
+   *
+   * @param key    The key to search for.
+   * @returns      A [[SearchResult]] containig
+   */
   search(key: Buffer): Promise<SearchResult> {
     return new Promise((resolve, reject) => {
       this.originalTree.findPath(
@@ -234,7 +287,6 @@ export function VerifyWitness(root: Buffer, key: Buffer, witness: Witness) {
       currentKey = currentKey.slice(node.key.length);
       if (currentKey.length === 0 ||
           (cld.length === 17 && currentKey.length === 1)) {
-        // The value is in an embedded branch. Extract it.
         if (cld.length === 17) {
           cld = (cld[currentKey[0]] as Buffer[])[1];
           currentKey = currentKey.slice(1);

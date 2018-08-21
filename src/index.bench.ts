@@ -1,6 +1,8 @@
 
 import * as benchmark from 'benchmark';
-import {MerklePatriciaTree} from './index';
+
+import {BatchPut, MerklePatriciaTree} from './index';
+
 const ethUtil = require('ethereumjs-util');
 
 // This file contains the benchmark test suite. It includes the benchmark and
@@ -63,11 +65,13 @@ const generateStandardTree = async (
     rounds: number, eraSize: number, symmetric: boolean,
     seed: Buffer = Buffer.alloc(32, 0)) => {
   const tree = new MerklePatriciaTree();
+  let batchOps: BatchPut[] = [];
   for (let i = 1; i <= rounds; i++) {
     seed = ethUtil.sha3(seed);
-    await tree.put(seed, symmetric ? seed : ethUtil.sha3(seed));
+    batchOps.push({key: seed, val: symmetric ? seed : ethUtil.sha3(seed)});
     if (i % eraSize === 0) {
-      seed = tree.root;
+      seed = await tree.batch(batchOps);
+      batchOps = [];
     }
   }
   return tree;
