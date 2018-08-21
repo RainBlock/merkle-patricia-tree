@@ -78,4 +78,20 @@ describe(
         VerifyWitness(tree.root, Buffer.from('key2'), w2);
         VerifyWitness(tree.root, Buffer.from('key3'), w3);
       });
+
+
+      it('should create a merkle proof with an extension and embedded branch',
+         async () => {
+           await tree.put(Buffer.from('a'), Buffer.from('a'));
+           await tree.put(Buffer.from('b'), Buffer.from('b'));
+           await tree.put(Buffer.from('c'), Buffer.from('c'));
+
+           const w1 = await tree.get(Buffer.from('a'));
+           const w2 = await tree.get(Buffer.from('b'));
+           const w3 = await tree.get(Buffer.from('c'));
+
+           VerifyWitness(tree.root, Buffer.from('a'), w1);
+           VerifyWitness(tree.root, Buffer.from('b'), w2);
+           VerifyWitness(tree.root, Buffer.from('c'), w3);
+         });
     });
