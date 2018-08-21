@@ -12,7 +12,7 @@
     "test:browser": "karma start karma.conf.js",
     "test:node": "mocha -r ts-node/register src/**/*.spec.ts --timeout 40000",
     "build": "webpack",
-    "typedoc": "typedoc --out docs $(pwd)/src --target es6 --mode file --tsconfig ./tsconfig.json --excludePrivate --excludeProtected --exclude **/*.spec.ts",
+    "typedoc": "typedoc --out docs $(pwd)/src --target es6 --mode file --tsconfig ./tsconfig.json --excludePrivate --excludeProtected --excludeNotExported --exclude '**/*+(spec|bench).ts'",
     "check": "gts check",
     "clean": "gts clean",
     "compile": "mkdir -p build/src; cp src/*.js build/src; tsc -p .",

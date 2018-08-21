@@ -27,7 +27,7 @@ interface OriginalTree {
 }
 
 /**
- * An interface for a witness, which is a combination of a value and a proof
+ * An interface for a [[Witness]], which is a combination of a value and a proof
  * (witnessed at a certain root)
  */
 export interface Witness {
@@ -52,7 +52,7 @@ export class MerklePatriciaTree {
   private originalTree: OriginalTree;
 
   /**
-   * A buffer representing the root hash of the tree. Always 256-bits (32
+   * A Buffer representing the root hash of the tree. Always 256-bits (32
    * bytes).
    */
   get root(): Buffer {
@@ -69,9 +69,9 @@ export class MerklePatriciaTree {
    * tree, it is updated with the new value.
    *
    * @param key   The key to insert.
-   * @param val   A buffer representing the value.
+   * @param val   A Buffer representing the value.
    *
-   * @returns     A promise, resolved when the put is completed.
+   * @returns     A [[Promise]], resolved when the put is completed.
    */
   put(key: Buffer, val: Buffer): Promise<void> {
     return new Promise((resolve, reject) => {
@@ -86,12 +86,12 @@ export class MerklePatriciaTree {
   }
 
   /**
-   * Given a key, retrieve a witness for the mapping.
+   * Given a key, retrieve a [[Witness]] for the mapping.
    *
-   * @param key   The key to retrieve the witness for.
+   * @param key   The key to retrieve the [[Witness]] for.
    *
-   * @returns     A witness, with a proof of the value read (or a null value,
-   * with a proof of the value's nonexistence).
+   * @returns     A [[Witness]], with a proof of the value read (or a null
+   * value, with a proof of the value's nonexistence).
    */
   async get(key: Buffer): Promise<Witness> {
     const search = await this.search(key);
@@ -113,7 +113,7 @@ export class MerklePatriciaTree {
    *
    * @param key   The key to unmap.
    *
-   * @returns     A promise, resolved when the key is unmapped.
+   * @returns     A Promise, resolved when the key is unmapped.
    */
   del(key: Buffer): Promise<void> {
     return new Promise((resolve, reject) => {
@@ -152,19 +152,19 @@ export class MerklePatriciaTree {
   }
 }
 
-/** This {Error} indicates that there was a problem verifying a witness. */
+/** This Error indicates that there was a problem verifying a witness. */
 export class VerificationError extends Error {}
 
 /**
- * Verifies that a witness is correct for the given root and key.
+ * Verifies that a [[Witness]] is correct for the given root and key.
  *
- * @param root                  A {Buffer} containing the root of the tree to
+ * @param root                  A [[Buffer]] containing the root of the tree to
  * check
- * @param key                   A {Buffer} containing the key to check
- * @param witness               The {Witness} to verify
+ * @param key                   A [[Buffer]] containing the key to check
+ * @param witness               The [[Witness]] to verify
  *
- * @throws {VerificationError}  If there was an error verifying the witness using the
- *                              given key and root.
+ * @throws [[VerificationError]]  If there was an error verifying the witness
+ * using the given key and root.
  * @return                      A promise, which is resolved if the witness was
  * valid. Otherwise, the promise is completed exceptionally with the failure
  * reason.
