@@ -40,8 +40,6 @@
 							<label class="tsd-widget" for="tsd-filter-inherited">Inherited</label>
 							<input type="checkbox" id="tsd-filter-externals" checked />
 							<label class="tsd-widget" for="tsd-filter-externals">Externals</label>
-							<input type="checkbox" id="tsd-filter-only-exported" />
-							<label class="tsd-widget" for="tsd-filter-only-exported">Only exported</label>
 						</div>
 					</div>
 					<a href="#" class="tsd-widget menu no-caption" data-toggle="menu">Menu</a>
@@ -121,7 +119,7 @@
 						<li class="tsd-description">
 							<aside class="tsd-sources">
 								<ul>
-									<li>Defined in <a href="https://github.com/RainBlock/merkle-patricia-tree/blob/887baf1/src/index.ts#L60">index.ts:60</a></li>
+									<li>Defined in <a href="https://github.com/RainBlock/merkle-patricia-tree/blob/9245903/src/index.ts#L60">index.ts:60</a></li>
 								</ul>
 							</aside>
 							<div class="tsd-comment tsd-typography">
@@ -146,12 +144,12 @@
 						<li class="tsd-description">
 							<aside class="tsd-sources">
 								<ul>
-									<li>Defined in <a href="https://github.com/RainBlock/merkle-patricia-tree/blob/887baf1/src/index.ts#L58">index.ts:58</a></li>
+									<li>Defined in <a href="https://github.com/RainBlock/merkle-patricia-tree/blob/9245903/src/index.ts#L58">index.ts:58</a></li>
 								</ul>
 							</aside>
 							<div class="tsd-comment tsd-typography">
 								<div class="lead">
-									<p>A buffer representing the root hash of the tree. Always 256-bits (32
+									<p>A Buffer representing the root hash of the tree. Always 256-bits (32
 									bytes).</p>
 								</div>
 							</div>
@@ -172,7 +170,7 @@
 						<li class="tsd-description">
 							<aside class="tsd-sources">
 								<ul>
-									<li>Defined in <a href="https://github.com/RainBlock/merkle-patricia-tree/blob/887baf1/src/index.ts#L118">index.ts:118</a></li>
+									<li>Defined in <a href="https://github.com/RainBlock/merkle-patricia-tree/blob/9245903/src/index.ts#L118">index.ts:118</a></li>
 								</ul>
 							</aside>
 							<div class="tsd-comment tsd-typography">
@@ -190,7 +188,7 @@
 								</li>
 							</ul>
 							<h4 class="tsd-returns-title">Returns <span class="tsd-signature-type">Promise</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">void</span><span class="tsd-signature-symbol">&gt;</span></h4>
-							<p>A promise, resolved when the key is unmapped.</p>
+							<p>A Promise, resolved when the key is unmapped.</p>
 						</li>
 					</ul>
 				</section>
@@ -204,12 +202,12 @@
 						<li class="tsd-description">
 							<aside class="tsd-sources">
 								<ul>
-									<li>Defined in <a href="https://github.com/RainBlock/merkle-patricia-tree/blob/887baf1/src/index.ts#L96">index.ts:96</a></li>
+									<li>Defined in <a href="https://github.com/RainBlock/merkle-patricia-tree/blob/9245903/src/index.ts#L96">index.ts:96</a></li>
 								</ul>
 							</aside>
 							<div class="tsd-comment tsd-typography">
 								<div class="lead">
-									<p>Given a key, retrieve a witness for the mapping.</p>
+									<p>Given a key, retrieve a <a href="../interfaces/witness.html">Witness</a> for the mapping.</p>
 								</div>
 							</div>
 							<h4 class="tsd-parameters-title">Parameters</h4>
@@ -217,13 +215,13 @@
 								<li>
 									<h5>key: <span class="tsd-signature-type">Buffer</span></h5>
 									<div class="tsd-comment tsd-typography">
-										<p>The key to retrieve the witness for.</p>
+										<p>The key to retrieve the <a href="../interfaces/witness.html">Witness</a> for.</p>
 									</div>
 								</li>
 							</ul>
 							<h4 class="tsd-returns-title">Returns <span class="tsd-signature-type">Promise</span><span class="tsd-signature-symbol">&lt;</span><a href="../interfaces/witness.html" class="tsd-signature-type">Witness</a><span class="tsd-signature-symbol">&gt;</span></h4>
-							<p>A witness, with a proof of the value read (or a null value,
-							with a proof of the value&#39;s nonexistence).</p>
+							<p>A <a href="../interfaces/witness.html">Witness</a>, with a proof of the value read (or a null
+							value, with a proof of the value&#39;s nonexistence).</p>
 						</li>
 					</ul>
 				</section>
@@ -237,7 +235,7 @@
 						<li class="tsd-description">
 							<aside class="tsd-sources">
 								<ul>
-									<li>Defined in <a href="https://github.com/RainBlock/merkle-patricia-tree/blob/887baf1/src/index.ts#L76">index.ts:76</a></li>
+									<li>Defined in <a href="https://github.com/RainBlock/merkle-patricia-tree/blob/9245903/src/index.ts#L76">index.ts:76</a></li>
 								</ul>
 							</aside>
 							<div class="tsd-comment tsd-typography">
@@ -257,12 +255,12 @@
 								<li>
 									<h5>val: <span class="tsd-signature-type">Buffer</span></h5>
 									<div class="tsd-comment tsd-typography">
-										<p>A buffer representing the value.</p>
+										<p>A Buffer representing the value.</p>
 									</div>
 								</li>
 							</ul>
 							<h4 class="tsd-returns-title">Returns <span class="tsd-signature-type">Promise</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">void</span><span class="tsd-signature-symbol">&gt;</span></h4>
-							<p>A promise, resolved when the put is completed.</p>
+							<p>A [[Promise]], resolved when the put is completed.</p>
 						</li>
 					</ul>
 				</section>
@@ -276,7 +274,7 @@
 						<li class="tsd-description">
 							<aside class="tsd-sources">
 								<ul>
-									<li>Defined in <a href="https://github.com/RainBlock/merkle-patricia-tree/blob/887baf1/src/index.ts#L130">index.ts:130</a></li>
+									<li>Defined in <a href="https://github.com/RainBlock/merkle-patricia-tree/blob/9245903/src/index.ts#L130">index.ts:130</a></li>
 								</ul>
 							</aside>
 							<h4 class="tsd-parameters-title">Parameters</h4>
@@ -331,65 +329,17 @@
 					<li class=" tsd-kind-class">
 						<a href="verificationerror.html" class="tsd-kind-icon">Verification<wbr>Error</a>
 					</li>
-					<li class=" tsd-kind-interface tsd-is-not-exported">
-						<a href="../interfaces/benchmarkdeferrable.html" class="tsd-kind-icon">Benchmark<wbr>Deferrable</a>
-					</li>
-					<li class=" tsd-kind-interface tsd-is-not-exported">
-						<a href="../interfaces/benchmarkrun.html" class="tsd-kind-icon">Benchmark<wbr>Run</a>
-					</li>
-					<li class=" tsd-kind-interface tsd-is-not-exported">
-						<a href="../interfaces/originaltree.html" class="tsd-kind-icon">Original<wbr>Tree</a>
-					</li>
 					<li class=" tsd-kind-interface">
 						<a href="../interfaces/originaltreenode.html" class="tsd-kind-icon">Original<wbr>Tree<wbr>Node</a>
 					</li>
 					<li class=" tsd-kind-interface">
 						<a href="../interfaces/searchresult.html" class="tsd-kind-icon">Search<wbr>Result</a>
 					</li>
-					<li class=" tsd-kind-interface tsd-is-not-exported">
-						<a href="../interfaces/testdata.html" class="tsd-kind-icon">Test<wbr>Data</a>
-					</li>
 					<li class=" tsd-kind-interface">
 						<a href="../interfaces/witness.html" class="tsd-kind-icon">Witness</a>
 					</li>
-					<li class=" tsd-kind-variable tsd-is-not-exported">
-						<a href="../globals.html#ethutil" class="tsd-kind-icon">eth<wbr>Util</a>
-					</li>
-					<li class=" tsd-kind-variable tsd-is-not-exported">
-						<a href="../globals.html#matchingnibblelength" class="tsd-kind-icon">matching<wbr>Nibble<wbr>Length</a>
-					</li>
-					<li class=" tsd-kind-variable tsd-is-not-exported">
-						<a href="../globals.html#original" class="tsd-kind-icon">original</a>
-					</li>
-					<li class=" tsd-kind-variable tsd-is-not-exported">
-						<a href="../globals.html#originalnode" class="tsd-kind-icon">original<wbr>Node</a>
-					</li>
-					<li class=" tsd-kind-variable tsd-is-not-exported">
-						<a href="../globals.html#should" class="tsd-kind-icon">should</a>
-					</li>
-					<li class=" tsd-kind-variable tsd-is-not-exported">
-						<a href="../globals.html#suite" class="tsd-kind-icon">suite</a>
-					</li>
-					<li class=" tsd-kind-variable tsd-is-not-exported">
-						<a href="../globals.html#testjson" class="tsd-kind-icon">test<wbr>Json</a>
-					</li>
-					<li class=" tsd-kind-variable tsd-is-not-exported">
-						<a href="../globals.html#testjsonsecure" class="tsd-kind-icon">test<wbr>Json<wbr>Secure</a>
-					</li>
 					<li class=" tsd-kind-function">
 						<a href="../globals.html#verifywitness" class="tsd-kind-icon">Verify<wbr>Witness</a>
-					</li>
-					<li class=" tsd-kind-function tsd-has-type-parameter tsd-is-not-exported">
-						<a href="../globals.html#addasynctest" class="tsd-kind-icon">add<wbr>Async<wbr>Test</a>
-					</li>
-					<li class=" tsd-kind-function tsd-is-not-exported">
-						<a href="../globals.html#generatestandardtree" class="tsd-kind-icon">generate<wbr>Standard<wbr>Tree</a>
-					</li>
-					<li class=" tsd-kind-function tsd-is-not-exported">
-						<a href="../globals.html#securetestdatatobuffer" class="tsd-kind-icon">secure<wbr>Test<wbr>Data<wbr>ToBuffer</a>
-					</li>
-					<li class=" tsd-kind-function tsd-is-not-exported">
-						<a href="../globals.html#testdatatobuffer" class="tsd-kind-icon">test<wbr>Data<wbr>ToBuffer</a>
 					</li>
 				</ul>
 			</nav>
