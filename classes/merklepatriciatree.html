@@ -98,6 +98,7 @@
 						<section class="tsd-index-section ">
 							<h3>Methods</h3>
 							<ul class="tsd-index-list">
+								<li class="tsd-kind-method tsd-parent-kind-class"><a href="merklepatriciatree.html#batch" class="tsd-kind-icon">batch</a></li>
 								<li class="tsd-kind-method tsd-parent-kind-class"><a href="merklepatriciatree.html#del" class="tsd-kind-icon">del</a></li>
 								<li class="tsd-kind-method tsd-parent-kind-class"><a href="merklepatriciatree.html#get" class="tsd-kind-icon">get</a></li>
 								<li class="tsd-kind-method tsd-parent-kind-class"><a href="merklepatriciatree.html#put" class="tsd-kind-icon">put</a></li>
@@ -119,7 +120,7 @@
 						<li class="tsd-description">
 							<aside class="tsd-sources">
 								<ul>
-									<li>Defined in <a href="https://github.com/RainBlock/merkle-patricia-tree/blob/9e2b52d/src/index.ts#L60">index.ts:60</a></li>
+									<li>Defined in <a href="https://github.com/RainBlock/merkle-patricia-tree/blob/c78092d/src/index.ts#L73">index.ts:73</a></li>
 								</ul>
 							</aside>
 							<div class="tsd-comment tsd-typography">
@@ -144,7 +145,7 @@
 						<li class="tsd-description">
 							<aside class="tsd-sources">
 								<ul>
-									<li>Defined in <a href="https://github.com/RainBlock/merkle-patricia-tree/blob/9e2b52d/src/index.ts#L58">index.ts:58</a></li>
+									<li>Defined in <a href="https://github.com/RainBlock/merkle-patricia-tree/blob/c78092d/src/index.ts#L71">index.ts:71</a></li>
 								</ul>
 							</aside>
 							<div class="tsd-comment tsd-typography">
@@ -161,6 +162,49 @@
 			<section class="tsd-panel-group tsd-member-group ">
 				<h2>Methods</h2>
 				<section class="tsd-panel tsd-member tsd-kind-method tsd-parent-kind-class">
+					<a name="batch" class="tsd-anchor"></a>
+					<h3>batch</h3>
+					<ul class="tsd-signatures tsd-kind-method tsd-parent-kind-class">
+						<li class="tsd-signature tsd-kind-icon">batch<span class="tsd-signature-symbol">(</span>putOps<span class="tsd-signature-symbol">: </span><a href="../interfaces/batchput.html" class="tsd-signature-type">BatchPut</a><span class="tsd-signature-symbol">[]</span>, delOps<span class="tsd-signature-symbol">?: </span><span class="tsd-signature-type">Buffer</span><span class="tsd-signature-symbol">[]</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">Promise</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">Buffer</span><span class="tsd-signature-symbol">&gt;</span></li>
+					</ul>
+					<ul class="tsd-descriptions">
+						<li class="tsd-description">
+							<aside class="tsd-sources">
+								<ul>
+									<li>Defined in <a href="https://github.com/RainBlock/merkle-patricia-tree/blob/c78092d/src/index.ts#L156">index.ts:156</a></li>
+								</ul>
+							</aside>
+							<div class="tsd-comment tsd-typography">
+								<div class="lead">
+									<p>Execute a batch of put and delete operations. The execution is batched,
+										so calling this function with multiple updates provides more opportunities
+										for optimization and can be faster than call put() and del() multiple
+									times.</p>
+								</div>
+							</div>
+							<h4 class="tsd-parameters-title">Parameters</h4>
+							<ul class="tsd-parameters">
+								<li>
+									<h5>putOps: <a href="../interfaces/batchput.html" class="tsd-signature-type">BatchPut</a><span class="tsd-signature-symbol">[]</span></h5>
+									<div class="tsd-comment tsd-typography">
+										<p>An array of put operations on the tree, of type
+										<a href="../interfaces/batchput.html">BatchPut</a>.</p>
+									</div>
+								</li>
+								<li>
+									<h5><span class="tsd-flag ts-flagDefault value">Default value</span> delOps: <span class="tsd-signature-type">Buffer</span><span class="tsd-signature-symbol">[]</span><span class="tsd-signature-symbol"> =&nbsp;[]</span></h5>
+									<div class="tsd-comment tsd-typography">
+										<p>An optional array of keys to delete from the tree.</p>
+									</div>
+								</li>
+							</ul>
+							<h4 class="tsd-returns-title">Returns <span class="tsd-signature-type">Promise</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">Buffer</span><span class="tsd-signature-symbol">&gt;</span></h4>
+							<p>A promise, resolved with the root that results from this
+							set of operations.</p>
+						</li>
+					</ul>
+				</section>
+				<section class="tsd-panel tsd-member tsd-kind-method tsd-parent-kind-class">
 					<a name="del" class="tsd-anchor"></a>
 					<h3>del</h3>
 					<ul class="tsd-signatures tsd-kind-method tsd-parent-kind-class">
@@ -170,7 +214,7 @@
 						<li class="tsd-description">
 							<aside class="tsd-sources">
 								<ul>
-									<li>Defined in <a href="https://github.com/RainBlock/merkle-patricia-tree/blob/9e2b52d/src/index.ts#L118">index.ts:118</a></li>
+									<li>Defined in <a href="https://github.com/RainBlock/merkle-patricia-tree/blob/c78092d/src/index.ts#L131">index.ts:131</a></li>
 								</ul>
 							</aside>
 							<div class="tsd-comment tsd-typography">
@@ -202,7 +246,7 @@
 						<li class="tsd-description">
 							<aside class="tsd-sources">
 								<ul>
-									<li>Defined in <a href="https://github.com/RainBlock/merkle-patricia-tree/blob/9e2b52d/src/index.ts#L96">index.ts:96</a></li>
+									<li>Defined in <a href="https://github.com/RainBlock/merkle-patricia-tree/blob/c78092d/src/index.ts#L109">index.ts:109</a></li>
 								</ul>
 							</aside>
 							<div class="tsd-comment tsd-typography">
@@ -235,7 +279,7 @@
 						<li class="tsd-description">
 							<aside class="tsd-sources">
 								<ul>
-									<li>Defined in <a href="https://github.com/RainBlock/merkle-patricia-tree/blob/9e2b52d/src/index.ts#L76">index.ts:76</a></li>
+									<li>Defined in <a href="https://github.com/RainBlock/merkle-patricia-tree/blob/c78092d/src/index.ts#L89">index.ts:89</a></li>
 								</ul>
 							</aside>
 							<div class="tsd-comment tsd-typography">
@@ -274,16 +318,26 @@
 						<li class="tsd-description">
 							<aside class="tsd-sources">
 								<ul>
-									<li>Defined in <a href="https://github.com/RainBlock/merkle-patricia-tree/blob/9e2b52d/src/index.ts#L130">index.ts:130</a></li>
+									<li>Defined in <a href="https://github.com/RainBlock/merkle-patricia-tree/blob/c78092d/src/index.ts#L183">index.ts:183</a></li>
 								</ul>
 							</aside>
+							<div class="tsd-comment tsd-typography">
+								<div class="lead">
+									<p>Search for the given key, returning a <a href="../interfaces/searchresult.html">SearchResult</a> which contains the
+									path traversed to search for the key.</p>
+								</div>
+							</div>
 							<h4 class="tsd-parameters-title">Parameters</h4>
 							<ul class="tsd-parameters">
 								<li>
 									<h5>key: <span class="tsd-signature-type">Buffer</span></h5>
+									<div class="tsd-comment tsd-typography">
+										<p>The key to search for.</p>
+									</div>
 								</li>
 							</ul>
 							<h4 class="tsd-returns-title">Returns <span class="tsd-signature-type">Promise</span><span class="tsd-signature-symbol">&lt;</span><a href="../interfaces/searchresult.html" class="tsd-signature-type">SearchResult</a><span class="tsd-signature-symbol">&gt;</span></h4>
+							<p>A <a href="../interfaces/searchresult.html">SearchResult</a> containig</p>
 						</li>
 					</ul>
 				</section>
@@ -311,6 +365,9 @@
 								<a href="merklepatriciatree.html#root" class="tsd-kind-icon">root</a>
 							</li>
 							<li class=" tsd-kind-method tsd-parent-kind-class">
+								<a href="merklepatriciatree.html#batch" class="tsd-kind-icon">batch</a>
+							</li>
+							<li class=" tsd-kind-method tsd-parent-kind-class">
 								<a href="merklepatriciatree.html#del" class="tsd-kind-icon">del</a>
 							</li>
 							<li class=" tsd-kind-method tsd-parent-kind-class">
@@ -328,6 +385,9 @@
 				<ul class="after-current">
 					<li class=" tsd-kind-class">
 						<a href="verificationerror.html" class="tsd-kind-icon">Verification<wbr>Error</a>
+					</li>
+					<li class=" tsd-kind-interface">
+						<a href="../interfaces/batchput.html" class="tsd-kind-icon">Batch<wbr>Put</a>
 					</li>
 					<li class=" tsd-kind-interface">
 						<a href="../interfaces/originaltreenode.html" class="tsd-kind-icon">Original<wbr>Tree<wbr>Node</a>
