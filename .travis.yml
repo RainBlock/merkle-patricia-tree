@@ -6,6 +6,7 @@ env:
   global:
   - DISPLAY=:99.0
   - secure: EdR5wACv6IIsY25lpm6eG+2hLuXGyt2essusHj9eZqTmepMkwWa4kNNuV15/dQIwE9xOKIc4bFd+FMDTDdV9NEsrgrF7g4hqMsewaYHQsX6LJXhA8naQtwYEYadqE9i0HHEXaguvJeiE1m80FFAr713ZpLdSvjSvdWOqWWQrlmA18x/uYnWYqcK7shCugMkh6iZnE33/jINFfY7cVtQdVBNvLZ7g/QIrfZVThCadEVGv9UFwHgwpeXWJS8xxryvcEL0Y1PgO29vFNbHXb73s2iLRcFAEDJzu34P4CuzrCa1xbXsM7MiSqeSxNy2IsfFP+Ki6ebWkSYYaBBBIz1PBCNStyB6YaUHufZ8OemkZT/0Q+CUhPuQLfhzwY8ujArztORNjpDgOf3spWnVjOXDDQ2BubyRxP9MwSs2vzCeyEivhZ+xCSMJk1bSC2BMg6dAkyRjvO050gWvlTyBJq8tXcpNt9cxPqbFQbbVyDZNpmgfl/s7trU2420R6w4qqzqEBM1dzIV3ioV0yNQvK/iaBiyZnR6t2R3e9ulSSrDkKp21R+sgAiA9yqhm+QifTTCmCBPYIV6w4hUXOyRq+jm+5HZQajZGjDiuixJuKaM0GPrNiJYJ9cuk3k+7MdVqgKgoRBMunVS2XGXIGncnGFnUdjwlf0J4AbC899fs/dVW5YWs=
+  - secure: m7tq7n+5f8qD+IXictGgNxBBTcZQGuK0ICGHZ5bL6H8w2v62F8TBNDCRxF2tfoBfFEzGduRcbfuXT5ihuVQzPwRNo35ShvVyNcTwIP8zNXaWfyA2f/RRS6q5Gnzowa854fbttUn8pmh8eEKLz9xmMpSfQDB9tiCtl69cwxgBoUGnvSSVWGIjnapU8TrwM4+wgTTSvcxJOhUITwek/jrOEcFmBFDHpD55ZbatxlbEMXpPYmLLmXDCfyvr2BUCtLVbgbbzGFlI1gJqogyCLSjIkhcuBMcOs5RpgzPW3nqrklU+M5iiORDafrN1eNbceZukei6yKWitDjfzlRE/WV1CeeDmITbUUPp0y6pqGZ/oIR5J5mvWwf+kgy2fpwAgfOJITr7bJxnVH6/qX/OfwGntWTmTMuLR+qPN08CrsPakg05E0OiFyfCUrcCwRRp/Aoe7+83rTdGzLsSndLasOtCPk9d5Lqg5NsrKcRn/opeAqQZMvRMuLrn3GXm8wFcozepDBVQMxTm9eUoJmRHPmw7qpi+nDTPXTUHv77+Ap6YWYXTtyNL418EqJnF+kr26p6Q0QMHxdtB6OYcSAXfRBXGY5wvZRBHdtKJYx3A6S9E3RR5kCJoSLZeANXh0rz7LHl39uVaV4pQvlp6V5hAMs489WBG1a5/94DmfplcXRRpSQhQ=
   matrix:
   - CXX=g++-4.8 TEST_SUITE=test:node
 addons:
@@ -39,3 +40,22 @@ deploy:
     branch: master
     node: '10'
     condition: "$TEST_SUITE = test:node"
+- provider: releases
+  api_key: "$GITHUB_TOKEN"
+  file_glob: true
+  file: rainblock-merkle-patricia-tree-*.tgz
+  skip_cleanup: true
+  on:
+    branch: master
+    node: '10'
+    condition: "$TEST_SUITE = test:node"
+    tags: true
+- provider: npm
+  api_key: "$NPM_TOKEN"
+  skip_cleanup: true
+  email: mwei@cs.ucsd.edu
+  on:
+    branch: master
+    node: '10'
+    condition: "$TEST_SUITE = test:node"
+    tags: true
