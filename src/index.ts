@@ -77,12 +77,22 @@ export abstract class MerklePatriciaTreeNode {
    */
   static HUMAN_READABLE_VAL_LENGTH = 6;
 
+  private memoizedHash: Buffer|null = null;
+
+  clearMemoizedHash() {
+    this.memoizedHash = null;
+  }
+
   /**
    * Return the hash for the node.
    * @returns A Buffer containing the hash for the node.
    */
   hash(): Buffer {
-    return keccak('keccak256').update(RlpEncode(this.serialize())).digest();
+    if (this.memoizedHash === null) {
+      this.memoizedHash =
+          keccak('keccak256').update(RlpEncode(this.serialize())).digest();
+    }
+    return this.memoizedHash!;
   }
 
   /**
@@ -494,12 +504,12 @@ export class MerklePatriciaTree {
    *
    * @returns     A [[Promise]], resolved when the put is completed.
    */
-  async put(key: Buffer, val: Buffer) {
+  put(key: Buffer, val: Buffer) {
     if (key.length === 0) {
       throw new Error('Empty key is not supported');
     }
     if (val.length === 0) {
-      await this.del(key);
+      this.del(key);
       return;
     }
     if (this.rootNode instanceof NullNode) {
@@ -515,6 +525,10 @@ export class MerklePatriciaTree {
       } else {
         // Doesn't match, perform tree insertion using stack
         this.insert(result.stack, result.remainder, val);
+      }
+      // Clear all memoized hashes in the path, they will be reset.
+      for (const node of result.stack) {
+        node.clearMemoizedHash();
       }
     }
   }
@@ -690,8 +704,8 @@ export class MerklePatriciaTree {
    * @returns     A [[Witness]], with a proof of the value read (or a null
    * value, with a proof of the value's nonexistence).
    */
-  async get(key: Buffer): Promise<Witness> {
-    const search = await this.search(key);
+  get(key: Buffer): Witness {
+    const search = this.search(key);
     const value = search.node === null ? null : search.node.value;
 
     const proof: Buffer[] = [];
@@ -712,9 +726,13 @@ export class MerklePatriciaTree {
    *
    * @returns     A Promise, resolved when the key is unmapped.
    */
-  async del(key: Buffer) {
+  del(key: Buffer) {
     const result = this.search(key);
     if (result.node != null) {
+      // Clear all memoized hashes in the path, they will be reset.
+      for (const node of result.stack) {
+        node.clearMemoizedHash();
+      }
       if (result.node instanceof BranchNode) {
         result.node.value = Buffer.from([]);
       } else if (result.stack.length === 1) {
@@ -820,12 +838,12 @@ export class MerklePatriciaTree {
    * @returns       A promise, resolved with the root that results from this
    *                set of operations.
    */
-  async batch(putOps: BatchPut[], delOps: Buffer[] = []): Promise<Buffer> {
+  batch(putOps: BatchPut[], delOps: Buffer[] = []): Buffer {
     for (const put of putOps) {
-      await this.put(put.key, put.val);
+      this.put(put.key, put.val);
     }
     for (const del of delOps) {
-      await this.del(del);
+      this.del(del);
     }
     return this.root;
   }

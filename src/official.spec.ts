@@ -46,24 +46,8 @@ describe('Run official tests', () => {
 
     it(`should pass official test ${testName}`, async () => {
       for (const pair of testData.in) {
-        await tree.put(testDataToBuffer(pair[0]), testDataToBuffer(pair[1]));
+        tree.put(testDataToBuffer(pair[0]), testDataToBuffer(pair[1]));
       }
-      `0x${tree.root.toString('hex')}`.should.equal(testData.root);
-    });
-  }
-});
-
-describe('Run official tests async', () => {
-  for (const [testName, testData] of Object.entries(testJson)) {
-    const tree = new MerklePatriciaTree();
-
-    it(`should pass official test ${testName}`, async () => {
-      const promises = [];
-      for (const pair of testData.in) {
-        promises.push(
-            tree.put(testDataToBuffer(pair[0]), testDataToBuffer(pair[1])));
-      }
-      await Promise.all(promises);
       `0x${tree.root.toString('hex')}`.should.equal(testData.root);
     });
   }
@@ -75,25 +59,8 @@ describe('Run official tests (secure)', () => {
 
     it(`should pass official test ${testName}`, async () => {
       for (const pair of testData.in) {
-        await tree.put(
-            secureTestDataToBuffer(pair[0]), testDataToBuffer(pair[1]));
+        tree.put(secureTestDataToBuffer(pair[0]), testDataToBuffer(pair[1]));
       }
-      `0x${tree.root.toString('hex')}`.should.equal(testData.root);
-    });
-  }
-});
-
-describe('Run official tests (secure) async', () => {
-  for (const [testName, testData] of Object.entries(testJsonSecure)) {
-    const tree = new MerklePatriciaTree();
-
-    it(`should pass official test ${testName}`, async () => {
-      const promises = [];
-      for (const pair of testData.in) {
-        promises.push(tree.put(
-            secureTestDataToBuffer(pair[0]), testDataToBuffer(pair[1])));
-      }
-      await Promise.all(promises);
       `0x${tree.root.toString('hex')}`.should.equal(testData.root);
     });
   }
