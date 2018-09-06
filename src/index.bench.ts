@@ -61,21 +61,21 @@ const addAsyncTest = <T>(
  *
  *  @returns            A {MerklePatriciaTree} initialized to the given inputs.
  */
-const generateStandardTree = async (
-    rounds: number, eraSize: number, symmetric: boolean,
-    seed: Buffer = Buffer.alloc(32, 0)) => {
-  const tree = new MerklePatriciaTree();
-  let batchOps: BatchPut[] = [];
-  for (let i = 1; i <= rounds; i++) {
-    seed = ethUtil.sha3(seed);
-    batchOps.push({key: seed, val: symmetric ? seed : ethUtil.sha3(seed)});
-    if (i % eraSize === 0) {
-      seed = await tree.batch(batchOps);
-      batchOps = [];
-    }
-  }
-  return tree;
-};
+const generateStandardTree =
+    (rounds: number, eraSize: number, symmetric: boolean,
+     seed: Buffer = Buffer.alloc(32, 0)) => {
+      const tree = new MerklePatriciaTree();
+      let batchOps: BatchPut[] = [];
+      for (let i = 1; i <= rounds; i++) {
+        seed = ethUtil.sha3(seed);
+        batchOps.push({key: seed, val: symmetric ? seed : ethUtil.sha3(seed)});
+        if (i % eraSize === 0) {
+          seed = tree.batch(batchOps);
+          batchOps = [];
+        }
+      }
+      return tree;
+    };
 
 //#region Simple tests
 
@@ -84,39 +84,39 @@ addAsyncTest('no-op', async () => {}, () => null);
 
 // Tests the performance of inserting into an empty tree.
 addAsyncTest('put (empty tree)', async (tree) => {
-  await tree.put(Buffer.from('a'), Buffer.from('b'));
+  tree.put(Buffer.from('a'), Buffer.from('b'));
 }, () => new MerklePatriciaTree());
 
 // Tests the performance of getting from an empty tree.
 addAsyncTest('get (empty tree)', async (tree) => {
-  await tree.get(Buffer.from('a'));
+  tree.get(Buffer.from('a'));
 }, () => new MerklePatriciaTree());
 
 //#endregion
 
 //#region Tree generation tests
 addAsyncTest('generate 1k-10k-32-ran', async () => {
-  await generateStandardTree(1000, 10000, true);
+  generateStandardTree(1000, 10000, true);
 });
 
 addAsyncTest('generate 1k-1k-32-ran', async () => {
-  await generateStandardTree(1000, 1000, true);
+  generateStandardTree(1000, 1000, true);
 });
 
 addAsyncTest('generate 1k-1k-32-mir', async () => {
-  await generateStandardTree(1000, 1000, false);
+  generateStandardTree(1000, 1000, false);
 });
 
 addAsyncTest('generate 1k-9-32-ran', async () => {
-  await generateStandardTree(1000, 9, true);
+  generateStandardTree(1000, 9, true);
 });
 
 addAsyncTest('generate 1k-5-32-ran', async () => {
-  await generateStandardTree(1000, 5, true);
+  generateStandardTree(1000, 5, true);
 });
 
 addAsyncTest('generate 1k-3-32-ran', async () => {
-  await generateStandardTree(1000, 3, true);
+  generateStandardTree(1000, 3, true);
 });
 //#endregion
 

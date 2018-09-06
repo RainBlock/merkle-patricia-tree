@@ -21,52 +21,52 @@ describe('Try original simple-save-retrieve', () => {
   const two = Buffer.from('two');
 
   it('should save a value', async () => {
-    await tree.put(Buffer.from('test'), one);
+    tree.put(Buffer.from('test'), one);
   });
 
   it('should get a value', async () => {
-    const val = await tree.get(Buffer.from('test'));
+    const val = tree.get(Buffer.from('test'));
     should.exist(val.value);
     val.value!.should.deep.equal(one);
   });
 
   it('should update a value', async () => {
-    await tree.put(Buffer.from('test'), two);
-    const val = await tree.get(Buffer.from('test'));
+    tree.put(Buffer.from('test'), two);
+    const val = tree.get(Buffer.from('test'));
     should.exist(val.value);
     val.value!.should.deep.equal(two);
   });
 
   it('should delete value', async () => {
-    await tree.del(Buffer.from('test'));
-    should.not.exist((await tree.get(Buffer.from('test'))).value);
+    tree.del(Buffer.from('test'));
+    should.not.exist((tree.get(Buffer.from('test'))).value);
   });
 
   it('should recreate value', async () => {
-    await tree.put(Buffer.from('test'), one);
+    tree.put(Buffer.from('test'), one);
   });
 
   it('should get updated value', async () => {
-    const val = await tree.get(Buffer.from('test'));
+    const val = tree.get(Buffer.from('test'));
     should.exist(val.value);
     val.value!.should.deep.equal(one);
   });
 
   it('should create a branch', async () => {
-    await tree.put(Buffer.from('doge'), Buffer.from('coin'));
+    tree.put(Buffer.from('doge'), Buffer.from('coin'));
     tree.root.toString('hex').should.equal(
         'de8a34a8c1d558682eae1528b47523a483dd8685d6db14b291451a66066bf0fc');
   });
 
   it('should get a value in a branch', async () => {
-    const val = await tree.get(Buffer.from('doge'));
+    const val = tree.get(Buffer.from('doge'));
     should.exist(val.value);
     val.value!.should.deep.equal(Buffer.from('coin'));
   });
 
   it('should delete from a branch', async () => {
-    await tree.del(Buffer.from('doge'));
-    should.not.exist((await tree.get(Buffer.from('doge'))).value);
+    tree.del(Buffer.from('doge'));
+    should.not.exist((tree.get(Buffer.from('doge'))).value);
   });
 });
 
@@ -79,20 +79,20 @@ describe('Try original storing larger values', () => {
       'b173e2db29e79c78963cff5196f8a983fbe0171388972106b114ef7f5c24dfa3';
 
   it('should store a larger string', async () => {
-    await tree.put(Buffer.from('done'), Buffer.from(longString));
-    await tree.put(Buffer.from('doge'), Buffer.from('coin'));
+    tree.put(Buffer.from('done'), Buffer.from(longString));
+    tree.put(Buffer.from('doge'), Buffer.from('coin'));
     tree.root.toString('hex').should.equal(longStringRoot);
   });
 
   it('should retrieve longer values', async () => {
-    const val = await tree.get(Buffer.from('done'));
+    const val = tree.get(Buffer.from('done'));
     should.exist(val.value);
     val.value!.should.deep.equal(Buffer.from(longString));
   });
 
   it('should be able to update older values', async () => {
-    await tree.put(Buffer.from('done'), Buffer.from('test'));
-    const val = await tree.get(Buffer.from('done'));
+    tree.put(Buffer.from('done'), Buffer.from('test'));
+    const val = tree.get(Buffer.from('done'));
     should.exist(val.value);
     val.value!.should.deep.equal(Buffer.from('test'));
   });
@@ -103,17 +103,17 @@ describe('Try original extensions and branches', () => {
   const tree: MerklePatriciaTree = new MerklePatriciaTree();
 
   it('should store a value', async () => {
-    await tree.put(Buffer.from('doge'), Buffer.from('coin'));
+    tree.put(Buffer.from('doge'), Buffer.from('coin'));
   });
 
   it('should create an extension', async () => {
-    await tree.put(Buffer.from('do'), Buffer.from('verb'));
+    tree.put(Buffer.from('do'), Buffer.from('verb'));
     tree.root.toString('hex').should.equal(
         'f803dfcb7e8f1afd45e88eedb4699a7138d6c07b71243d9ae9bff720c99925f9');
   });
 
   it('should store a new value in the extension', async () => {
-    await tree.put(Buffer.from('done'), Buffer.from('finished'));
+    tree.put(Buffer.from('done'), Buffer.from('finished'));
     tree.root.toString('hex').should.equal(
         '409cff4d820b394ed3fb1cd4497bdd19ffa68d30ae34157337a7043c94a3e8cb');
   });
@@ -123,17 +123,17 @@ describe('Try original extensions and branches - reverse', () => {
   const tree: MerklePatriciaTree = new MerklePatriciaTree();
 
   it('should create an extension', async () => {
-    await tree.put(Buffer.from('do'), Buffer.from('verb'));
+    tree.put(Buffer.from('do'), Buffer.from('verb'));
   });
 
   it('should store another value', async () => {
-    await tree.put(Buffer.from('doge'), Buffer.from('coin'));
+    tree.put(Buffer.from('doge'), Buffer.from('coin'));
     tree.root.toString('hex').should.equal(
         'f803dfcb7e8f1afd45e88eedb4699a7138d6c07b71243d9ae9bff720c99925f9');
   });
 
   it('should store another value in the extension', async () => {
-    await tree.put(Buffer.from('done'), Buffer.from('finished'));
+    tree.put(Buffer.from('done'), Buffer.from('finished'));
     tree.root.toString('hex').should.equal(
         '409cff4d820b394ed3fb1cd4497bdd19ffa68d30ae34157337a7043c94a3e8cb');
   });
@@ -152,9 +152,8 @@ describe('Try original deletions tests', () => {
         Buffer.from([12, 22, 22]), Buffer.from('create the first branch'));
     const a3 = tree.put(
         Buffer.from([12, 33, 44]), Buffer.from('create the last branch'));
-    await Promise.all([a1, a2, a3]);
-    await tree.del(Buffer.from([12, 22, 22]));
-    const val = await tree.get(Buffer.from([12, 22, 22]));
+    tree.del(Buffer.from([12, 22, 22]));
+    const val = tree.get(Buffer.from([12, 22, 22]));
     should.not.exist(val.value);
   });
 
@@ -167,35 +166,30 @@ describe('Try original deletions tests', () => {
     const a4 = tree.put(
         Buffer.from([12, 33, 44]), Buffer.from('create the last branch'));
 
-    await Promise.all([a1, a2, a3, a4]);
-    await tree.del(Buffer.from([12, 22, 22]));
-    const val = await tree.get(Buffer.from([12, 22, 22]));
+    tree.del(Buffer.from([12, 22, 22]));
+    const val = tree.get(Buffer.from([12, 22, 22]));
     should.not.exist(val.value);
   });
 
   it('should delete from a extension->branch-extension', async () => {
-    await tree.put(Buffer.from([11, 11, 11]), Buffer.from('first'));
-    await tree.put(
-        Buffer.from([12, 22, 22]), Buffer.from('create the first branch'));
-    await tree.put(
+    tree.put(Buffer.from([11, 11, 11]), Buffer.from('first'));
+    tree.put(Buffer.from([12, 22, 22]), Buffer.from('create the first branch'));
+    tree.put(
         Buffer.from([12, 33, 33]), Buffer.from('create the middle branch'));
-    await tree.put(
-        Buffer.from([12, 33, 44]), Buffer.from('create the last branch'));
-    await tree.del(Buffer.from([11, 11, 11]));
-    const val = await tree.get(Buffer.from([11, 11, 11]));
+    tree.put(Buffer.from([12, 33, 44]), Buffer.from('create the last branch'));
+    tree.del(Buffer.from([11, 11, 11]));
+    const val = tree.get(Buffer.from([11, 11, 11]));
     should.not.exist(val.value);
   });
 
   it('should delete from a extension->branch-branch', async () => {
-    await tree.put(Buffer.from([11, 11, 11]), Buffer.from('first'));
-    await tree.put(
-        Buffer.from([12, 22, 22]), Buffer.from('create the first branch'));
-    await tree.put(
+    tree.put(Buffer.from([11, 11, 11]), Buffer.from('first'));
+    tree.put(Buffer.from([12, 22, 22]), Buffer.from('create the first branch'));
+    tree.put(
         Buffer.from([12, 33, 33]), Buffer.from('create the middle branch'));
-    await tree.put(
-        Buffer.from([12, 34, 44]), Buffer.from('create the last branch'));
-    await tree.del(Buffer.from([11, 11, 11]));
-    const val = await tree.get(Buffer.from([11, 11, 11]));
+    tree.put(Buffer.from([12, 34, 44]), Buffer.from('create the last branch'));
+    tree.del(Buffer.from([11, 11, 11]));
+    const val = tree.get(Buffer.from([11, 11, 11]));
     should.not.exist(val.value);
   });
 });
@@ -224,17 +218,17 @@ describe('Creating the ethereum genesis block', () => {
   const tree: MerklePatriciaTree = new MerklePatriciaTree();
 
   it('should match the original genesis root', async () => {
-    await tree.put(g, rlpAccount);
-    await tree.put(j, rlpAccount);
-    await tree.put(v, rlpAccount);
-    await tree.put(a, rlpAccount);
+    tree.put(g, rlpAccount);
+    tree.put(j, rlpAccount);
+    tree.put(v, rlpAccount);
+    tree.put(a, rlpAccount);
     tree.root.toString('hex').should.equal(genesisStateRoot);
   });
 
   const treeBatch: MerklePatriciaTree = new MerklePatriciaTree();
 
   it('should match the original genesis root in batch mode', async () => {
-    const root = await treeBatch.batch([
+    const root = treeBatch.batch([
       {key: g, val: rlpAccount},
       {key: j, val: rlpAccount},
       {key: v, val: rlpAccount},
@@ -247,15 +241,15 @@ describe('Creating the ethereum genesis block', () => {
 describe('Try batch operations', () => {
   it('put a simple batch', async () => {
     const tree = new MerklePatriciaTree();
-    const root = await tree.batch([
+    const root = tree.batch([
       {key: Buffer.from('a'), val: Buffer.from('a')},
       {key: Buffer.from('b'), val: Buffer.from('b')},
       {key: Buffer.from('c'), val: Buffer.from('c')}
     ]);
 
-    const w1 = await tree.get(Buffer.from('a'));
-    const w2 = await tree.get(Buffer.from('b'));
-    const w3 = await tree.get(Buffer.from('c'));
+    const w1 = tree.get(Buffer.from('a'));
+    const w2 = tree.get(Buffer.from('b'));
+    const w3 = tree.get(Buffer.from('c'));
 
     VerifyWitness(root, Buffer.from('a'), w1);
     VerifyWitness(root, Buffer.from('b'), w2);
@@ -264,9 +258,9 @@ describe('Try batch operations', () => {
 
   it('put and del a simple batch', async () => {
     const tree = new MerklePatriciaTree();
-    await tree.put(Buffer.from('d'), Buffer.from('d'));
+    tree.put(Buffer.from('d'), Buffer.from('d'));
 
-    const root = await tree.batch(
+    const root = tree.batch(
         [
           {key: Buffer.from('a'), val: Buffer.from('a')},
           {key: Buffer.from('b'), val: Buffer.from('b')},
@@ -274,21 +268,21 @@ describe('Try batch operations', () => {
         ],
         [Buffer.from('d')]);
 
-    const w1 = await tree.get(Buffer.from('a'));
-    const w2 = await tree.get(Buffer.from('b'));
-    const w3 = await tree.get(Buffer.from('c'));
+    const w1 = tree.get(Buffer.from('a'));
+    const w2 = tree.get(Buffer.from('b'));
+    const w3 = tree.get(Buffer.from('c'));
 
     VerifyWitness(root, Buffer.from('a'), w1);
     VerifyWitness(root, Buffer.from('b'), w2);
     VerifyWitness(root, Buffer.from('c'), w3);
 
-    const w4 = await tree.get(Buffer.from('d'));
+    const w4 = tree.get(Buffer.from('d'));
     should.not.exist(w4.value);
   });
 
   it('put and del a simple batch with overlap', async () => {
     const tree = new MerklePatriciaTree();
-    const root = await tree.batch(
+    const root = tree.batch(
         [
           {key: Buffer.from('a'), val: Buffer.from('a')},
           {key: Buffer.from('b'), val: Buffer.from('b')},
@@ -296,9 +290,9 @@ describe('Try batch operations', () => {
         ],
         [Buffer.from('c')]);
 
-    const w1 = await tree.get(Buffer.from('a'));
-    const w2 = await tree.get(Buffer.from('b'));
-    const w3 = await tree.get(Buffer.from('c'));
+    const w1 = tree.get(Buffer.from('a'));
+    const w2 = tree.get(Buffer.from('b'));
+    const w3 = tree.get(Buffer.from('c'));
 
     VerifyWitness(root, Buffer.from('a'), w1);
     VerifyWitness(root, Buffer.from('b'), w2);
