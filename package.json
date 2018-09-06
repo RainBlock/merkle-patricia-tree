@@ -1,8 +1,9 @@
 {
-  "name": "merkle-patricia-tree",
-  "version": "2.3.1",
-  "description": "This is an implementation of the modified merkle patricia tree as speficed in the Ethereum's yellow paper.",
-  "main": "build/index.js",
+  "name": "@rainblock/merkle-patricia-tree",
+  "version": "3.0.0",
+  "description": "An implementation of the modified merkle patricia tree used in Ethereum, optimized for in-memory usage",
+  "main": "build/src/index.js",
+  "types": "build/src/index.d.js",
   "scripts": {
     "test": "npm run test:node && npm run test:browser",
     "coverage": "istanbul cover ./test/index.js",
@@ -21,10 +22,6 @@
     "prepare": "npm run compile",
     "pretest": "npm run compile",
     "posttest": "npm run check"
-  },
-  "author": {
-    "name": "mjbecze",
-    "email": "mjbecze@gmail.com"
   },
   "repository": {
     "type": "git",
@@ -81,14 +78,9 @@
     "webpack": "^4.16.5",
     "webpack-cli": "^3.1.0"
   },
-  "standard": {
-    "ignore": [
-      "dist/**",
-      "package-init.js",
-      "package.js"
-    ]
-  },
   "contributors": [
-    "Aaron Kumavis <http://aaron.kumavis.me/> (https://github.com/kumavis)"
+    "mjbecze <mjbecze@gmail.com>",
+    "Aaron Kumavis <http://aaron.kumavis.me/> (https://github.com/kumavis)",
+    "Michael Wei <mwei@vmware.com> (https://github.com/no2chem)"
   ]
 }
