@@ -1,6 +1,6 @@
 # ☔️🌲 RainBlock's In-Memory Merkle Tree
 [![NPM Package](https://img.shields.io/npm/v/@rainblock/merkle-patricia-tree.svg?style=flat-square)](https://www.npmjs.org/package/@rainblock/merkle-patricia-tree)
-[![Build Status](https://img.shields.io/travis/RainBlock/merkle-patricia-tree.svg?branch=master&style=flat-square)](https://travis-ci.org/RainBlock/merkle-patricia-tree)
+[![Build Status](https://img.shields.io/travis/com/RainBlock/merkle-patricia-tree.svg?branch=master&style=flat-square)](https://travis-ci.com/RainBlock/merkle-patricia-tree)
 [![Coverage Status](https://img.shields.io/coveralls/RainBlock/merkle-patricia-tree.svg?style=flat-square)](https://coveralls.io/r/RainBlock/merkle-patricia-tree)
 
 [@rainblock/merkle-patricia-tree](https://www.npmjs.org/package/@rainblock/merkle-patricia-tree) is an in-memory merkle tree which conforms to the specifications of the modified merkle patricia tree used by Ethereum. It is a fork of the [EthereumJS](https://github.com/ethereumjs) [library](https://github.com/ethereumjs/merkle-patricia-tree), and released under the same license, however, the API has changed to be synchronous instead of callback based. The goals of @rainblock/merkle-patricia-tree are to be:
