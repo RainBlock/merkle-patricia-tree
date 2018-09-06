@@ -85,12 +85,16 @@ export abstract class MerklePatriciaTreeNode {
 
   /**
    * Return the hash for the node.
+   * @param  rlpEncodedBuffer An optional RLP encoded buffer of the node to use
+   * for hashing
    * @returns A Buffer containing the hash for the node.
    */
-  hash(): Buffer {
+  hash(rlpEncodedBuffer: Buffer|null = null): Buffer {
     if (this.memoizedHash === null) {
-      this.memoizedHash =
-          keccak('keccak256').update(RlpEncode(this.serialize())).digest();
+      if (rlpEncodedBuffer === null) {
+        rlpEncodedBuffer = RlpEncode(this.serialize());
+      }
+      this.memoizedHash = keccak('keccak256').update(rlpEncodedBuffer).digest();
     }
     return this.memoizedHash!;
   }
@@ -337,15 +341,20 @@ export class BranchNode extends MerklePatriciaTreeNode {
    */
   serialize() {
     const hashedBranches: RlpItem = [];
-    for (let i = 0; i < this.branches.length; i++) {
-      if (this.branches[i] === undefined) {
-        hashedBranches[i] = Buffer.from([]);
+    for (const [idx, branch] of this.branches.entries()) {
+      if (branch === undefined) {
+        hashedBranches[idx] = Buffer.from([]);
+      } else if (
+          branch instanceof BranchNode ||
+          branch.value.length + (branch.nibbles.length / 2) > 30) {
+        // Will be >32 when RLP serialized, so just hash
+        hashedBranches[idx] = branch.hash();
       } else {
-        const serialized =
-            this.branches[i].serialize();  // TODO: reuse this for hashing?
-        hashedBranches[i] = (RlpEncode(serialized).length >= 32) ?
-            this.branches[i].hash() :      // Non-embedded node
-            this.branches[i].serialize();  // Embedded node in branch
+        const serialized = branch.serialize();
+        const rlpEncoded = RlpEncode(serialized);
+        hashedBranches[idx] = (rlpEncoded.length >= 32) ?
+            branch.hash(rlpEncoded) :  // Non-embedded node
+            serialized;                // Embedded node in branch
       }
     }
     hashedBranches.push(this.value);
