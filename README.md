@@ -7,7 +7,7 @@
 
 - __In-Memory Optimized.__  @rainblock/merkle-patricia-tree is optimized for in-memory use and does not support persistence. 
 
-- __High performance.__  By taking advantage of in-memory optimizations, @rainblock/merkle-patricia-tree aims to be high performance - currently, it is 2-8x more performance than EthereumJS's merkle tree on standard benchmarks.
+- __High performance.__  By taking advantage of in-memory optimizations, @rainblock/merkle-patricia-tree aims to be high performance - currently, it is 2-8x more performant than EthereumJS's merkle tree on standard benchmarks.
 
 - __Well documented.__  [API documentation](https://rainblock.github.io/merkle-patricia-tree/) is automatically generated from the JSdoc embedded in the typescript source, and the source code aims to be commented and maintainable.
 
