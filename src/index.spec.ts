@@ -98,6 +98,37 @@ describe('Try original storing larger values', () => {
   });
 });
 
+describe('Try simple 3 node test', () => {
+  const tree: MerklePatriciaTree = new MerklePatriciaTree();
+
+  it('should work in forward mode', async () => {
+    tree.put(Buffer.from('12345'), Buffer.from('1'));
+    tree.put(Buffer.from('123456'), Buffer.from('2'));
+    tree.put(Buffer.from('1234'), Buffer.from('3'));
+
+    const w1 = tree.get(Buffer.from('12345'));
+    const w2 = tree.get(Buffer.from('123456'));
+    const w3 = tree.get(Buffer.from('1234'));
+
+    w1.value!.should.deep.equal(Buffer.from('1'));
+    w2.value!.should.deep.equal(Buffer.from('2'));
+    w3.value!.should.deep.equal(Buffer.from('3'));
+  });
+
+  it('should work out of order', async () => {
+    tree.put(Buffer.from('12345'), Buffer.from('1'));
+    tree.put(Buffer.from('1234'), Buffer.from('3'));
+    tree.put(Buffer.from('123456'), Buffer.from('2'));
+
+    const w1 = tree.get(Buffer.from('12345'));
+    const w2 = tree.get(Buffer.from('123456'));
+    const w3 = tree.get(Buffer.from('1234'));
+
+    w1.value!.should.deep.equal(Buffer.from('1'));
+    w2.value!.should.deep.equal(Buffer.from('2'));
+    w3.value!.should.deep.equal(Buffer.from('3'));
+  });
+});
 
 describe('Try original extensions and branches', () => {
   const tree: MerklePatriciaTree = new MerklePatriciaTree();
