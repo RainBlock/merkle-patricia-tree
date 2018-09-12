@@ -615,10 +615,20 @@ export class MerklePatriciaTree {
         }
 
         // And insert both the new value and prevNext into the branch
-        branch.branches[remainder[intersection.length]] =
-            new LeafNode(remainder.slice(intersection.length + 1), value);
         branch.branches[prevNibbles[intersection.length]] = prevNext;
+        if (intersection.length === remainder.length) {
+          // Goes in as value
+          branch.value = value;
+        } else if (intersection.length >= remainder.length) {
+          // Unexpected, intersection is longer than remainder
+          throw new Error('Unexpected remainder longer than intersection');
+        } else {
+          // Insert new value
+          branch.branches[remainder[intersection.length]] =
+              new LeafNode(remainder.slice(intersection.length + 1), value);
+        }
 
+        // If the intersection is 0, then eliminate the extension.
         if (intersection.length === 0) {
           // Remove the extension
           if (stack.length === 1) {
