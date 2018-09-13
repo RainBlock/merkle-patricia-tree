@@ -957,12 +957,36 @@ export function VerifyWitness(root: Buffer, key: Buffer, witness: Witness) {
                       embeddedNode.key,
                       currentKey)} but got ${embeddedNode.key.length}`);
         }
+        const lastNibble = currentKey[1];
         currentKey = currentKey.slice(embeddedNode.key.length);
-        if (currentKey.length !== 0) {
+        // still have portions of key remaining, and embedded node is not a
+        // branch
+        if (currentKey.length !== 0 && !Array.isArray(embeddedNode.value)) {
           throw new VerificationError(
               `Key does not match the proof (embeddedNode)`);
         }
-        if (!embeddedNode.value.equals(witness.value!)) {
+        // embedded node IS a branch
+        if (Array.isArray(embeddedNode.value)) {
+          // if part of the key is remaining, follow the branch
+          if (currentKey.length !== 0) {
+            const embeddedBranchLeaf =
+                new originalNode(embeddedNode.raw[1][lastNibble]);
+            currentKey = currentKey.slice(embeddedBranchLeaf.key.length + 1);
+            if (currentKey.length !== 0) {
+              throw new VerificationError(
+                  `Key does not match the proof (branch-embedded node)`);
+            }
+            if (!embeddedBranchLeaf.value.equals(witness.value)) {
+              throw new VerificationError(`Value mismatch: expected ${
+                  witness.value} but got ${embeddedBranchLeaf.value}`);
+            }
+          }
+          // value is in branch value
+          else if (!embeddedNode.value[16].equals(witness.value)) {
+            throw new VerificationError(`Value mismatch: expected ${
+                witness.value} but got ${embeddedNode.value[17]}`);
+          }
+        } else if (!embeddedNode.value.equals(witness.value!)) {
           throw new VerificationError(`Value mismatch: expected ${
               witness.value} but got ${embeddedNode.value}`);
         }
@@ -977,16 +1001,17 @@ export function VerifyWitness(root: Buffer, key: Buffer, witness: Witness) {
       }
       cld = node.value as (Buffer | Buffer[][]);
       currentKey = currentKey.slice(node.key.length);
-      if (currentKey.length === 0 ||
+
+      if (currentKey.length === 0 && node.type !== 'extention' ||
           (cld.length === 17 && currentKey.length === 1)) {
+        if (idx + 1 !== witness.proof.length) {
+          throw new VerificationError(
+              `Proof length mismatch (${node.type}): expected ${idx + 1} nodes 
+              but got ${witness.proof.length} nodes in proof`);
+        }
         if (cld.length === 17) {
           cld = (cld[currentKey[0]] as Buffer[])[1];
           currentKey = currentKey.slice(1);
-        }
-        if (idx !== witness.proof.length - 1) {
-          throw new VerificationError(
-              `Key length mismatch (${node.type}): expected ${
-                  idx + 1} but got ${witness.proof.length}`);
         }
         if (!(cld as Buffer).equals(witness.value!)) {
           throw new VerificationError(

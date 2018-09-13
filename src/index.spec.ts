@@ -110,9 +110,9 @@ describe('Try simple 3 node test', () => {
     const w2 = tree.get(Buffer.from('123456'));
     const w3 = tree.get(Buffer.from('1234'));
 
-    w1.value!.should.deep.equal(Buffer.from('1'));
-    w2.value!.should.deep.equal(Buffer.from('2'));
-    w3.value!.should.deep.equal(Buffer.from('3'));
+    VerifyWitness(tree.root, Buffer.from('12345'), w1);
+    VerifyWitness(tree.root, Buffer.from('123456'), w2);
+    VerifyWitness(tree.root, Buffer.from('1234'), w3);
   });
 
   it('should work out of order', async () => {
@@ -124,9 +124,9 @@ describe('Try simple 3 node test', () => {
     const w2 = tree.get(Buffer.from('123456'));
     const w3 = tree.get(Buffer.from('1234'));
 
-    w1.value!.should.deep.equal(Buffer.from('1'));
-    w2.value!.should.deep.equal(Buffer.from('2'));
-    w3.value!.should.deep.equal(Buffer.from('3'));
+    VerifyWitness(tree.root, Buffer.from('12345'), w1);
+    VerifyWitness(tree.root, Buffer.from('123456'), w2);
+    VerifyWitness(tree.root, Buffer.from('1234'), w3);
   });
 });
 
