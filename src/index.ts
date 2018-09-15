@@ -749,7 +749,7 @@ export class MerklePatriciaTree {
     return finalList;
   }
 
-  getNibbles(label: string): any[] {
+  getNibbles(label: string): number[] {
     const nibbles = [];
     for(const nib of label) {
       nibbles.push(parseInt(nib, 16));
@@ -757,7 +757,7 @@ export class MerklePatriciaTree {
     return nibbles;
   }
 
-  ptreeDFS(ptreeNode: any, merkleNode: MerklePatriciaTreeNode, curNibbles: any[], curPos: any, curList: MerklePatriciaTreeNode[], finalList: Witness[]) {
+  ptreeDFS(ptreeNode: any, merkleNode: MerklePatriciaTreeNode, curNibbles: number[], curPos: any, curList: MerklePatriciaTreeNode[], finalList: Witness[]) {
     const ptreeNibbles = this.getNibbles(ptreeNode.label);
     for(const nib of ptreeNibbles) {
       curNibbles.push(nib);
@@ -778,8 +778,8 @@ export class MerklePatriciaTree {
           const witness : Witness = {value: merkleNode.value, proof: proofWitness};
           finalList.push(witness);
         }
-        for(const child of ptreeNode.children) {
-          this.ptreeDFS(child, merkleNode, curNibbles, curPos, curList, finalList);
+        for(const child in ptreeNode.children) {
+          this.ptreeDFS(ptreeNode.children[child], merkleNode, curNibbles, curPos, curList, finalList);
         }
       } else {
         const nextNibble = curNibbles[curPos++];
@@ -791,15 +791,15 @@ export class MerklePatriciaTree {
             this.ptreeDFS(ptreeNode, merkleNode.branches[nextNibble], curNibbles, curPos, curList, finalList);
             return;
           } else {
-            for(const child of ptreeNode.children) {
-              this.ptreeDFS(child, merkleNode.branches[nextNibble], curNibbles, curPos, curList, finalList);
+            for(const child in ptreeNode.children) {
+              this.ptreeDFS(ptreeNode.children[child], merkleNode.branches[nextNibble], curNibbles, curPos, curList, finalList);
             }
           }
         }
         curList.pop();
       }
     } else if(uncheckedNibbles >= merkleNode.nibbles.length) {
-      for(const nib in merkleNode.nibbles) {
+      for(const nib of merkleNode.nibbles) {
         if(nib !== curNibbles[curPos++]) {
           for(const idx of ptreeNibbles) {
             curNibbles.pop();
@@ -828,8 +828,8 @@ export class MerklePatriciaTree {
           curList.pop();
           return;
         } else {
-          for (const child of ptreeNode.children) {
-            this.ptreeDFS(child, merkleNode.nextNode, curNibbles, curPos, curList, finalList);
+          for (const child in ptreeNode.children) {
+            this.ptreeDFS(ptreeNode.children[child], merkleNode.nextNode, curNibbles, curPos, curList, finalList);
           }
           curList.pop();
         }
@@ -841,8 +841,8 @@ export class MerklePatriciaTree {
         return;
       }
     } else {
-      for(const child of ptreeNode.children) {
-        this.ptreeDFS(child, merkleNode, curNibbles, curPos, curList, finalList);
+      for(const child in ptreeNode.children) {
+        this.ptreeDFS(ptreeNode.children[child], merkleNode, curNibbles, curPos, curList, finalList);
       }
     }
     for(const idx of ptreeNibbles) {
