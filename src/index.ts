@@ -754,7 +754,6 @@ export class MerklePatriciaTree {
     for(const nib of label) {
       nibbles.push(parseInt(nib, 16));
     }
-    console.log('getNibbles, curNibbles - ', nibbles)
     return nibbles;
   }
 
@@ -764,7 +763,6 @@ export class MerklePatriciaTree {
       curNibbles.push(nib);
     }
     const uncheckedNibbles = curNibbles.length - curPos;
-    console.log(curNibbles)
 
     if(merkleNode instanceof BranchNode) {
       if(uncheckedNibbles === 0) {
