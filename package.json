@@ -44,7 +44,6 @@
     "levelup": "^1.2.1",
     "memdown": "^1.0.0",
     "package.json": "^2.0.1",
-    "patricia-tee": "0.1.0",
     "patricia-tree": "^0.1.0",
     "readable-stream": "^2.0.0",
     "rlp": "^2.0.0",
