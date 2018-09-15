@@ -771,7 +771,7 @@ export class MerklePatriciaTree {
           const proofWitness: Buffer[] = [];
           for (const node of curList) {
             const rlp = RlpEncode(node.serialize());
-            if (rlp.length >= 32) {
+            if (rlp.length >= 32 || Buffer.compare(rlp, RlpEncode(this.rootNode.serialize())) == 0) {
               proofWitness.push(rlp);
             }
           }
@@ -812,7 +812,7 @@ export class MerklePatriciaTree {
         const proofWitness: Buffer[] = [];
         for (const node of curList) {
           const rlp = RlpEncode(node.serialize());
-          if (rlp.length >= 32) {
+          if (rlp.length >= 32 || Buffer.compare(rlp, RlpEncode(this.rootNode.serialize())) == 0) {
             proofWitness.push(rlp);
           }
         }
