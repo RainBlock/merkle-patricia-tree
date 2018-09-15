@@ -3,6 +3,7 @@ import {RlpDecode, RlpEncode, RlpItem, RlpList} from 'rlp-stream';
 const originalNode = require('./trieNode');
 const matchingNibbleLength = require('./util').matchingNibbleLength;
 const keccak = require('keccak');
+const patriciaTree = require('patricia-tree');
 
 interface OriginalTreeNode {
   value: Buffer;
@@ -736,6 +737,117 @@ export class MerklePatriciaTree {
     }
 
     return {value, proof};
+  }
+
+  getBulk(keys: Buffer[]): Witness[] {
+    const ptree = new patriciaTree();
+    for (const key of keys) {
+      ptree.insert(Buffer.from(key).toString("hex"));
+    }
+    const finalList : Witness[] = [];
+    this.ptreeDFS(ptree.root, this.rootNode, [], 0, [], finalList);
+    return finalList;
+  }
+
+  getNibbles(label: string): any[] {
+    const nibbles = [];
+    for(const nib of label) {
+      nibbles.push(parseInt(nib, 16));
+    }
+    return nibbles;
+  }
+
+  ptreeDFS(ptreeNode: any, merkleNode: MerklePatriciaTreeNode, curNibbles: any[], curPos: any, curList: MerklePatriciaTreeNode[], finalList: Witness[]) {
+    const ptreeNibbles = this.getNibbles(ptreeNode.label);
+    for(const nib of ptreeNibbles) {
+      curNibbles.push(nib);
+    }
+    const uncheckedNibbles = curNibbles.length - curPos;
+
+    if(merkleNode instanceof BranchNode) {
+      if(uncheckedNibbles === 0) {
+        curList.push(merkleNode);
+        if(ptreeNode.isTerminal === true && curPos === curNibbles.length && typeof merkleNode.value === 'string') {
+          const proofWitness: Buffer[] = [];
+          for (const node of curList) {
+            const rlp = RlpEncode(node.serialize());
+            if (rlp.length >= 32) {
+              proofWitness.push(rlp);
+            }
+          }
+          const witness : Witness = {value: merkleNode.value, proof: proofWitness};
+          finalList.push(witness);
+        }
+        for(const child of ptreeNode.children) {
+          this.ptreeDFS(child, merkleNode, curNibbles, curPos, curList, finalList);
+        }
+      } else {
+        const nextNibble = curNibbles[curPos++];
+        if(merkleNode.branches[nextNibble]) {
+          if(ptreeNode.isTerminal) {
+            for(const nib of ptreeNibbles) {
+              curNibbles.pop();
+            }
+            this.ptreeDFS(ptreeNode, merkleNode.branches[nextNibble], curNibbles, curPos, curList, finalList);
+            return;
+          } else {
+            for(const child of ptreeNode.children) {
+              this.ptreeDFS(child, merkleNode.branches[nextNibble], curNibbles, curPos, curList, finalList);
+            }
+          }
+        }
+        curList.pop();
+      }
+    } else if(uncheckedNibbles >= merkleNode.nibbles.length) {
+      for(const nib in merkleNode.nibbles) {
+        if(nib !== curNibbles[curPos++]) {
+          for(const idx of ptreeNibbles) {
+            curNibbles.pop();
+          }
+          return;
+        }
+      }
+      curList.push(merkleNode);
+      if(ptreeNode.isTerminal === true && curPos === curNibbles.length && typeof merkleNode.value === 'string') {
+        const proofWitness: Buffer[] = [];
+        for (const node of curList) {
+          const rlp = RlpEncode(node.serialize());
+          if (rlp.length >= 32) {
+            proofWitness.push(rlp);
+          }
+        }
+        const witness : Witness = {value: merkleNode.value, proof: proofWitness};
+        finalList.push(witness);
+      }
+      if(merkleNode instanceof ExtensionNode) {
+        if(curPos <= curNibbles.length) {
+          for(const idx of ptreeNibbles) {
+            curNibbles.pop();
+          }
+          this.ptreeDFS(ptreeNode, merkleNode.nextNode, curNibbles, curPos, curList, finalList);
+          curList.pop();
+          return;
+        } else {
+          for (const child of ptreeNode.children) {
+            this.ptreeDFS(child, merkleNode.nextNode, curNibbles, curPos, curList, finalList);
+          }
+          curList.pop();
+        }
+      } else {
+        for(const nib of ptreeNibbles) {
+          curNibbles.pop();
+        }
+        curList.pop();
+        return;
+      }
+    } else {
+      for(const child of ptreeNode.children) {
+        this.ptreeDFS(child, merkleNode, curNibbles, curPos, curList, finalList);
+      }
+    }
+    for(const idx of ptreeNibbles) {
+      curNibbles.pop();
+    }
   }
 
   /**
