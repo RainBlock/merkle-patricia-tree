@@ -637,7 +637,7 @@ export class MerklePatriciaTree {
             const prevNode = stack[stack.length - 2];
             if (prevNode instanceof BranchNode) {
               for (const [idx, prevBranch] of prevNode.branches.entries()) {
-                if (prevBranch === prevNode) {
+                if (prevBranch === last) {
                   prevNode.branches[idx] = branch;
                 }
               }
