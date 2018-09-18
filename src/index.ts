@@ -749,7 +749,7 @@ export class MerklePatriciaTree {
     return finalList;
   }
 
-  getNibbles(label: string): number[] {
+  stringToIntArray(label: string): number[] {
     const nibbles = [];
     for(const nib of label) {
       nibbles.push(parseInt(nib, 16));
@@ -757,8 +757,8 @@ export class MerklePatriciaTree {
     return nibbles;
   }
 
-  ptreeDFS(ptreeNode: any, merkleNode: MerklePatriciaTreeNode, curNibbles: number[], curPos: any, curList: MerklePatriciaTreeNode[], finalList: Witness[]) {
-    const ptreeNibbles = this.getNibbles(ptreeNode.label);
+  ptreeDFS(ptreeNode: any, merkleNode: MerklePatriciaTreeNode, curNibbles: number[], curPos: number, curList: MerklePatriciaTreeNode[], finalList: Witness[]) {
+    const ptreeNibbles = this.stringToIntArray(ptreeNode.label);
     for(const nib of ptreeNibbles) {
       curNibbles.push(nib);
     }
@@ -767,7 +767,7 @@ export class MerklePatriciaTree {
     if(merkleNode instanceof BranchNode) {
       if(uncheckedNibbles === 0) {
         curList.push(merkleNode);
-        if(ptreeNode.isTerminal === true && curPos === curNibbles.length && typeof merkleNode.value === 'string') {
+        if(ptreeNode.isTerminal === true && curPos === curNibbles.length && Buffer.isBuffer(merkleNode.value) === true && merkleNode.value.length !== 0) {
           const proofWitness: Buffer[] = [];
           for (const node of curList) {
             const rlp = RlpEncode(node.serialize());
@@ -808,7 +808,7 @@ export class MerklePatriciaTree {
         }
       }
       curList.push(merkleNode);
-      if(ptreeNode.isTerminal === true && curPos === curNibbles.length && typeof merkleNode.value === 'string') {
+      if(ptreeNode.isTerminal === true && curPos === curNibbles.length && Buffer.isBuffer(merkleNode.value) === true  && merkleNode.value.length !== 0) {
         const proofWitness: Buffer[] = [];
         for (const node of curList) {
           const rlp = RlpEncode(node.serialize());
