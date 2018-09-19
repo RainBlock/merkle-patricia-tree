@@ -749,8 +749,8 @@ export class MerklePatriciaTree {
   }
 
   bufferToString(key: Buffer) : string {
-    let nibbleArray: number[] = [];
-    key.forEach(i => {nibbleArray.push(i >> 4), nibbleArray.push(i%16)})
+    const nibbleArray: number[] = [];
+    key.forEach(i => {nibbleArray.push(i >> 4); nibbleArray.push(i%16);});
     const reply = nibbleArray.map(nib => nib.toString(16)).reduce((nib1, nib2) => nib1 + nib2);
     return reply;
   }
