@@ -1,4 +1,7 @@
 import {RlpDecode, RlpEncode, RlpItem, RlpList} from 'rlp-stream';
+import { sort } from 'shelljs';
+import { notStrictEqual } from 'assert';
+import { read } from 'fs-extra';
 
 const originalNode = require('./trieNode');
 const matchingNibbleLength = require('./util').matchingNibbleLength;
@@ -24,6 +27,12 @@ export interface Witness {
    * containing the value.
    */
   proof: Buffer[];
+}
+
+export interface MultiWitness {
+  value: Buffer|null;
+  index: number;
+  proof: MerklePatriciaTreeNode[];
 }
 
 /** A search result, returned as a result for searching for a key. */
@@ -736,6 +745,141 @@ export class MerklePatriciaTree {
     }
 
     return {value, proof};
+  }
+
+  radixSort(keys: Buffer[]): number[][] {
+    keys.sort((k1,k2) => k1.compare(k2));
+    const ret = [];
+    for (const key of keys) {
+      ret.push(MerklePatriciaTreeNode.bufferToNibbles(key));
+    }
+    return ret;
+  }
+
+  getBulk(keys: Buffer[]): MultiWitness[] {
+    const sortedKeys = this.radixSort(keys);
+    const reply = this.getKeys(sortedKeys);
+    if (reply === null) {
+      return [];
+    }
+    return reply;
+  }
+
+  areNibbleArraysEqual(arr1: number[], arr2: number[]): boolean {
+    if (arr1.length !== arr2.length) {
+     return false;
+    }
+    for (let i = 0; i < arr1.length; i++) {
+      if (arr1[i] !== arr2[i]) {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  private getKeys(keys: number[][]) : MultiWitness[]|null {
+    const reply: MultiWitness[] = [];
+    let currNode = this.rootNode;
+    let proofIndex = 0;
+    let nodesInPath : MerklePatriciaTreeNode[] = [];
+    let nibIndex = 0;
+    for (let keyIndex = 0; keyIndex < keys.length; keyIndex++) {
+      const key = keys[keyIndex];
+      let readComplete = 0;
+      while (true) {
+        if (currNode instanceof BranchNode) {
+          if (nibIndex !== -1) {
+            nodesInPath.push(currNode);
+            currNode = currNode.branches[key[nibIndex]];
+            nibIndex += 1;
+            if (nibIndex >= key.length) {
+              nibIndex = -1;
+            }
+          } else if (nibIndex === -1 && currNode.value.length !== 0) {
+            nodesInPath.push(currNode);
+            const wit : MultiWitness = {value: currNode.value, index: proofIndex, proof: nodesInPath.slice(proofIndex, nodesInPath.length)};
+            reply.push(wit);
+            readComplete = 1;
+          } else {
+            console.log("BranchNode exception!");
+            return null;
+          }
+        } else if (currNode instanceof ExtensionNode) {
+          if (nibIndex !== -1) {
+            if (this.areNibbleArraysEqual(key.slice(nibIndex, nibIndex + currNode.nibbles.length), currNode.nibbles) === true) {
+              nibIndex += currNode.nibbles.length;
+              if (nibIndex >= key.length) {
+                nibIndex = -1;
+              }
+              nodesInPath.push(currNode);
+              currNode = currNode.nextNode;
+            } else {
+              console.log("ExtensionNode exception!");
+              return null;
+            }
+          } else if (nibIndex === -1 && currNode.nibbles === []) {
+            nodesInPath.push(currNode);
+            currNode = currNode.nextNode;
+          } else {
+            console.log("ExtensionNode exception!");
+            return null;
+          }
+        } else if (currNode instanceof LeafNode) {
+          if ( (nibIndex === -1 && currNode.nibbles === []) ||
+               (nibIndex !== -1 && this.areNibbleArraysEqual(key.slice(nibIndex, nibIndex + currNode.nibbles.length), currNode.nibbles) === true)) {
+            nodesInPath.push(currNode);
+            readComplete = 1;
+            const wit : MultiWitness = {value: currNode.value, index: proofIndex, proof: nodesInPath.slice(proofIndex, nodesInPath.length)};
+            reply.push(wit);
+          } else {
+            console.log("LeafNode exception!");
+            return null;
+          }
+        } else if (currNode instanceof NullNode) {
+          console.log("NullNode exception!");
+          return null;
+        }
+
+        if (readComplete === 1) {
+          if (keyIndex === keys.length - 1) {
+            console.log("COMPLETE!");
+            return reply;
+          }
+          const nextKey = keys[keyIndex + 1];
+          let start = key.length;
+          while (start > nextKey.length || this.areNibbleArraysEqual(key.slice(0, start), nextKey.slice(0, start)) === false) {
+            currNode = nodesInPath[nodesInPath.length - 1];
+            nodesInPath.pop();
+            if (currNode instanceof BranchNode) {
+              start--;
+            } else if (currNode instanceof ExtensionNode) {
+              start -= currNode.nibbles.length;
+            } else if (currNode instanceof LeafNode) {
+              start -= currNode.nibbles.length;
+            } else if (currNode instanceof NullNode) {
+              console.log("NullNode exception!");
+              return null;
+            }
+            if (start <= 0) {
+              break;
+            }
+          }
+          proofIndex = nodesInPath.length;
+          if (start <= 0) {
+            currNode = this.rootNode;
+            nibIndex = 0;
+            nodesInPath = [];
+            readComplete = 0;
+            break;
+          } else {
+            nibIndex = start;
+            readComplete = 0;
+            break;
+          }
+        }
+      }
+    }
+    return reply;
   }
 
   /**
