@@ -745,14 +745,20 @@ export class MerklePatriciaTree {
         proof.push(rlp);
       }
     }
-
     return {value, proof};
+  }
+
+  bufferToString(key: Buffer) : string {
+    let nibbleArray: number[] = [];
+    key.forEach(i => {nibbleArray.push(i >> 4), nibbleArray.push(i%16)})
+    const reply = nibbleArray.map(nib => nib.toString(16)).reduce((nib1, nib2) => nib1 + nib2);
+    return reply;
   }
 
   getBulk(keys: Buffer[]): MultiWitness {
     const ptree = new patriciaTree();
     for (const key of keys) {
-      ptree.insert(Buffer.from(key).toString("hex"));
+      ptree.insert(this.bufferToString(key));
     }
     const finalList : Witness[] = [];
     this.ptreeDFS(ptree.root, this.rootNode, [], 0, [], finalList, RlpEncode(this.rootNode.serialize()));
