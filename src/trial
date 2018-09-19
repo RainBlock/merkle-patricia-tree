@@ -1,0 +1,17 @@
+const Mtree = require("./index");
+const Ptree = require('patricia-tree');
+const mtree  = new Mtree.MerklePatriciaTree();
+const ptree = new Ptree();
+
+var mt = ["a", "aa", "aaa", "aaaa"], pt = ["a", "ab", "aaa", "aaab"];
+
+for(let i in mt) {
+    mtree.put(Buffer.from(mt[i]), mt[i]);
+}
+for(let i in pt) {
+    ptree.insert(Buffer.from(pt[i]).toString("hex"));
+}
+
+var finalList = [];
+mtree.ptreeDFS(ptree.root, mtree.rootNode, [], 0, [], finalList);
+console.log(finalList);
