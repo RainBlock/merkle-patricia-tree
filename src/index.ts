@@ -27,6 +27,16 @@ export interface Witness {
   proof: Buffer[];
 }
 
+export interface IndexedWitness {
+  value: Buffer|null;
+  proof: number[];
+}
+
+export interface MultiWitness {
+  proofIndex : Buffer[];
+  indexedWitnesses : IndexedWitness[];
+}
+
 /** A search result, returned as a result for searching for a key. */
 export interface SearchResult {
   /** The node, if found, or null, if no node was found. */
@@ -739,14 +749,38 @@ export class MerklePatriciaTree {
     return {value, proof};
   }
 
-  getBulk(keys: Buffer[]): Witness[] {
+  getBulk(keys: Buffer[]): MultiWitness {
     const ptree = new patriciaTree();
     for (const key of keys) {
       ptree.insert(Buffer.from(key).toString("hex"));
     }
     const finalList : Witness[] = [];
     this.ptreeDFS(ptree.root, this.rootNode, [], 0, [], finalList);
-    return finalList;
+
+    const indexedProofs: Buffer[] = [];
+    const listIndexedWitnesses: IndexedWitness[] = [];
+    for (let i = 0; i < finalList.length; i++) {
+      const proof = finalList[i].proof;
+      const compactProof = [];
+      for (const node of proof) {
+        let j = 0;
+        for (j = 0; j < indexedProofs.length; j++) {
+          if (indexedProofs[j].compare(node) === 0) {
+            break;
+          }
+        }
+        if (j < indexedProofs.length) {
+          compactProof.push(j);
+        } else {
+          indexedProofs.push(node);
+          compactProof.push(indexedProofs.length - 1);
+        }
+      }
+      const wit: IndexedWitness = {value: finalList[i].value, proof: compactProof};
+      listIndexedWitnesses.push(wit);
+    }
+    const compactProof: MultiWitness = {proofIndex: indexedProofs, indexedWitnesses: listIndexedWitnesses};
+    return compactProof;
   }
 
   stringToIntArray(label: string): number[] {
@@ -771,9 +805,9 @@ export class MerklePatriciaTree {
           const proofWitness: Buffer[] = [];
           for (const node of curList) {
             const rlp = RlpEncode(node.serialize());
-            if (rlp.length >= 32 || Buffer.compare(rlp, RlpEncode(this.rootNode.serialize())) == 0) {
+            // if (rlp.length >= 32 || Buffer.compare(rlp, RlpEncode(this.rootNode.serialize())) === 0) {
               proofWitness.push(rlp);
-            }
+            // }
           }
           const witness : Witness = {value: merkleNode.value, proof: proofWitness};
           finalList.push(witness);
@@ -812,9 +846,9 @@ export class MerklePatriciaTree {
         const proofWitness: Buffer[] = [];
         for (const node of curList) {
           const rlp = RlpEncode(node.serialize());
-          if (rlp.length >= 32 || Buffer.compare(rlp, RlpEncode(this.rootNode.serialize())) == 0) {
+          // if (rlp.length >= 32 || Buffer.compare(rlp, RlpEncode(this.rootNode.serialize())) === 0) {
             proofWitness.push(rlp);
-          }
+          // }
         }
         const witness : Witness = {value: merkleNode.value, proof: proofWitness};
         finalList.push(witness);
