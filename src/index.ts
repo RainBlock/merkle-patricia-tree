@@ -755,7 +755,7 @@ export class MerklePatriciaTree {
       ptree.insert(Buffer.from(key).toString("hex"));
     }
     const finalList : Witness[] = [];
-    this.ptreeDFS(ptree.root, this.rootNode, [], 0, [], finalList);
+    this.ptreeDFS(ptree.root, this.rootNode, [], 0, [], finalList, RlpEncode(this.rootNode.serialize()));
 
     const indexedProofs: Buffer[] = [];
     const listIndexedWitnesses: IndexedWitness[] = [];
@@ -791,7 +791,7 @@ export class MerklePatriciaTree {
     return nibbles;
   }
 
-  ptreeDFS(ptreeNode: any, merkleNode: MerklePatriciaTreeNode, curNibbles: number[], curPos: number, curList: MerklePatriciaTreeNode[], finalList: Witness[]) {
+  ptreeDFS(ptreeNode: any, merkleNode: MerklePatriciaTreeNode, curNibbles: number[], curPos: number, curList: MerklePatriciaTreeNode[], finalList: Witness[], rootSerialized: Buffer) {
     const ptreeNibbles = this.stringToIntArray(ptreeNode.label);
     for(const nib of ptreeNibbles) {
       curNibbles.push(nib);
@@ -805,7 +805,7 @@ export class MerklePatriciaTree {
           const proofWitness: Buffer[] = [];
           for (const node of curList) {
             const rlp = RlpEncode(node.serialize());
-            if (rlp.length >= 32 || Buffer.compare(rlp, RlpEncode(this.rootNode.serialize())) === 0) {
+            if (rlp.length >= 32 || Buffer.compare(rlp, rootSerialized) === 0) {
               proofWitness.push(rlp);
             }
           }
@@ -813,7 +813,7 @@ export class MerklePatriciaTree {
           finalList.push(witness);
         }
         for(const child in ptreeNode.children) {
-          this.ptreeDFS(ptreeNode.children[child], merkleNode, curNibbles, curPos, curList, finalList);
+          this.ptreeDFS(ptreeNode.children[child], merkleNode, curNibbles, curPos, curList, finalList, rootSerialized);
         }
       } else {
         const nextNibble = curNibbles[curPos++];
@@ -822,11 +822,11 @@ export class MerklePatriciaTree {
             for(const nib of ptreeNibbles) {
               curNibbles.pop();
             }
-            this.ptreeDFS(ptreeNode, merkleNode.branches[nextNibble], curNibbles, curPos, curList, finalList);
+            this.ptreeDFS(ptreeNode, merkleNode.branches[nextNibble], curNibbles, curPos, curList, finalList, rootSerialized);
             return;
           } else {
             for(const child in ptreeNode.children) {
-              this.ptreeDFS(ptreeNode.children[child], merkleNode.branches[nextNibble], curNibbles, curPos, curList, finalList);
+              this.ptreeDFS(ptreeNode.children[child], merkleNode.branches[nextNibble], curNibbles, curPos, curList, finalList, rootSerialized);
             }
           }
         }
@@ -846,7 +846,7 @@ export class MerklePatriciaTree {
         const proofWitness: Buffer[] = [];
         for (const node of curList) {
           const rlp = RlpEncode(node.serialize());
-          if (rlp.length >= 32 || Buffer.compare(rlp, RlpEncode(this.rootNode.serialize())) === 0) {
+          if (rlp.length >= 32 || Buffer.compare(rlp, rootSerialized) === 0) {
             proofWitness.push(rlp);
           }
         }
@@ -858,12 +858,12 @@ export class MerklePatriciaTree {
           for(const idx of ptreeNibbles) {
             curNibbles.pop();
           }
-          this.ptreeDFS(ptreeNode, merkleNode.nextNode, curNibbles, curPos, curList, finalList);
+          this.ptreeDFS(ptreeNode, merkleNode.nextNode, curNibbles, curPos, curList, finalList, rootSerialized);
           curList.pop();
           return;
         } else {
           for (const child in ptreeNode.children) {
-            this.ptreeDFS(ptreeNode.children[child], merkleNode.nextNode, curNibbles, curPos, curList, finalList);
+            this.ptreeDFS(ptreeNode.children[child], merkleNode.nextNode, curNibbles, curPos, curList, finalList, rootSerialized);
           }
           curList.pop();
         }
@@ -876,7 +876,7 @@ export class MerklePatriciaTree {
       }
     } else {
       for(const child in ptreeNode.children) {
-        this.ptreeDFS(ptreeNode.children[child], merkleNode, curNibbles, curPos, curList, finalList);
+        this.ptreeDFS(ptreeNode.children[child], merkleNode, curNibbles, curPos, curList, finalList, rootSerialized);
       }
     }
     for(const idx of ptreeNibbles) {
