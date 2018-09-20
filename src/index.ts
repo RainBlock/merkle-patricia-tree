@@ -1,8 +1,8 @@
+import {hashAsBuffer, HashType} from 'bigint-hash';
 import {RlpDecode, RlpEncode, RlpItem, RlpList} from 'rlp-stream';
 
 const originalNode = require('./trieNode');
 const matchingNibbleLength = require('./util').matchingNibbleLength;
-const keccak = require('keccak');
 
 interface OriginalTreeNode {
   value: Buffer;
@@ -94,7 +94,7 @@ export abstract class MerklePatriciaTreeNode {
       if (rlpEncodedBuffer === null) {
         rlpEncodedBuffer = RlpEncode(this.serialize());
       }
-      this.memoizedHash = keccak('keccak256').update(rlpEncodedBuffer).digest();
+      this.memoizedHash = hashAsBuffer(HashType.KECCAK256, rlpEncodedBuffer);
     }
     return this.memoizedHash!;
   }
@@ -921,7 +921,7 @@ export function VerifyWitness(root: Buffer, key: Buffer, witness: Witness) {
   let cld;
 
   for (const [idx, serializedNode] of witness.proof.entries()) {
-    const hash = keccak('keccak256').update(serializedNode).digest();
+    const hash = hashAsBuffer(HashType.KECCAK256, serializedNode);
     if (Buffer.compare(hash, targetHash)) {
       throw new VerificationError(`Hash mismatch: expected ${
           targetHash.toString('hex')} got ${hash.toString('hex')}`);
