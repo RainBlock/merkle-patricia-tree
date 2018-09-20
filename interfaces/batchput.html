@@ -57,7 +57,7 @@
 					<a href="batchput.html">BatchPut</a>
 				</li>
 			</ul>
-			<h1>Interface BatchPut</h1>
+			<h1>Interface BatchPut&lt;K, V&gt;</h1>
 		</div>
 	</div>
 </header>
@@ -70,6 +70,17 @@
 						<p>Describes a key value pair used in a batched put operation.</p>
 					</div>
 				</div>
+			</section>
+			<section class="tsd-panel tsd-type-parameters">
+				<h3>Type parameters</h3>
+				<ul class="tsd-type-parameters">
+					<li>
+						<h4>K</h4>
+					</li>
+					<li>
+						<h4>V</h4>
+					</li>
+				</ul>
 			</section>
 			<section class="tsd-panel tsd-hierarchy">
 				<h3>Hierarchy</h3>
@@ -98,10 +109,10 @@
 				<section class="tsd-panel tsd-member tsd-kind-property tsd-parent-kind-interface">
 					<a name="key" class="tsd-anchor"></a>
 					<h3>key</h3>
-					<div class="tsd-signature tsd-kind-icon">key<span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">Buffer</span></div>
+					<div class="tsd-signature tsd-kind-icon">key<span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">K</span></div>
 					<aside class="tsd-sources">
 						<ul>
-							<li>Defined in <a href="https://github.com/RainBlock/merkle-patricia-tree/blob/0d4eabd/src/index.ts#L42">index.ts:42</a></li>
+							<li>Defined in <a href="https://github.com/RainBlock/merkle-patricia-tree/blob/f951bc2/src/index.ts#L43">index.ts:43</a></li>
 						</ul>
 					</aside>
 					<div class="tsd-comment tsd-typography">
@@ -113,10 +124,10 @@
 				<section class="tsd-panel tsd-member tsd-kind-property tsd-parent-kind-interface">
 					<a name="val" class="tsd-anchor"></a>
 					<h3>val</h3>
-					<div class="tsd-signature tsd-kind-icon">val<span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">Buffer</span></div>
+					<div class="tsd-signature tsd-kind-icon">val<span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">V</span></div>
 					<aside class="tsd-sources">
 						<ul>
-							<li>Defined in <a href="https://github.com/RainBlock/merkle-patricia-tree/blob/0d4eabd/src/index.ts#L44">index.ts:44</a></li>
+							<li>Defined in <a href="https://github.com/RainBlock/merkle-patricia-tree/blob/f951bc2/src/index.ts#L45">index.ts:45</a></li>
 						</ul>
 					</aside>
 					<div class="tsd-comment tsd-typography">
@@ -137,22 +148,22 @@
 			</nav>
 			<nav class="tsd-navigation secondary menu-sticky">
 				<ul class="before-current">
-					<li class=" tsd-kind-class">
+					<li class=" tsd-kind-class tsd-has-type-parameter">
 						<a href="../classes/branchnode.html" class="tsd-kind-icon">Branch<wbr>Node</a>
 					</li>
-					<li class=" tsd-kind-class">
+					<li class=" tsd-kind-class tsd-has-type-parameter">
 						<a href="../classes/extensionnode.html" class="tsd-kind-icon">Extension<wbr>Node</a>
 					</li>
-					<li class=" tsd-kind-class">
+					<li class=" tsd-kind-class tsd-has-type-parameter">
 						<a href="../classes/leafnode.html" class="tsd-kind-icon">Leaf<wbr>Node</a>
 					</li>
-					<li class=" tsd-kind-class">
+					<li class=" tsd-kind-class tsd-has-type-parameter">
 						<a href="../classes/merklepatriciatree.html" class="tsd-kind-icon">Merkle<wbr>Patricia<wbr>Tree</a>
 					</li>
-					<li class=" tsd-kind-class">
+					<li class=" tsd-kind-class tsd-has-type-parameter">
 						<a href="../classes/merklepatriciatreenode.html" class="tsd-kind-icon">Merkle<wbr>Patricia<wbr>Tree<wbr>Node</a>
 					</li>
-					<li class=" tsd-kind-class">
+					<li class=" tsd-kind-class tsd-has-type-parameter">
 						<a href="../classes/nullnode.html" class="tsd-kind-icon">Null<wbr>Node</a>
 					</li>
 					<li class=" tsd-kind-class">
@@ -160,7 +171,7 @@
 					</li>
 				</ul>
 				<ul class="current">
-					<li class="current tsd-kind-interface">
+					<li class="current tsd-kind-interface tsd-has-type-parameter">
 						<a href="batchput.html" class="tsd-kind-icon">Batch<wbr>Put</a>
 						<ul>
 							<li class=" tsd-kind-property tsd-parent-kind-interface">
@@ -173,13 +184,22 @@
 					</li>
 				</ul>
 				<ul class="after-current">
-					<li class=" tsd-kind-interface">
+					<li class=" tsd-kind-interface tsd-has-type-parameter">
+						<a href="merklepatriciatreeoptions.html" class="tsd-kind-icon">Merkle<wbr>Patricia<wbr>Tree<wbr>Options</a>
+					</li>
+					<li class=" tsd-kind-interface tsd-has-type-parameter">
+						<a href="merkletree.html" class="tsd-kind-icon">Merkle<wbr>Tree</a>
+					</li>
+					<li class=" tsd-kind-interface tsd-has-type-parameter">
 						<a href="nextnode.html" class="tsd-kind-icon">Next<wbr>Node</a>
 					</li>
-					<li class=" tsd-kind-interface">
+					<li class=" tsd-kind-interface tsd-has-type-parameter">
 						<a href="searchresult.html" class="tsd-kind-icon">Search<wbr>Result</a>
 					</li>
-					<li class=" tsd-kind-interface">
+					<li class=" tsd-kind-interface tsd-has-type-parameter">
+						<a href="typedmerklepatriciatreeoptions.html" class="tsd-kind-icon">Typed<wbr>Merkle<wbr>Patricia<wbr>Tree<wbr>Options</a>
+					</li>
+					<li class=" tsd-kind-interface tsd-has-type-parameter">
 						<a href="witness.html" class="tsd-kind-icon">Witness</a>
 					</li>
 					<li class=" tsd-kind-function">
