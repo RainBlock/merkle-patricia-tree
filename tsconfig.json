@@ -4,8 +4,9 @@
     "rootDir": ".",
     "outDir": "build",
     "target" : "es2017",
-    "lib" : [ "es2017" ],
-    "sourceMap": true
+    "lib" : [ "es2017", "esnext.bigint" ],
+    "sourceMap": true,
+    "experimentalBigInt" : true
   },
   "include": [
     "src/*.ts",
