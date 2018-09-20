@@ -30,9 +30,13 @@ export interface Witness {
 }
 
 export interface MultiWitness {
-  value: Buffer|null;
-  index: number;
-  proof: MerklePatriciaTreeNode[];
+  proofIndex: Buffer[];
+  indexedWitnesses: IndexedWitness[];
+}
+
+export interface IndexedWitness {
+  value: Buffer | null;
+  proof: number[];
 }
 
 /** A search result, returned as a result for searching for a key. */
@@ -77,6 +81,7 @@ export abstract class MerklePatriciaTreeNode {
    * serialized.
    */
   abstract serialize(): RlpItem;
+  abstract serializedValue: RlpItem;
 
   /** When calling toString(), sets the length of the hashes printed. */
   static HUMAN_READABLE_HASH_LENGTH = 6;
@@ -90,6 +95,10 @@ export abstract class MerklePatriciaTreeNode {
 
   clearMemoizedHash() {
     this.memoizedHash = null;
+  }
+
+  clearSerializedValue() {
+    this.serializedValue = [];
   }
 
   /**
@@ -246,6 +255,7 @@ export abstract class MerklePatriciaTreeNode {
 export class NullNode extends MerklePatriciaTreeNode {
   /** A null node always has no nibbles. */
   readonly nibbles = [];
+  serializedValue: RlpItem = Buffer.from([]);
 
   /** The value of a null node cannot be set. */
   set value(val: Buffer) {
@@ -287,6 +297,8 @@ export class BranchNode extends MerklePatriciaTreeNode {
   value: Buffer = Buffer.from([]);
   /** An array of branches this tree node holds. */
   branches: MerklePatriciaTreeNode[] = new Array(16);
+
+  serializedValue: RlpItem = [];
 
   /**
    * Checks if the last nibble will result in the given branch.
@@ -349,25 +361,27 @@ export class BranchNode extends MerklePatriciaTreeNode {
    * @inheritdoc
    */
   serialize() {
-    const hashedBranches: RlpItem = [];
+    if (this.serializedValue !== []) {
+      return this.serializedValue;
+    }
+    this.serializedValue = [];
     for (const [idx, branch] of this.branches.entries()) {
       if (branch === undefined) {
-        hashedBranches[idx] = Buffer.from([]);
+        this.serializedValue[idx] = Buffer.from([]);
       } else if (
           branch instanceof BranchNode ||
           branch.value.length + (branch.nibbles.length / 2) > 30) {
         // Will be >32 when RLP serialized, so just hash
-        hashedBranches[idx] = branch.hash();
+        this.serializedValue[idx] = branch.hash();
       } else {
         const serialized = branch.serialize();
         const rlpEncoded = RlpEncode(serialized);
-        hashedBranches[idx] = (rlpEncoded.length >= 32) ?
+        this.serializedValue[idx] = (rlpEncoded.length >= 32) ?
             branch.hash(rlpEncoded) :  // Non-embedded node
             serialized;                // Embedded node in branch
       }
     }
-    hashedBranches.push(this.value);
-    return hashedBranches;
+    return this.serializedValue;
   }
 }
 
@@ -378,6 +392,8 @@ export class BranchNode extends MerklePatriciaTreeNode {
 export class ExtensionNode extends MerklePatriciaTreeNode {
   /** Extension nodes never contain a value. */
   readonly value: Buffer = Buffer.from([]);
+
+  serializedValue: RlpItem = [];
 
   /** The prefix when the number of nibbles in the extension node is odd. */
   static PREFIX_EXTENSION_ODD = 1;
@@ -425,11 +441,15 @@ export class ExtensionNode extends MerklePatriciaTreeNode {
 
   /** @inheritdoc */
   serialize() {
+    if (this.serializedValue !== []) {
+      return this.serializedValue;
+    }
     const serialized = this.nextNode!.serialize();
-    return [
+    this.serializedValue = [
       MerklePatriciaTreeNode.toBuffer(this.nibbles, this.prefix),
       RlpEncode(serialized).length >= 32 ? this.nextNode!.hash() : serialized
     ];
+    return this.serializedValue;
   }
 
   /**
@@ -455,6 +475,8 @@ export class LeafNode extends MerklePatriciaTreeNode {
   /** The prefix of the leaf node if the number of nibbles is even. */
   private static PREFIX_LEAF_EVEN = 2;
 
+  serializedValue: RlpItem = [];
+
   /**
    * Constructs a new leaf node with the given nibbles and value.
    * @param nibbles The nibbles consumed by the leaf node.
@@ -477,9 +499,13 @@ export class LeafNode extends MerklePatriciaTreeNode {
 
   /** @inheritdoc */
   serialize() {
-    return [
+    if (this.serializedValue !== []) {
+      return this.serializedValue;
+    }
+    this.serializedValue = [
       MerklePatriciaTreeNode.toBuffer(this.nibbles, this.prefix), this.value
     ];
+    return this.serializedValue;
   }
 
   /**
@@ -547,6 +573,7 @@ export class MerklePatriciaTree {
       // Clear all memoized hashes in the path, they will be reset.
       for (const node of result.stack) {
         node.clearMemoizedHash();
+        node.clearSerializedValue();
       }
     }
   }
@@ -747,22 +774,25 @@ export class MerklePatriciaTree {
     return {value, proof};
   }
 
-  radixSort(keys: Buffer[]): number[][] {
+  radixSort(keys: Buffer[]): Buffer[] {
     keys.sort((k1,k2) => k1.compare(k2));
-    const ret = [];
-    for (const key of keys) {
-      ret.push(MerklePatriciaTreeNode.bufferToNibbles(key));
-    }
-    return ret;
+    return keys;
   }
 
-  getBulk(keys: Buffer[]): MultiWitness[] {
+  getBulk(keys: Buffer[]): Witness[] {
+    const unsortedKeys = keys.slice(0);
     const sortedKeys = this.radixSort(keys);
-    const reply = this.getKeys(sortedKeys);
-    if (reply === null) {
-      return [];
+    const sortedNibbles: number[][] = [];
+    for (const key of sortedKeys) {
+      sortedNibbles.push(MerklePatriciaTreeNode.bufferToNibbles(key));
     }
-    return reply;
+    const reply = this.getKeys(sortedNibbles);
+    let unsortedReply: Witness[] = []
+    for (let i = 0; i < sortedKeys.length; i++) {
+      const sk = sortedKeys[i];
+      unsortedReply[unsortedKeys.findIndex(key => key === sk)] = reply[i];
+    }
+    return unsortedReply;
   }
 
   areNibbleArraysEqual(arr1: number[], arr2: number[]): boolean {
@@ -777,10 +807,9 @@ export class MerklePatriciaTree {
     return true;
   }
 
-  private getKeys(keys: number[][]) : MultiWitness[]|null {
-    const reply: MultiWitness[] = [];
+  private getKeys(keys: number[][]) : Witness[] {
+    const reply: Witness[] = [];
     let currNode = this.rootNode;
-    let proofIndex = 0;
     let nodesInPath : MerklePatriciaTreeNode[] = [];
     let nibIndex = 0;
     for (let keyIndex = 0; keyIndex < keys.length; keyIndex++) {
@@ -797,12 +826,18 @@ export class MerklePatriciaTree {
             }
           } else if (nibIndex === -1 && currNode.value.length !== 0) {
             nodesInPath.push(currNode);
-            const wit : MultiWitness = {value: currNode.value, index: proofIndex, proof: nodesInPath.slice(proofIndex, nodesInPath.length)};
+            let witProof: Buffer[] = [];
+            for (const [idx, node] of nodesInPath.entries()) {
+              let rlp = RlpEncode(node.serialize());
+              if (rlp.length >= 32 || (idx === 0)) {
+                witProof.push(rlp);
+              }
+            }
+            const wit : Witness = {value: currNode.value, proof: witProof};
             reply.push(wit);
             readComplete = 1;
           } else {
-            console.log("BranchNode exception!");
-            return null;
+            throw new Error("key doesn't match at BranchNode");
           }
         } else if (currNode instanceof ExtensionNode) {
           if (nibIndex !== -1) {
@@ -814,35 +849,37 @@ export class MerklePatriciaTree {
               nodesInPath.push(currNode);
               currNode = currNode.nextNode;
             } else {
-              console.log("ExtensionNode exception!");
-              return null;
+              throw new Error("key doesn't match at ExtensionNode");
             }
           } else if (nibIndex === -1 && currNode.nibbles === []) {
             nodesInPath.push(currNode);
             currNode = currNode.nextNode;
           } else {
-            console.log("ExtensionNode exception!");
-            return null;
+            throw new Error("key doesn't match at ExtensionNode");
           }
         } else if (currNode instanceof LeafNode) {
           if ( (nibIndex === -1 && currNode.nibbles === []) ||
                (nibIndex !== -1 && this.areNibbleArraysEqual(key.slice(nibIndex, nibIndex + currNode.nibbles.length), currNode.nibbles) === true)) {
             nodesInPath.push(currNode);
             readComplete = 1;
-            const wit : MultiWitness = {value: currNode.value, index: proofIndex, proof: nodesInPath.slice(proofIndex, nodesInPath.length)};
+            let witProof: Buffer[] = [];
+            for (const [idx, node] of nodesInPath.entries()) {
+              let rlp = RlpEncode(node.serialize());
+              if (rlp.length >= 32 || (idx === 0)) {
+                witProof.push(rlp);
+              }
+            }
+            const wit : Witness = {value: currNode.value, proof: witProof};
             reply.push(wit);
           } else {
-            console.log("LeafNode exception!");
-            return null;
+            throw new Error("Key doesn't match at LeafNode!");
           }
         } else if (currNode instanceof NullNode) {
-          console.log("NullNode exception!");
-          return null;
+          throw new Error("Didn't expect a NullNode here!");
         }
 
         if (readComplete === 1) {
           if (keyIndex === keys.length - 1) {
-            console.log("COMPLETE!");
             return reply;
           }
           const nextKey = keys[keyIndex + 1];
@@ -857,14 +894,12 @@ export class MerklePatriciaTree {
             } else if (currNode instanceof LeafNode) {
               start -= currNode.nibbles.length;
             } else if (currNode instanceof NullNode) {
-              console.log("NullNode exception!");
-              return null;
+              throw new Error("Didn't expect a NullNode here!");
             }
             if (start <= 0) {
               break;
             }
           }
-          proofIndex = nodesInPath.length;
           if (start <= 0) {
             currNode = this.rootNode;
             nibIndex = 0;
@@ -895,6 +930,7 @@ export class MerklePatriciaTree {
       // Clear all memoized hashes in the path, they will be reset.
       for (const node of result.stack) {
         node.clearMemoizedHash();
+        node.clearSerializedValue();
       }
       if (result.node instanceof BranchNode) {
         result.node.value = Buffer.from([]);
