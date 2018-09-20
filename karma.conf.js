@@ -34,6 +34,11 @@ module.exports = function (config) {
         extensions: ['.ts', '.js', '.json']
       }
     },
+    client: {
+        mocha: {
+          timeout: '10000'
+        }
+    },
     singleRun: true,
     reporters: ['mocha'],
     plugins: [
