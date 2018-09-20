@@ -108,6 +108,7 @@
 								<li class="tsd-kind-property tsd-parent-kind-interface"><a href="merkletree.html#get" class="tsd-kind-icon">get</a></li>
 								<li class="tsd-kind-property tsd-parent-kind-interface"><a href="merkletree.html#put" class="tsd-kind-icon">put</a></li>
 								<li class="tsd-kind-property tsd-parent-kind-interface"><a href="merkletree.html#root" class="tsd-kind-icon">root</a></li>
+								<li class="tsd-kind-property tsd-parent-kind-interface"><a href="merkletree.html#roothash" class="tsd-kind-icon">root<wbr>Hash</a></li>
 								<li class="tsd-kind-property tsd-parent-kind-interface"><a href="merkletree.html#search" class="tsd-kind-icon">search</a></li>
 							</ul>
 						</section>
@@ -122,7 +123,7 @@
 					<div class="tsd-signature tsd-kind-icon">batch<span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">function</span></div>
 					<aside class="tsd-sources">
 						<ul>
-							<li>Defined in <a href="https://github.com/RainBlock/merkle-patricia-tree/blob/f951bc2/src/index.ts#L553">index.ts:553</a></li>
+							<li>Defined in <a href="https://github.com/RainBlock/merkle-patricia-tree/blob/b0768a6/src/index.ts#L561">index.ts:561</a></li>
 						</ul>
 					</aside>
 					<div class="tsd-comment tsd-typography">
@@ -176,7 +177,7 @@
 					<div class="tsd-signature tsd-kind-icon">del<span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">function</span></div>
 					<aside class="tsd-sources">
 						<ul>
-							<li>Defined in <a href="https://github.com/RainBlock/merkle-patricia-tree/blob/f951bc2/src/index.ts#L540">index.ts:540</a></li>
+							<li>Defined in <a href="https://github.com/RainBlock/merkle-patricia-tree/blob/b0768a6/src/index.ts#L548">index.ts:548</a></li>
 						</ul>
 					</aside>
 					<div class="tsd-comment tsd-typography">
@@ -217,7 +218,7 @@
 					<div class="tsd-signature tsd-kind-icon">get<span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">function</span></div>
 					<aside class="tsd-sources">
 						<ul>
-							<li>Defined in <a href="https://github.com/RainBlock/merkle-patricia-tree/blob/f951bc2/src/index.ts#L533">index.ts:533</a></li>
+							<li>Defined in <a href="https://github.com/RainBlock/merkle-patricia-tree/blob/b0768a6/src/index.ts#L541">index.ts:541</a></li>
 						</ul>
 					</aside>
 					<div class="tsd-comment tsd-typography">
@@ -262,7 +263,7 @@
 					<div class="tsd-signature tsd-kind-icon">put<span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">function</span></div>
 					<aside class="tsd-sources">
 						<ul>
-							<li>Defined in <a href="https://github.com/RainBlock/merkle-patricia-tree/blob/f951bc2/src/index.ts#L524">index.ts:524</a></li>
+							<li>Defined in <a href="https://github.com/RainBlock/merkle-patricia-tree/blob/b0768a6/src/index.ts#L532">index.ts:532</a></li>
 						</ul>
 					</aside>
 					<div class="tsd-comment tsd-typography">
@@ -310,7 +311,7 @@
 					<div class="tsd-signature tsd-kind-icon">root<span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">Buffer</span></div>
 					<aside class="tsd-sources">
 						<ul>
-							<li>Defined in <a href="https://github.com/RainBlock/merkle-patricia-tree/blob/f951bc2/src/index.ts#L515">index.ts:515</a></li>
+							<li>Defined in <a href="https://github.com/RainBlock/merkle-patricia-tree/blob/b0768a6/src/index.ts#L518">index.ts:518</a></li>
 						</ul>
 					</aside>
 					<div class="tsd-comment tsd-typography">
@@ -320,12 +321,28 @@
 					</div>
 				</section>
 				<section class="tsd-panel tsd-member tsd-kind-property tsd-parent-kind-interface">
+					<a name="roothash" class="tsd-anchor"></a>
+					<h3>root<wbr>Hash</h3>
+					<div class="tsd-signature tsd-kind-icon">root<wbr>Hash<span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">bigint</span></div>
+					<aside class="tsd-sources">
+						<ul>
+							<li>Defined in <a href="https://github.com/RainBlock/merkle-patricia-tree/blob/b0768a6/src/index.ts#L523">index.ts:523</a></li>
+						</ul>
+					</aside>
+					<div class="tsd-comment tsd-typography">
+						<div class="lead">
+							<p>The root hash of the tree, as a bigint. Reading this property is more
+							efficient than obtaining a buffer.</p>
+						</div>
+					</div>
+				</section>
+				<section class="tsd-panel tsd-member tsd-kind-property tsd-parent-kind-interface">
 					<a name="search" class="tsd-anchor"></a>
 					<h3>search</h3>
 					<div class="tsd-signature tsd-kind-icon">search<span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">function</span></div>
 					<aside class="tsd-sources">
 						<ul>
-							<li>Defined in <a href="https://github.com/RainBlock/merkle-patricia-tree/blob/f951bc2/src/index.ts#L562">index.ts:562</a></li>
+							<li>Defined in <a href="https://github.com/RainBlock/merkle-patricia-tree/blob/b0768a6/src/index.ts#L570">index.ts:570</a></li>
 						</ul>
 					</aside>
 					<div class="tsd-comment tsd-typography">
@@ -423,6 +440,9 @@
 							</li>
 							<li class=" tsd-kind-property tsd-parent-kind-interface">
 								<a href="merkletree.html#root" class="tsd-kind-icon">root</a>
+							</li>
+							<li class=" tsd-kind-property tsd-parent-kind-interface">
+								<a href="merkletree.html#roothash" class="tsd-kind-icon">root<wbr>Hash</a>
 							</li>
 							<li class=" tsd-kind-property tsd-parent-kind-interface">
 								<a href="merkletree.html#search" class="tsd-kind-icon">search</a>
