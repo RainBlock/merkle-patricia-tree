@@ -1,5 +1,6 @@
 import {options} from 'benchmark';
-import {hashAsBuffer, HashType} from 'bigint-hash';
+import {toBufferBE} from 'bigint-buffer';
+import {hashAsBigInt, hashAsBuffer, HashType} from 'bigint-hash';
 import {RlpDecode, RlpEncode, RlpItem, RlpList} from 'rlp-stream';
 
 const originalNode = require('./trieNode');
@@ -79,7 +80,7 @@ export abstract class MerklePatriciaTreeNode<V> {
    */
   static HUMAN_READABLE_VAL_LENGTH = 6;
 
-  private memoizedHash: Buffer|null = null;
+  private memoizedHash: bigint|null = null;
 
   clearMemoizedHash() {
     this.memoizedHash = null;
@@ -93,12 +94,12 @@ export abstract class MerklePatriciaTreeNode<V> {
    */
   hash(
       valueConverter: (val: V) => Buffer,
-      rlpEncodedBuffer: Buffer|null = null): Buffer {
+      rlpEncodedBuffer: Buffer|null = null): bigint {
     if (this.memoizedHash === null) {
       if (rlpEncodedBuffer === null) {
         rlpEncodedBuffer = RlpEncode(this.serialize(valueConverter));
       }
-      this.memoizedHash = hashAsBuffer(HashType.KECCAK256, rlpEncodedBuffer);
+      this.memoizedHash = hashAsBigInt(HashType.KECCAK256, rlpEncodedBuffer);
     }
     return this.memoizedHash!;
   }
@@ -173,7 +174,7 @@ export abstract class MerklePatriciaTreeNode<V> {
    * @returns A human readable hash string.
    */
   toReadableHash(valueConverter: (val: V) => Buffer): string {
-    const hash = this.hash(valueConverter).toString('hex').toString();
+    const hash = this.hash(valueConverter).toString(16);
     return hash.substring(
         hash.length - MerklePatriciaTreeNode.HUMAN_READABLE_HASH_LENGTH);
   }
@@ -249,9 +250,8 @@ export class NullNode<V> extends MerklePatriciaTreeNode<V> {
 
   /** The hash of a null node is always the empty hash. */
   hash() {
-    return Buffer.from(
-        '56e81f171bcc55a6ff8345e692c0f86e5b48e01b996cadc001622fb5e363b421',
-        'hex');
+    return BigInt(
+        '0x56e81f171bcc55a6ff8345e692c0f86e5b48e01b996cadc001622fb5e363b421');
   }
 
   /** The serialized version of a null node is always the empty buffer. */
@@ -358,13 +358,15 @@ export class BranchNode<V> extends MerklePatriciaTreeNode<V> {
       } else if (
           branch instanceof BranchNode || (branch.nibbles.length / 2) > 30) {
         // Will be >32 when RLP serialized, so just hash
-        hashedBranches[idx] =
-            (branch as MerklePatriciaTreeNode<V>).hash(valueConverter);
+        hashedBranches[idx] = toBufferBE(
+            (branch as MerklePatriciaTreeNode<V>).hash(valueConverter), 32);
       } else {
         const serialized = branch.serialize(valueConverter);
         const rlpEncoded = RlpEncode(serialized);
         hashedBranches[idx] = (rlpEncoded.length >= 32) ?
-            branch.hash(valueConverter, rlpEncoded) :  // Non-embedded node
+            toBufferBE(
+                branch.hash(valueConverter, rlpEncoded),
+                32) :    // Non-embedded node
             serialized;  // Embedded node in branch
       }
     }
@@ -432,8 +434,9 @@ export class ExtensionNode<V> extends MerklePatriciaTreeNode<V> {
     const serialized = this.nextNode!.serialize(valueConverter);
     return [
       MerklePatriciaTreeNode.toBuffer(this.nibbles, this.prefix),
-      RlpEncode(serialized).length >= 32 ? this.nextNode!.hash(valueConverter) :
-                                           serialized
+      RlpEncode(serialized).length >= 32 ?
+          toBufferBE(this.nextNode!.hash(valueConverter), 32) :
+          serialized
     ];
   }
 
@@ -514,6 +517,11 @@ export interface MerkleTree<K, V> {
   /** The root hash of the tree. */
   root: Buffer;
   /**
+   * The root hash of the tree, as a bigint. Reading this property is more
+   * efficient than obtaining a buffer.
+   */
+  rootHash: bigint;
+  /**
    * Insert a new mapping into the tree. If the key is already mapped in the
    * tree, it is updated with the new value.
    *
@@ -586,6 +594,14 @@ export class MerklePatriciaTree<K = Buffer, V = Buffer> implements
    * bytes).
    */
   get root(): Buffer {
+    return toBufferBE(this.rootNode.hash(this.convertValue), 32);
+  }
+
+  /**
+   * The root hash of the tree, as a bigint. Reading this property is more
+   * efficient than obtaining a buffer.
+   */
+  get rootHash(): bigint {
     return this.rootNode.hash(this.convertValue);
   }
 
