@@ -1,11 +1,11 @@
-process.env.ethTest = 'TrieTests'
 
 module.exports = function (config) {
-  config.set({
+  const configuration = {
     browserNoActivityTimeout: 120000,
-    frameworks: ['mocha', 'detectBrowsers'],
+    frameworks: ['mocha'],
     files: [
-      './src/*.spec.ts'
+      './src/*.spec.ts',
+      {pattern: './test/*.*', watched: false, included: false, served: true, nocache: false}
     ],
     preprocessors: {
       './src/*.spec.ts': ['webpack', 'env']
@@ -34,13 +34,16 @@ module.exports = function (config) {
         extensions: ['.ts', '.js', '.json']
       }
     },
+    client: {
+        mocha: {
+          timeout: '10000'
+        }
+    },
     singleRun: true,
     reporters: ['mocha'],
     plugins: [
       'karma-chrome-launcher',
       'karma-env-preprocessor',
-      'karma-firefox-launcher',
-      'karma-detect-browsers',
       'karma-webpack',
       'karma-mocha',
       'karma-mocha-reporter'
@@ -48,19 +51,18 @@ module.exports = function (config) {
     mime: {
       'text/x-typescript': ['ts','tsx']
     },
-    detectBrowsers: {
-      enabled: true,
-      usePhantomJS: false,
-      postDetection: function (availableBrowser) {
-        if (process.env.TRAVIS) {
-          return ['Firefox']
-        }
-
-        var browsers = ['Chrome', 'Firefox']
-        return browsers.filter(function (browser) {
-          return availableBrowser.indexOf(browser) !== -1
-        })
+    browsers: ['Chrome'],
+    customLaunchers: {
+      Chrome_travis_ci: {
+        base: 'Chrome',
+        flags: ['--no-sandbox']
       }
     }
-  })
+  };
+
+  if(process.env.TRAVIS) {
+    configuration.browsers = ['Chrome_travis_ci'];
+  }
+
+  config.set(configuration);
 }

@@ -1,3 +1,5 @@
+import {options} from 'benchmark';
+import {hashAsBuffer, HashType} from 'bigint-hash';
 import {RlpDecode, RlpEncode, RlpItem, RlpList} from 'rlp-stream';
 import { sort } from 'shelljs';
 import { notStrictEqual } from 'assert';
@@ -5,7 +7,6 @@ import { read } from 'fs-extra';
 
 const originalNode = require('./trieNode');
 const matchingNibbleLength = require('./util').matchingNibbleLength;
-const keccak = require('keccak');
 
 interface OriginalTreeNode {
   value: Buffer;
@@ -19,9 +20,9 @@ interface OriginalTreeNode {
  * An interface for a [[Witness]], which is a combination of a value and a proof
  * (witnessed at a certain root)
  */
-export interface Witness {
+export interface Witness<V> {
   /** The value mapped to the key */
-  value: Buffer|null;
+  value: V|null;
   /**
    * A proof, which consists of the list of nodes traversed to reach the node
    * containing the value.
@@ -40,47 +41,48 @@ export interface IndexedWitness {
 }
 
 /** A search result, returned as a result for searching for a key. */
-export interface SearchResult {
+export interface SearchResult<V = Buffer> {
   /** The node, if found, or null, if no node was found. */
-  node: MerklePatriciaTreeNode|null;
+  node: MerklePatriciaTreeNode<V>|null;
   /** Contains any remaining nibbles. */
   remainder: number[];
   /** Contains a stack of nodes encountered while traversing the tree. */
-  stack: MerklePatriciaTreeNode[];
+  stack: Array<MerklePatriciaTreeNode<V>>;
 }
 
 /** Describes a key value pair used in a batched put operation. */
-export interface BatchPut {
+export interface BatchPut<K = Buffer, V = Buffer> {
   /** The key to insert. */
-  key: Buffer;
+  key: K;
   /** The value to insert */
-  val: Buffer;
+  val: V;
 }
 
 /** Returned when next() is called on a tree node */
-export interface NextNode {
+export interface NextNode<V> {
   /** Any remaining nibbles after traversing the node. */
   remainingNibbles: number[];
   /** The next node, or null, if no node was present. */
-  next: MerklePatriciaTreeNode|null;
+  next: MerklePatriciaTreeNode<V>|null;
 }
+
 /** Represents an abstract node in a modified Ethereum merkle patricia tree. */
-export abstract class MerklePatriciaTreeNode {
+export abstract class MerklePatriciaTreeNode<V> {
   /**
    * The nibbles (of the key) used when traversing this node. Not present for
    * branch/null nodes.
    */
   abstract nibbles: number[];
   /**
-   * The value stored in the node. An empty buffer represents value not
-   * present. Always an empty buffer for extension nodes.
+   * The value stored in the node. Null represents value not present.
    */
-  abstract value: Buffer;
+  abstract value: V|null;
+
   /**
    * Serialize the node into a buffer or an array of buffers which may be RLP
    * serialized.
    */
-  abstract serialize(): RlpItem;
+  abstract serialize(valueConverter: (val: V) => Buffer): RlpItem;
   abstract serializedValue: RlpItem;
 
   /** When calling toString(), sets the length of the hashes printed. */
@@ -107,12 +109,14 @@ export abstract class MerklePatriciaTreeNode {
    * for hashing
    * @returns A Buffer containing the hash for the node.
    */
-  hash(rlpEncodedBuffer: Buffer|null = null): Buffer {
+  hash(
+      valueConverter: (val: V) => Buffer,
+      rlpEncodedBuffer: Buffer|null = null): Buffer {
     if (this.memoizedHash === null) {
       if (rlpEncodedBuffer === null) {
-        rlpEncodedBuffer = RlpEncode(this.serialize());
+        rlpEncodedBuffer = RlpEncode(this.serialize(valueConverter));
       }
-      this.memoizedHash = keccak('keccak256').update(rlpEncodedBuffer).digest();
+      this.memoizedHash = hashAsBuffer(HashType.KECCAK256, rlpEncodedBuffer);
     }
     return this.memoizedHash!;
   }
@@ -140,7 +144,7 @@ export abstract class MerklePatriciaTreeNode {
    * @param nibbles The nibbles to evaluate
    * @returns A [NextNode] with the remaining nibbles and the next node, if any.
    */
-  abstract next(nibbles: number[]): NextNode;
+  abstract next(nibbles: number[]): NextNode<V>;
 
   /**
    * Convert a buffer into a nibble representation.
@@ -186,8 +190,8 @@ export abstract class MerklePatriciaTreeNode {
    *
    * @returns A human readable hash string.
    */
-  toReadableHash(): string {
-    const hash = this.hash().toString('hex').toString();
+  toReadableHash(valueConverter: (val: V) => Buffer): string {
+    const hash = this.hash(valueConverter).toString('hex').toString();
     return hash.substring(
         hash.length - MerklePatriciaTreeNode.HUMAN_READABLE_HASH_LENGTH);
   }
@@ -199,8 +203,8 @@ export abstract class MerklePatriciaTreeNode {
    * @param val The value to convert.
    * @returns A human readable value string
    */
-  static toReadableValue(val: Buffer): string {
-    let hex = val.toString('hex');
+  static toReadableValue<V>(val: V): string {
+    let hex = (val as {} as Buffer).toString('hex');
     if (hex.length > MerklePatriciaTreeNode.HUMAN_READABLE_VAL_LENGTH) {
       hex = `${
           hex.substring(
@@ -252,13 +256,13 @@ export abstract class MerklePatriciaTreeNode {
  * Represents a null node, which is -only- used at the root of the tree to
  * represent a tree with no elements.
  */
-export class NullNode extends MerklePatriciaTreeNode {
+export class NullNode<V> extends MerklePatriciaTreeNode<V> {
   /** A null node always has no nibbles. */
   readonly nibbles = [];
   serializedValue: RlpItem = Buffer.from([]);
 
   /** The value of a null node cannot be set. */
-  set value(val: Buffer) {
+  set value(val: V) {
     throw new Error('Attempted to set the value of a NullNode');
   }
 
@@ -290,13 +294,15 @@ export class NullNode extends MerklePatriciaTreeNode {
  * one for each hex character, and may also act as a "leaf" node by containing a
  * value.
  */
-export class BranchNode extends MerklePatriciaTreeNode {
+export class BranchNode<V> extends MerklePatriciaTreeNode<V> {
   /** A branch node has no nibbles to be set. */
   readonly nibbles: number[] = [];
   /** The value this branch holds, initially unset. */
-  value: Buffer = Buffer.from([]);
+  value: V|null = null;
+
   /** An array of branches this tree node holds. */
-  branches: MerklePatriciaTreeNode[] = new Array(16);
+  branches: Array<MerklePatriciaTreeNode<V>> =
+      new Array<MerklePatriciaTreeNode<V>>(16);
 
   serializedValue: RlpItem = [];
 
@@ -312,11 +318,11 @@ export class BranchNode extends MerklePatriciaTreeNode {
    *
    * @returns True, if the last nibble will not result in the given branch.
    */
-  private static lastNibbleNoMatch(
-      nibbles: number[], branch: MerklePatriciaTreeNode): boolean {
+  private static lastNibbleNoMatch<N>(
+      nibbles: number[], branch: MerklePatriciaTreeNode<N>): boolean {
     return nibbles.length === 1 &&
         ((branch instanceof LeafNode && branch.nibbles.length > 0) ||
-         (branch instanceof BranchNode && branch.value.length === 0) ||
+         (branch instanceof BranchNode && branch.value === null) ||
          branch instanceof ExtensionNode || branch instanceof NullNode);
   }
 
@@ -343,14 +349,19 @@ export class BranchNode extends MerklePatriciaTreeNode {
    *
    * @returns The string representation of this node.
    */
-  toString() {
-    let outString = `(${this.toReadableHash()})`;
+  toString(valueConverter?: (val: V) => Buffer) {
+    let outString = `(${
+        valueConverter === undefined ? '?' :
+                                       this.toReadableHash(valueConverter)})`;
     for (const [idx, branch] of this.branches.entries()) {
       if (branch !== undefined) {
-        outString += ` ${idx.toString(16)}: ${branch.toReadableHash()}`;
+        outString += ` ${idx.toString(16)}: ${
+            valueConverter === undefined ?
+                '?' :
+                branch.toReadableHash(valueConverter)}`;
       }
     }
-    if (this.value.length > 0) {
+    if (this.value !== null) {
       outString +=
           ` val: ${MerklePatriciaTreeNode.toReadableValue(this.value)}`;
     }
@@ -360,8 +371,8 @@ export class BranchNode extends MerklePatriciaTreeNode {
   /**
    * @inheritdoc
    */
-  serialize() {
-    if (this.serializedValue !== []) {
+  serialize(valueConverter: (val: V) => Buffer) {
+    if (this.serializedValue.length !== 0) {
       return this.serializedValue;
     }
     this.serializedValue = [];
@@ -369,18 +380,20 @@ export class BranchNode extends MerklePatriciaTreeNode {
       if (branch === undefined) {
         this.serializedValue[idx] = Buffer.from([]);
       } else if (
-          branch instanceof BranchNode ||
-          branch.value.length + (branch.nibbles.length / 2) > 30) {
+          branch instanceof BranchNode || (branch.nibbles.length / 2) > 30) {
         // Will be >32 when RLP serialized, so just hash
-        this.serializedValue[idx] = branch.hash();
+        this.serializedValue[idx] = 
+            (branch as MerklePatriciaTreeNode<V>).hash(valueConverter);
       } else {
-        const serialized = branch.serialize();
+        const serialized = branch.serialize(valueConverter);
         const rlpEncoded = RlpEncode(serialized);
         this.serializedValue[idx] = (rlpEncoded.length >= 32) ?
-            branch.hash(rlpEncoded) :  // Non-embedded node
-            serialized;                // Embedded node in branch
+            branch.hash(valueConverter, rlpEncoded) :  // Non-embedded node
+            serialized;  // Embedded node in branch
       }
     }
+    this.serializedValue.push(
+        this.value === null ? Buffer.from([]) : valueConverter(this.value));
     return this.serializedValue;
   }
 }
@@ -389,9 +402,9 @@ export class BranchNode extends MerklePatriciaTreeNode {
  * Represents an extension node, which "consumes" a set of nibbles and points to
  * another node.
  */
-export class ExtensionNode extends MerklePatriciaTreeNode {
+export class ExtensionNode<V> extends MerklePatriciaTreeNode<V> {
   /** Extension nodes never contain a value. */
-  readonly value: Buffer = Buffer.from([]);
+  readonly value: null = null;
 
   serializedValue: RlpItem = [];
 
@@ -432,7 +445,8 @@ export class ExtensionNode extends MerklePatriciaTreeNode {
    * @param nextNode The node that this node points to.
    */
   constructor(
-      public nibbles: number[], public nextNode: MerklePatriciaTreeNode) {
+      public valueConverter: (val: V) => Buffer, public nibbles: number[],
+      public nextNode: MerklePatriciaTreeNode<V>) {
     super();
     if (nibbles.length === 0) {
       throw new Error('Extension branch cannot have 0 nibbles');
@@ -440,14 +454,15 @@ export class ExtensionNode extends MerklePatriciaTreeNode {
   }
 
   /** @inheritdoc */
-  serialize() {
-    if (this.serializedValue !== []) {
+  serialize(valueConverter: (val: V) => Buffer) {
+    if (this.serializedValue.length !== 0) {
       return this.serializedValue;
     }
-    const serialized = this.nextNode!.serialize();
+    const serialized = this.nextNode!.serialize(valueConverter);
     this.serializedValue = [
       MerklePatriciaTreeNode.toBuffer(this.nibbles, this.prefix),
-      RlpEncode(serialized).length >= 32 ? this.nextNode!.hash() : serialized
+      RlpEncode(serialized).length >= 32 ? this.nextNode!.hash(valueConverter) :
+                                           serialized
     ];
     return this.serializedValue;
   }
@@ -457,10 +472,15 @@ export class ExtensionNode extends MerklePatriciaTreeNode {
    *
    * @returns The string representation of this node.
    */
-  toString() {
-    const outString = `(${this.toReadableHash()}) -(${
-        MerklePatriciaTreeNode.nibblesAsHex(
-            this.nibbles)})-> ${this.nextNode.toReadableHash()}`;
+  toString(valueConverter?: (val: V) => Buffer) {
+    const outString = `(${
+        valueConverter === undefined ?
+            '?' :
+            this.toReadableHash(valueConverter)}) -(${
+        MerklePatriciaTreeNode.nibblesAsHex(this.nibbles)})-> ${
+        valueConverter === undefined ?
+            '?' :
+            this.nextNode.toReadableHash(valueConverter)}`;
     return `[extension ${outString}]`;
   }
 }
@@ -469,7 +489,7 @@ export class ExtensionNode extends MerklePatriciaTreeNode {
  * Represents a leaf node, which are terminal nodes in the tree which holds
  * values.
  */
-export class LeafNode extends MerklePatriciaTreeNode {
+export class LeafNode<V> extends MerklePatriciaTreeNode<V> {
   /** The prefix of the leaf node if the number of nibbles is odd */
   private static PREFIX_LEAF_ODD = 3;
   /** The prefix of the leaf node if the number of nibbles is even. */
@@ -482,7 +502,7 @@ export class LeafNode extends MerklePatriciaTreeNode {
    * @param nibbles The nibbles consumed by the leaf node.
    * @param value   The value held in the leaf node.
    */
-  constructor(public nibbles: number[], public value: Buffer) {
+  constructor(public nibbles: number[], public value: V) {
     super();
   }
 
@@ -498,12 +518,13 @@ export class LeafNode extends MerklePatriciaTreeNode {
   }
 
   /** @inheritdoc */
-  serialize() {
-    if (this.serializedValue !== []) {
+  serialize(valueConverter: (val: V) => Buffer) {
+    if (this.serializedValue.length !== 0) {
       return this.serializedValue;
     }
     this.serializedValue = [
-      MerklePatriciaTreeNode.toBuffer(this.nibbles, this.prefix), this.value
+      MerklePatriciaTreeNode.toBuffer(this.nibbles, this.prefix),
+      valueConverter(this.value)
     ];
     return this.serializedValue;
   }
@@ -513,31 +534,128 @@ export class LeafNode extends MerklePatriciaTreeNode {
    *
    * @returns The string representation of this node.
    */
-  toString() {
-    const outString = `(${this.toReadableHash()}) -(${
+  toString(valueConverter?: (val: V) => Buffer) {
+    const outString = `(${
+        valueConverter === undefined ?
+            '?' :
+            this.toReadableHash(valueConverter)}) -(${
         MerklePatriciaTreeNode.nibblesAsHex(this.nibbles)})-> val: ${
         MerklePatriciaTreeNode.toReadableValue(this.value)}`;
     return `[leaf ${outString}]`;
   }
 }
 
+/** The interface for a merkle tree. */
+export interface MerkleTree<K, V> {
+  /** The root hash of the tree. */
+  root: Buffer;
+  /**
+   * Insert a new mapping into the tree. If the key is already mapped in the
+   * tree, it is updated with the new value.
+   *
+   * @param key   The key to insert.
+   * @param val   A Buffer representing the value.
+   *
+   */
+  put: (key: K, val: V) => void;
+  /**
+   * Given a key, retrieve a [[Witness]] for the mapping.
+   *
+   * @param key   The key to retrieve the [[Witness]] for.
+   *
+   * @returns     A [[Witness]], with a proof of the value read (or a null
+   * value, with a proof of the value's nonexistence).
+   */
+  get: (key: K) => Witness<V>;
+  /**
+   * Given a key, delete any mapping that exists for that key.
+   *
+   * @param key   The key to unmap.
+   *
+   */
+  del: (key: K) => void;
+  /**
+   * Execute a batch of put and delete operations. The execution is batched,
+   * so calling this function with multiple updates provides more opportunities
+   * for optimization and can be faster than call put() and del() multiple
+   * times.
+   *
+   * @param putOps  An array of put operations on the tree, of type
+   * [[BatchPut]].
+   * @param delOps  An optional array of keys to delete from the tree.
+   *
+   * @returns       The root that results from this set of operations.
+   */
+  batch: (putOps: Array<BatchPut<K, V>>, delOps?: K[]) => void;
+  /**
+   * Search for the given key, returning a [[SearchResult]] which contains the
+   * path traversed to search for the key.
+   *
+   * @param key    The key to search for.
+   * @returns      A [[SearchResult]] containing the path to the key, and the
+   * value if it was present.
+   */
+  search: (key: K) => SearchResult<V>;
+}
+
+/** Configuration for a merkle tree. */
+export interface MerklePatriciaTreeOptions<K, V> {
+  /** A function which converts keys to the native type of the tree. */
+  keyConverter?: (key: K) => Buffer;
+  /** A function which converts values to the native type of the tree */
+  valueConverter?: (val: V) => Buffer;
+  /**
+   * Whether a put with an empty value can delete a node. Note that turning
+   * this on will require serialization at insert time.
+   */
+  putCanDelete: boolean;
+}
+
 /** A Merkle Patricia Tree, as defined in the Ethereum Yellow Paper. */
-export class MerklePatriciaTree {
+export class MerklePatriciaTree<K = Buffer, V = Buffer> implements
+    MerkleTree<K, V> {
   /** The root node of the tree. */
-  private rootNode: MerklePatriciaTreeNode;
+  private rootNode: MerklePatriciaTreeNode<V>;
 
   /**
    * A Buffer representing the root hash of the tree. Always 256-bits (32
    * bytes).
    */
   get root(): Buffer {
-    return this.rootNode.hash();
+    return this.rootNode.hash(this.convertValue);
   }
 
   /** Construct a new Merkle Patricia Tree. */
-  constructor() {
-    this.rootNode = new NullNode();
+  constructor(public options: MerklePatriciaTreeOptions<K, V> = {
+    putCanDelete: true
+  }) {
+    this.rootNode = new NullNode<V>();
   }
+
+  /**
+   * Convert a key to its native representation.
+   * @param key   The key to convert
+   * @returns     The key in the type used internally by the tree.
+   */
+  convertKey = (key: K):
+      Buffer => {
+        return this.options.keyConverter === undefined ?
+            key as {} as Buffer :
+            this.options.keyConverter(key);
+      }
+
+
+  /**
+   * Convert a value to its native representation.
+   * @param value  The value to convert
+   * @returns      The value in the type used internally by the tree.
+   */
+  convertValue = (value: V):
+      Buffer => {
+        return this.options.valueConverter === undefined ?
+            value as {} as Buffer :
+            this.options.valueConverter(value);
+      }
 
   /**
    * Insert a new mapping into the tree. If the key is already mapped in the
@@ -546,20 +664,21 @@ export class MerklePatriciaTree {
    * @param key   The key to insert.
    * @param val   A Buffer representing the value.
    *
-   * @returns     A [[Promise]], resolved when the put is completed.
    */
-  put(key: Buffer, val: Buffer) {
-    if (key.length === 0) {
+  put(key: K, val: V) {
+    const convKey = this.convertKey(key);
+
+    if (convKey.length === 0) {
       throw new Error('Empty key is not supported');
     }
-    if (val.length === 0) {
+    if (this.options.putCanDelete && this.convertValue(val).length === 0) {
       this.del(key);
       return;
     }
     if (this.rootNode instanceof NullNode) {
       // Null node, so insert this value as a leaf.
       this.rootNode =
-          new LeafNode(MerklePatriciaTreeNode.bufferToNibbles(key), val);
+          new LeafNode(MerklePatriciaTreeNode.bufferToNibbles(convKey), val);
     } else {
       // search
       const result = this.search(key);
@@ -585,7 +704,7 @@ export class MerklePatriciaTree {
    * @param value     The value to insert.
    */
   private insert(
-      stack: MerklePatriciaTreeNode[], remainder: number[], value: Buffer) {
+      stack: Array<MerklePatriciaTreeNode<V>>, remainder: number[], value: V) {
     const last = stack[stack.length - 1];
     if (remainder.length === 0) {
       last.value = value;
@@ -628,7 +747,7 @@ export class MerklePatriciaTree {
             MerklePatriciaTreeNode.intersectingPrefix(remainder, last.nibbles);
         const prevNibbles = last.nibbles;
         let prevNext = last.nextNode;
-        const branch = new BranchNode();
+        const branch = new BranchNode<V>();
 
         // The intersection is now the extension
         last.nibbles = intersection;
@@ -645,7 +764,8 @@ export class MerklePatriciaTree {
             // Otherwise, if branch node and the remainder is > 1, create an
             // extension
             const extension = new ExtensionNode(
-                prevNibbles.slice(intersection.length + 1), prevNext);
+                this.convertValue, prevNibbles.slice(intersection.length + 1),
+                prevNext);
             prevNext = extension;
           }
         }
@@ -661,7 +781,7 @@ export class MerklePatriciaTree {
         } else {
           // Insert new value
           branch.branches[remainder[intersection.length]] =
-              new LeafNode(remainder.slice(intersection.length + 1), value);
+              new LeafNode<V>(remainder.slice(intersection.length + 1), value);
         }
 
         // If the intersection is 0, then eliminate the extension.
@@ -673,7 +793,7 @@ export class MerklePatriciaTree {
             const prevNode = stack[stack.length - 2];
             if (prevNode instanceof BranchNode) {
               for (const [idx, prevBranch] of prevNode.branches.entries()) {
-                if (prevBranch === prevNode) {
+                if (prevBranch === last) {
                   prevNode.branches[idx] = branch;
                 }
               }
@@ -686,13 +806,14 @@ export class MerklePatriciaTree {
         const intersection =
             MerklePatriciaTreeNode.intersectingPrefix(remainder, last.nibbles);
         // This is the branch node that will contain both child nodes.
-        const branch = new BranchNode();
+        const branch = new BranchNode<V>();
         // This is the node that must be inserted into the tree. Unless there is
         // an extension, it is the branch node.
-        let insertNode: MerklePatriciaTreeNode = branch;
+        let insertNode: MerklePatriciaTreeNode<V> = branch;
         if (intersection.length !== 0) {
           // We need an extension node.
-          const extension = new ExtensionNode(intersection, branch);
+          const extension =
+              new ExtensionNode(this.convertValue, intersection, branch);
           // The insertion node is now the extension node
           insertNode = extension;
         }
@@ -709,7 +830,7 @@ export class MerklePatriciaTree {
         } else {
           // Insert the new value into the proper branch
           branch.branches[remainder[branchOffset]] =
-              new LeafNode(remainder.slice(sliceOffset), value);
+              new LeafNode<V>(remainder.slice(sliceOffset), value);
         }
 
         // Insert the old value into the proper branch
@@ -759,13 +880,13 @@ export class MerklePatriciaTree {
    * @returns     A [[Witness]], with a proof of the value read (or a null
    * value, with a proof of the value's nonexistence).
    */
-  get(key: Buffer): Witness {
+  get(key: K): Witness<V> {
     const search = this.search(key);
     const value = search.node === null ? null : search.node.value;
 
     const proof: Buffer[] = [];
     for (const [idx, node] of search.stack.entries()) {
-      const rlp = RlpEncode(node.serialize());
+      const rlp = RlpEncode(node.serialize(this.convertValue));
       if (rlp.length >= 32 || (idx === 0)) {
         proof.push(rlp);
       }
@@ -774,23 +895,22 @@ export class MerklePatriciaTree {
     return {value, proof};
   }
 
-  radixSort(keys: Buffer[]): Buffer[] {
+  radixSort(keys: Buffer[]) {
     keys.sort((k1,k2) => k1.compare(k2));
-    return keys;
   }
 
-  getBulk(keys: Buffer[]): Witness[] {
-    const unsortedKeys = keys.slice(0);
-    const sortedKeys = this.radixSort(keys);
+  getBulk(keys: Buffer[]): Array<Witness<V>> {
+    const sortedKeys = keys.slice(0);
+    this.radixSort(sortedKeys);
     const sortedNibbles: number[][] = [];
     for (const key of sortedKeys) {
       sortedNibbles.push(MerklePatriciaTreeNode.bufferToNibbles(key));
     }
     const reply = this.getKeys(sortedNibbles);
-    let unsortedReply: Witness[] = []
+    const unsortedReply: Array<Witness<V>> = [];
     for (let i = 0; i < sortedKeys.length; i++) {
       const sk = sortedKeys[i];
-      unsortedReply[unsortedKeys.findIndex(key => key === sk)] = reply[i];
+      unsortedReply[keys.findIndex(key => key.compare(sk) === 0)] = reply[i];
     }
     return unsortedReply;
   }
@@ -807,10 +927,10 @@ export class MerklePatriciaTree {
     return true;
   }
 
-  private getKeys(keys: number[][]) : Witness[] {
-    const reply: Witness[] = [];
+  private getKeys(keys: number[][]) : Array<Witness<V>> {
+    const reply: Array<Witness<V>> = [];
     let currNode = this.rootNode;
-    let nodesInPath : MerklePatriciaTreeNode[] = [];
+    let nodesInPath : Array<MerklePatriciaTreeNode<V>> = [];
     let nibIndex = 0;
     for (let keyIndex = 0; keyIndex < keys.length; keyIndex++) {
       const key = keys[keyIndex];
@@ -826,14 +946,14 @@ export class MerklePatriciaTree {
             }
           } else if (nibIndex === -1 && currNode.value.length !== 0) {
             nodesInPath.push(currNode);
-            let witProof: Buffer[] = [];
+            const witProof: Buffer[] = [];
             for (const [idx, node] of nodesInPath.entries()) {
-              let rlp = RlpEncode(node.serialize());
+              const rlp = RlpEncode(node.serialize(this.convertValue));
               if (rlp.length >= 32 || (idx === 0)) {
                 witProof.push(rlp);
               }
             }
-            const wit : Witness = {value: currNode.value, proof: witProof};
+            const wit : Witness<V> = {value: currNode.value, proof: witProof};
             reply.push(wit);
             readComplete = 1;
           } else {
@@ -862,20 +982,20 @@ export class MerklePatriciaTree {
                (nibIndex !== -1 && this.areNibbleArraysEqual(key.slice(nibIndex, nibIndex + currNode.nibbles.length), currNode.nibbles) === true)) {
             nodesInPath.push(currNode);
             readComplete = 1;
-            let witProof: Buffer[] = [];
+            const witProof: Buffer[] = [];
             for (const [idx, node] of nodesInPath.entries()) {
-              let rlp = RlpEncode(node.serialize());
+              const rlp = RlpEncode(node.serialize(this.convertValue));
               if (rlp.length >= 32 || (idx === 0)) {
                 witProof.push(rlp);
               }
             }
-            const wit : Witness = {value: currNode.value, proof: witProof};
+            const wit : Witness<V> = {value: currNode.value, proof: witProof};
             reply.push(wit);
           } else {
             throw new Error("Key doesn't match at LeafNode!");
           }
         } else if (currNode instanceof NullNode) {
-          throw new Error("Didn't expect a NullNode here!");
+          throw new Error("Didn't expect a NullNode here! - FIND");
         }
 
         if (readComplete === 1) {
@@ -922,9 +1042,8 @@ export class MerklePatriciaTree {
    *
    * @param key   The key to unmap.
    *
-   * @returns     A Promise, resolved when the key is unmapped.
    */
-  del(key: Buffer) {
+  del(key: K) {
     const result = this.search(key);
     if (result.node != null) {
       // Clear all memoized hashes in the path, they will be reset.
@@ -936,7 +1055,7 @@ export class MerklePatriciaTree {
         result.node.value = Buffer.from([]);
       } else if (result.stack.length === 1) {
         // Root node, replace it with null
-        this.rootNode = new NullNode();
+        this.rootNode = new NullNode<V>();
       } else {
         const prevNode = result.stack[result.stack.length - 2];
         if (prevNode instanceof BranchNode) {
@@ -944,7 +1063,7 @@ export class MerklePatriciaTree {
 
           // Keeps data iff there is one remaining node
           let remainingIdx = -1;
-          let remainingBranch: MerklePatriciaTreeNode|null = null;
+          let remainingBranch: MerklePatriciaTreeNode<V>|null = null;
 
           for (const [idx, branch] of prevNode.branches.entries()) {
             if (branch === result.node) {
@@ -963,7 +1082,8 @@ export class MerklePatriciaTree {
           if (remainingBranch !== null) {
             const connectNode = remainingBranch instanceof ExtensionNode ?
                 remainingBranch :
-                new ExtensionNode([remainingIdx], remainingBranch);
+                new ExtensionNode(
+                    this.convertValue, [remainingIdx], remainingBranch);
             if (remainingBranch instanceof ExtensionNode) {
               connectNode.nibbles.unshift(remainingIdx);
             }
@@ -1001,7 +1121,7 @@ export class MerklePatriciaTree {
           // Remove the extension's parent.
           if (result.stack.length === 2) {
             // Root node, replace it with null
-            this.rootNode = new NullNode();
+            this.rootNode = new NullNode<V>();
           } else {
             const extensionPrevNode = result.stack[result.stack.length - 3];
             if (extensionPrevNode instanceof BranchNode) {
@@ -1034,10 +1154,9 @@ export class MerklePatriciaTree {
    * [[BatchPut]].
    * @param delOps  An optional array of keys to delete from the tree.
    *
-   * @returns       A promise, resolved with the root that results from this
-   *                set of operations.
+   * @returns       The root that results from this set of operations.
    */
-  batch(putOps: BatchPut[], delOps: Buffer[] = []): Buffer {
+  batch(putOps: Array<BatchPut<K, V>>, delOps: K[] = []): Buffer {
     for (const put of putOps) {
       this.put(put.key, put.val);
     }
@@ -1052,12 +1171,14 @@ export class MerklePatriciaTree {
    * path traversed to search for the key.
    *
    * @param key    The key to search for.
-   * @returns      A [[SearchResult]] containig
+   * @returns      A [[SearchResult]] containing the path to the key, and the
+   * value if it was present.
    */
-  search(key: Buffer): SearchResult {
-    let remainder = MerklePatriciaTreeNode.bufferToNibbles(key);
-    let node: MerklePatriciaTreeNode|null = this.rootNode;
-    let next: NextNode;
+  search(key: K): SearchResult<V> {
+    let remainder =
+        MerklePatriciaTreeNode.bufferToNibbles(this.convertKey(key));
+    let node: MerklePatriciaTreeNode<V>|null = this.rootNode;
+    let next: NextNode<V>;
     const stack = [];
 
     // Traverse the tree, starting at the root.
@@ -1078,6 +1199,11 @@ export class MerklePatriciaTree {
   }
 }
 
+export interface TypedMerklePatriciaTreeOptions<K, V> {
+  keyConverter: (key: K) => Buffer;
+  valueConverter: (val: V) => Buffer;
+}
+
 /** This Error indicates that there was a problem verifying a witness. */
 export class VerificationError extends Error {}
 
@@ -1095,13 +1221,14 @@ export class VerificationError extends Error {}
  * valid. Otherwise, the promise is completed exceptionally with the failure
  * reason.
  */
-export function VerifyWitness(root: Buffer, key: Buffer, witness: Witness) {
+export function VerifyWitness(
+    root: Buffer, key: Buffer, witness: Witness<Buffer>) {
   let targetHash: Buffer = root;
   let currentKey: number[] = originalNode.stringToNibbles(key);
   let cld;
 
   for (const [idx, serializedNode] of witness.proof.entries()) {
-    const hash = keccak('keccak256').update(serializedNode).digest();
+    const hash = hashAsBuffer(HashType.KECCAK256, serializedNode);
     if (Buffer.compare(hash, targetHash)) {
       throw new VerificationError(`Hash mismatch: expected ${
           targetHash.toString('hex')} got ${hash.toString('hex')}`);

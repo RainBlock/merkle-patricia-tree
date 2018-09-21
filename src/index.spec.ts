@@ -15,58 +15,60 @@ chai.should();
 const should = chai.should();
 
 describe('Try original simple-save-retrieve', () => {
-  const tree: MerklePatriciaTree = new MerklePatriciaTree();
-
-  const one = Buffer.from('one');
-  const two = Buffer.from('two');
+  const tree: MerklePatriciaTree<string, string> =
+      new MerklePatriciaTree<string, string>({
+        keyConverter: (k) => Buffer.from(k),
+        valueConverter: (v) => Buffer.from(v),
+        putCanDelete: false
+      });
 
   it('should save a value', async () => {
-    tree.put(Buffer.from('test'), one);
+    tree.put('test', 'one');
   });
 
   it('should get a value', async () => {
-    const val = tree.get(Buffer.from('test'));
+    const val = tree.get('test');
     should.exist(val.value);
-    val.value!.should.deep.equal(one);
+    val.value!.should.equal('one');
   });
 
   it('should update a value', async () => {
-    tree.put(Buffer.from('test'), two);
-    const val = tree.get(Buffer.from('test'));
+    tree.put('test', 'two');
+    const val = tree.get('test');
     should.exist(val.value);
-    val.value!.should.deep.equal(two);
+    val.value!.should.equal('two');
   });
 
   it('should delete value', async () => {
-    tree.del(Buffer.from('test'));
-    should.not.exist((tree.get(Buffer.from('test'))).value);
+    tree.del('test');
+    should.not.exist((tree.get('test')).value);
   });
 
   it('should recreate value', async () => {
-    tree.put(Buffer.from('test'), one);
+    tree.put('test', 'one');
   });
 
   it('should get updated value', async () => {
-    const val = tree.get(Buffer.from('test'));
+    const val = tree.get('test');
     should.exist(val.value);
-    val.value!.should.deep.equal(one);
+    val.value!.should.equal('one');
   });
 
   it('should create a branch', async () => {
-    tree.put(Buffer.from('doge'), Buffer.from('coin'));
+    tree.put('doge', 'coin');
     tree.root.toString('hex').should.equal(
         'de8a34a8c1d558682eae1528b47523a483dd8685d6db14b291451a66066bf0fc');
   });
 
   it('should get a value in a branch', async () => {
-    const val = tree.get(Buffer.from('doge'));
+    const val = tree.get('doge');
     should.exist(val.value);
-    val.value!.should.deep.equal(Buffer.from('coin'));
+    val.value!.should.equal('coin');
   });
 
   it('should delete from a branch', async () => {
-    tree.del(Buffer.from('doge'));
-    should.not.exist((tree.get(Buffer.from('doge'))).value);
+    tree.del('doge');
+    should.not.exist((tree.get('doge')).value);
   });
 });
 
