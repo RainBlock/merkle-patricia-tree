@@ -71,6 +71,10 @@ export abstract class MerklePatriciaTreeNode<V> {
    */
   abstract rlpNodeEncoding: Buffer| null;
 
+  /**
+   * Serialzes and computed the RLP encoding of the node
+   * Also stores it for future references.
+   */
   getRlpNodeEncoding(valueConverter: (val: V) => Buffer): Buffer {
     if (this.rlpNodeEncoding === null) {
       this.rlpNodeEncoding = RlpEncode(this.serialize(valueConverter));
@@ -78,6 +82,9 @@ export abstract class MerklePatriciaTreeNode<V> {
     return this.rlpNodeEncoding;
   }
 
+  /**
+   * Clears the memoized RLP node encoding
+   */
   clearRlpNodeEncoding() {
     this.rlpNodeEncoding = null;
   }
