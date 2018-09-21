@@ -86,12 +86,6 @@ export abstract class MerklePatriciaTreeNode<V> {
     this.memoizedHash = null;
   }
 
-  memoizedSerialization: RlpItem = [];
-
-  clearMemoizedSerialization() {
-    this.memoizedSerialization = [];
-  }
-
   /**
    * Return the hash for the node.
    * @param  rlpEncodedBuffer An optional RLP encoded buffer of the node to use
@@ -357,31 +351,28 @@ export class BranchNode<V> extends MerklePatriciaTreeNode<V> {
    * @inheritdoc
    */
   serialize(valueConverter: (val: V) => Buffer) {
-    if (this.memoizedSerialization.length !== 0) {
-      return this.memoizedSerialization;
-    }
-    this.memoizedSerialization = [];
+    const hashedBranches: RlpItem = [];
     for (const [idx, branch] of this.branches.entries()) {
       if (branch === undefined) {
-        this.memoizedSerialization[idx] = Buffer.from([]);
+        hashedBranches[idx] = Buffer.from([]);
       } else if (
           branch instanceof BranchNode || (branch.nibbles.length / 2) > 30) {
         // Will be >32 when RLP serialized, so just hash
-        this.memoizedSerialization[idx] = toBufferBE(
+        hashedBranches[idx] = toBufferBE(
             (branch as MerklePatriciaTreeNode<V>).hash(valueConverter), 32);
       } else {
         const serialized = branch.serialize(valueConverter);
         const rlpEncoded = RlpEncode(serialized);
-        this.memoizedSerialization[idx] = (rlpEncoded.length >= 32) ?
+        hashedBranches[idx] = (rlpEncoded.length >= 32) ?
             toBufferBE(
                 branch.hash(valueConverter, rlpEncoded),
                 32) :    // Non-embedded node
             serialized;  // Embedded node in branch
       }
     }
-    this.memoizedSerialization.push(
+    hashedBranches.push(
         this.value === null ? Buffer.from([]) : valueConverter(this.value));
-    return this.memoizedSerialization;
+    return hashedBranches;
   }
 }
 
@@ -440,17 +431,13 @@ export class ExtensionNode<V> extends MerklePatriciaTreeNode<V> {
 
   /** @inheritdoc */
   serialize(valueConverter: (val: V) => Buffer) {
-    if (this.memoizedSerialization.length !== 0) {
-      return this.memoizedSerialization;
-    }
     const serialized = this.nextNode!.serialize(valueConverter);
-    this.memoizedSerialization = [
+    return [
       MerklePatriciaTreeNode.toBuffer(this.nibbles, this.prefix),
       RlpEncode(serialized).length >= 32 ?
           toBufferBE(this.nextNode!.hash(valueConverter), 32) :
           serialized
     ];
-    return this.memoizedSerialization;
   }
 
   /**
@@ -503,14 +490,10 @@ export class LeafNode<V> extends MerklePatriciaTreeNode<V> {
 
   /** @inheritdoc */
   serialize(valueConverter: (val: V) => Buffer) {
-    if (this.memoizedSerialization.length !== 0) {
-      return this.memoizedSerialization;
-    }
-    this.memoizedSerialization = [
+    return [
       MerklePatriciaTreeNode.toBuffer(this.nibbles, this.prefix),
       valueConverter(this.value)
     ];
-    return this.memoizedSerialization;
   }
 
   /**
@@ -689,7 +672,6 @@ export class MerklePatriciaTree<K = Buffer, V = Buffer> implements
       // Clear all memoized hashes in the path, they will be reset.
       for (const node of result.stack) {
         node.clearMemoizedHash();
-        node.clearMemoizedSerialization();
       }
     }
   }
@@ -904,7 +886,6 @@ export class MerklePatriciaTree<K = Buffer, V = Buffer> implements
       // Clear all memoized hashes in the path, they will be reset.
       for (const node of result.stack) {
         node.clearMemoizedHash();
-        node.clearMemoizedSerialization();
       }
       if (result.node instanceof BranchNode) {
         result.node.value = Buffer.from([]);
