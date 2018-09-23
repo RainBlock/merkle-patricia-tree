@@ -67,6 +67,30 @@ export abstract class MerklePatriciaTreeNode<V> {
   abstract value: V|null;
 
   /**
+   * Memoizing RLP encoding of the serialized node
+   */
+  abstract rlpNodeEncoding: Buffer| null;
+
+  /**
+   * Serialzes and computed the RLP encoding of the node
+   * Also stores it for future references.
+   */
+  getRlpNodeEncoding(valueConverter: (val: V) => Buffer): Buffer {
+    if (this.rlpNodeEncoding === null) {
+      this.rlpNodeEncoding = RlpEncode(this.serialize(valueConverter));
+    }
+    return this.rlpNodeEncoding;
+  }
+
+  /**
+   * Clears the memoized RLP node encoding
+   */
+  clearRlpNodeEncoding() {
+    this.rlpNodeEncoding = null;
+  }
+
+
+  /**
    * Serialize the node into a buffer or an array of buffers which may be RLP
    * serialized.
    */
@@ -97,7 +121,7 @@ export abstract class MerklePatriciaTreeNode<V> {
       rlpEncodedBuffer: Buffer|null = null): bigint {
     if (this.memoizedHash === null) {
       if (rlpEncodedBuffer === null) {
-        rlpEncodedBuffer = RlpEncode(this.serialize(valueConverter));
+        rlpEncodedBuffer = this.getRlpNodeEncoding(valueConverter);
       }
       this.memoizedHash = hashAsBigInt(HashType.KECCAK256, rlpEncodedBuffer);
     }
@@ -243,6 +267,8 @@ export class NullNode<V> extends MerklePatriciaTreeNode<V> {
   /** A null node always has no nibbles. */
   readonly nibbles = [];
 
+  rlpNodeEncoding = RlpEncode(Buffer.from([]));
+
   /** The value of a null node cannot be set. */
   set value(val: V) {
     throw new Error('Attempted to set the value of a NullNode');
@@ -280,6 +306,8 @@ export class BranchNode<V> extends MerklePatriciaTreeNode<V> {
   readonly nibbles: number[] = [];
   /** The value this branch holds, initially unset. */
   value: V|null = null;
+
+  rlpNodeEncoding: Buffer | null = null;
 
   /** An array of branches this tree node holds. */
   branches: Array<MerklePatriciaTreeNode<V>> =
@@ -362,7 +390,7 @@ export class BranchNode<V> extends MerklePatriciaTreeNode<V> {
             (branch as MerklePatriciaTreeNode<V>).hash(valueConverter), 32);
       } else {
         const serialized = branch.serialize(valueConverter);
-        const rlpEncoded = RlpEncode(serialized);
+        const rlpEncoded = branch.getRlpNodeEncoding(valueConverter);
         hashedBranches[idx] = (rlpEncoded.length >= 32) ?
             toBufferBE(
                 branch.hash(valueConverter, rlpEncoded),
@@ -388,6 +416,8 @@ export class ExtensionNode<V> extends MerklePatriciaTreeNode<V> {
   static PREFIX_EXTENSION_ODD = 1;
   /** The prefix when the number of nibbles in the extension node is even. */
   static PREFIX_EXTENSION_EVEN = 0;
+
+  rlpNodeEncoding: Buffer | null = null;
 
   /**
    * Return the prefix for this extension node.
@@ -432,9 +462,10 @@ export class ExtensionNode<V> extends MerklePatriciaTreeNode<V> {
   /** @inheritdoc */
   serialize(valueConverter: (val: V) => Buffer) {
     const serialized = this.nextNode!.serialize(valueConverter);
+    const rlpEncodeNextNode = this.nextNode!.getRlpNodeEncoding(valueConverter);
     return [
       MerklePatriciaTreeNode.toBuffer(this.nibbles, this.prefix),
-      RlpEncode(serialized).length >= 32 ?
+      rlpEncodeNextNode.length >= 32 ?
           toBufferBE(this.nextNode!.hash(valueConverter), 32) :
           serialized
     ];
@@ -467,6 +498,8 @@ export class LeafNode<V> extends MerklePatriciaTreeNode<V> {
   private static PREFIX_LEAF_ODD = 3;
   /** The prefix of the leaf node if the number of nibbles is even. */
   private static PREFIX_LEAF_EVEN = 2;
+
+  rlpNodeEncoding: Buffer | null = null;
 
   /**
    * Constructs a new leaf node with the given nibbles and value.
@@ -672,6 +705,7 @@ export class MerklePatriciaTree<K = Buffer, V = Buffer> implements
       // Clear all memoized hashes in the path, they will be reset.
       for (const node of result.stack) {
         node.clearMemoizedHash();
+        node.clearRlpNodeEncoding();
       }
     }
   }
@@ -865,7 +899,7 @@ export class MerklePatriciaTree<K = Buffer, V = Buffer> implements
 
     const proof: Buffer[] = [];
     for (const [idx, node] of search.stack.entries()) {
-      const rlp = RlpEncode(node.serialize(this.convertValue));
+      const rlp = node.getRlpNodeEncoding(this.convertValue);
       if (rlp.length >= 32 || (idx === 0)) {
         proof.push(rlp);
       }
@@ -886,6 +920,7 @@ export class MerklePatriciaTree<K = Buffer, V = Buffer> implements
       // Clear all memoized hashes in the path, they will be reset.
       for (const node of result.stack) {
         node.clearMemoizedHash();
+        node.clearRlpNodeEncoding();
       }
       if (result.node instanceof BranchNode) {
         result.node.value = Buffer.from([]);
