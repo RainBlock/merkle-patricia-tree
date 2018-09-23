@@ -1013,14 +1013,14 @@ export class MerklePatriciaTree<K = Buffer, V = Buffer> implements
             } else {
               throw new Error("key doesn't match at ExtensionNode");
             }
-          } else if (nibIndex === -1 && currNode.nibbles === []) {
+          } else if (nibIndex === -1 && currNode.nibbles.length === 0) {
             nodesInPath.push(currNode);
             currNode = currNode.nextNode;
           } else {
             throw new Error("key doesn't match at ExtensionNode");
           }
         } else if (currNode instanceof LeafNode) {
-          if ( (nibIndex === -1 && currNode.nibbles === []) ||
+          if ( (nibIndex === -1 && currNode.nibbles.length === 0) ||
                (nibIndex !== -1 && this.areNibbleArraysEqual(key.slice(nibIndex, nibIndex + currNode.nibbles.length), currNode.nibbles) === true)) {
             nodesInPath.push(currNode);
             readComplete = 1;
@@ -1037,7 +1037,7 @@ export class MerklePatriciaTree<K = Buffer, V = Buffer> implements
             throw new Error("Key doesn't match at LeafNode!");
           }
         } else if (currNode instanceof NullNode) {
-          throw new Error("Didn't expect a NullNode here! - FIND");
+          throw new Error("Didn't expect a NullNode here!");
         }
 
         if (readComplete === 1) {
@@ -1065,21 +1065,11 @@ export class MerklePatriciaTree<K = Buffer, V = Buffer> implements
             } else if (currNode instanceof NullNode) {
               throw new Error("Didn't expect a NullNode here!");
             }
-            if (start <= 0) {
-              break;
-            }
           }
-          if (start <= 0) {
-            currNode = this.rootNode;
-            nibIndex = 0;
-            nodesInPath = [];
-            readComplete = 0;
-            break;
-          } else {
-            nibIndex = start;
-            readComplete = 0;
-            break;
-          }
+          nibIndex = start;
+          readComplete = 0;
+          nodesInPath.pop();
+          break;
         }
       }
     }
