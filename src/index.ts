@@ -2,8 +2,6 @@ import {options} from 'benchmark';
 import {toBufferBE} from 'bigint-buffer';
 import {hashAsBigInt, hashAsBuffer, HashType} from 'bigint-hash';
 import {RlpDecode, RlpEncode, RlpItem, RlpList} from 'rlp-stream';
-import { extname } from 'path';
-import { start } from 'repl';
 
 const originalNode = require('./trieNode');
 const matchingNibbleLength = require('./util').matchingNibbleLength;
@@ -136,7 +134,7 @@ export abstract class MerklePatriciaTreeNode<V> {
    *  @param  nibbles Nibbles to process for traversal.
    *  @returns Nibbles remaining after the traversal.
    */
-  consumeNibbles(nibbles: number[]): number[] {
+  protected consumeNibbles(nibbles: number[]): number[] {
     let sliceIndex = 0;
     for (let i = 0; i < nibbles.length; i++) {
       if (i > this.nibbles.length - 1 || this.nibbles[i] !== nibbles[i]) {
@@ -327,7 +325,7 @@ export class BranchNode<V> extends MerklePatriciaTreeNode<V> {
    *
    * @returns True, if the last nibble will not result in the given branch.
    */
-  static lastNibbleNoMatch<N>(
+  private static lastNibbleNoMatch<N>(
       nibbles: number[], branch: MerklePatriciaTreeNode<N>): boolean {
     return nibbles.length === 1 &&
         ((branch instanceof LeafNode && branch.nibbles.length > 0) ||
