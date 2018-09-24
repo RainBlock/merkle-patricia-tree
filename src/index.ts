@@ -935,7 +935,7 @@ export class MerklePatriciaTree<K = Buffer, V = Buffer> implements
    * @param keys : bulk keys to be read
    * @returns : Array of witnesses
    */
-  getBulk(keys: Buffer[]): Array<Witness<V>> {
+  batchGet(keys: Buffer[]): Array<Witness<V>> {
     const sortedKeys = keys.slice(0);
     this.radixSort(sortedKeys);
     const sortedNibbles: number[][] = [];
@@ -1046,7 +1046,7 @@ export class MerklePatriciaTree<K = Buffer, V = Buffer> implements
           }
           const nextKey = keys[keyIndex + 1];
           let start = key.length;
-          if (this.areNibbleArraysEqual(nextKey.slice(0, 4), key.slice(0, 4)) === false) {
+          if (this.areNibbleArraysEqual(nextKey.slice(0, 10), key.slice(0, 10)) === false) {
             currNode = this.rootNode;
             nibIndex = 0;
             nodesInPath = [];
