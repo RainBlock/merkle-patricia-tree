@@ -2,6 +2,8 @@ import {options} from 'benchmark';
 import {toBufferBE} from 'bigint-buffer';
 import {hashAsBigInt, hashAsBuffer, HashType} from 'bigint-hash';
 import {RlpDecode, RlpEncode, RlpItem, RlpList} from 'rlp-stream';
+import { extname } from 'path';
+import { start } from 'repl';
 
 const originalNode = require('./trieNode');
 const matchingNibbleLength = require('./util').matchingNibbleLength;
@@ -134,7 +136,7 @@ export abstract class MerklePatriciaTreeNode<V> {
    *  @param  nibbles Nibbles to process for traversal.
    *  @returns Nibbles remaining after the traversal.
    */
-  protected consumeNibbles(nibbles: number[]): number[] {
+  consumeNibbles(nibbles: number[]): number[] {
     let sliceIndex = 0;
     for (let i = 0; i < nibbles.length; i++) {
       if (i > this.nibbles.length - 1 || this.nibbles[i] !== nibbles[i]) {
@@ -325,7 +327,7 @@ export class BranchNode<V> extends MerklePatriciaTreeNode<V> {
    *
    * @returns True, if the last nibble will not result in the given branch.
    */
-  private static lastNibbleNoMatch<N>(
+  static lastNibbleNoMatch<N>(
       nibbles: number[], branch: MerklePatriciaTreeNode<N>): boolean {
     return nibbles.length === 1 &&
         ((branch instanceof LeafNode && branch.nibbles.length > 0) ||
@@ -710,6 +712,74 @@ export class MerklePatriciaTree<K = Buffer, V = Buffer> implements
     }
   }
 
+  getNodeCopy(node: MerklePatriciaTreeNode<V>) : MerklePatriciaTreeNode<V> {
+    if (node instanceof BranchNode) {
+      const copyNode = new BranchNode<V>();
+      for (const nib of node.nibbles) {
+        copyNode.nibbles.push(nib);
+      }
+      for (let i = 0; i < node.branches.length; i++) {
+        copyNode.branches[i] = node.branches[i];
+      }
+      copyNode.value = node.value.slice(0);
+      return copyNode;
+    } else if (node instanceof ExtensionNode) {
+      const copyNode = new ExtensionNode<V>(this.convertValue, node.nibbles, node.nextNode);
+      return copyNode;
+    } else if (node instanceof LeafNode) {
+      const copyNode = new LeafNode<V>(node.nibbles, node.value);
+      return copyNode;
+    }
+    return new NullNode<V>();
+  }
+
+  /**
+   * Copy on write batch puts to MerklePatriciaTree
+   * @param putOps List of PutOps
+   * @returns A copy of the MerklePatriciaTree with the inserts
+   */
+  private cowPutDel(putOps: Array<BatchPut<K, V>>, delOps: K[]) : MerklePatriciaTree<K, V> {
+    const newTree = new MerklePatriciaTree<K, V>();
+    newTree.rootNode = this.getNodeCopy(this.rootNode);
+    for(const put of putOps) {
+      if (newTree.rootNode instanceof NullNode) {
+        newTree.rootNode = new LeafNode(MerklePatriciaTreeNode.bufferToNibbles(this.convertKey(put.key)), put.val);
+      } else {
+        let keyNibbles: number[] = MerklePatriciaTreeNode.bufferToNibbles(this.convertKey(put.key));
+        let currNode : MerklePatriciaTreeNode<V> | null = newTree.rootNode;
+        let nextNode : MerklePatriciaTreeNode<V> | null;
+        let result: SearchResult<V> = this.search(put.key);
+        for (let i = 1; i < result.stack.length; i++) {
+          nextNode = this.getNodeCopy(result.stack[i]);
+          if (currNode instanceof BranchNode) {
+            currNode.branches[keyNibbles[0]] = nextNode;
+            keyNibbles.shift();
+          } else if (currNode instanceof ExtensionNode) {
+            currNode.nextNode = nextNode;
+            keyNibbles = keyNibbles.slice(nextNode.nibbles.length);
+          }
+          currNode = nextNode;
+        }
+        result = newTree.search(put.key);
+        if (result.remainder.length === 0 && result.node !== null) {
+          // Matches, update the value.
+          result.node!.value = put.val;
+        } else {
+          // Doesn't match, perform tree insertion using stack
+          newTree.insert(result.stack, result.remainder, put.val);
+        }
+        for (const node of result.stack) {
+          node.clearMemoizedHash();
+          node.clearRlpNodeEncoding();
+        }
+      }
+    }
+    for (const del of delOps) {
+      //TODO [Soujanya]: Have delOps also in a copy on write manner
+    }
+    return newTree;
+  }
+
   /**
    * Insert a node with the given value after a search.
    * @param stack     The stack as a result of the search
@@ -1035,6 +1105,20 @@ export class MerklePatriciaTree<K = Buffer, V = Buffer> implements
       this.del(del);
     }
     return this.root;
+  }
+
+  /**
+   * Execute a batch of put and delete operations. The execution of batch operations
+   * are performed in a copy on write (cow) fashion.
+   *
+   * @param putOps  An array of put operations on the tree, of type [[BatchPut]].
+   * @param delOps  An optional array of keys to delete from the tree.
+   *
+   * @returns       A new MerklePatriciaTree updated in a cow manner.
+   */
+  batchCOW(putOps: Array<BatchPut<K, V>>, delOps: K[] = []): MerklePatriciaTree<K, V> {
+    const newTree = this.cowPutDel(putOps, delOps);
+    return newTree;
   }
 
   /**
