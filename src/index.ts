@@ -748,7 +748,7 @@ export class MerklePatriciaTree<K = Buffer, V = Buffer> implements
         let keyNibbles: number[] = MerklePatriciaTreeNode.bufferToNibbles(this.convertKey(put.key));
         let currNode : MerklePatriciaTreeNode<V> | null = newTree.rootNode;
         let nextNode : MerklePatriciaTreeNode<V> | null;
-        let result: SearchResult<V> = this.search(put.key);
+        const result: SearchResult<V> = this.search(put.key);
         for (let i = 1; i < result.stack.length; i++) {
           nextNode = this.getNodeCopy(result.stack[i]);
           if (currNode instanceof BranchNode) {
@@ -760,22 +760,26 @@ export class MerklePatriciaTree<K = Buffer, V = Buffer> implements
           }
           currNode = nextNode;
         }
-        result = newTree.search(put.key);
-        if (result.remainder.length === 0 && result.node !== null) {
-          // Matches, update the value.
-          result.node!.value = put.val;
-        } else {
-          // Doesn't match, perform tree insertion using stack
-          newTree.insert(result.stack, result.remainder, put.val);
-        }
-        for (const node of result.stack) {
-          node.clearMemoizedHash();
-          node.clearRlpNodeEncoding();
-        }
+        newTree.put(put.key, put.val);
       }
     }
-    for (const del of delOps) {
-      //TODO [Soujanya]: Have delOps also in a copy on write manner
+    for (const key of delOps) {
+      let keyNibbles: number[] = MerklePatriciaTreeNode.bufferToNibbles(this.convertKey(key));
+      let currNode : MerklePatriciaTreeNode<V> | null = newTree.rootNode;
+      let nextNode : MerklePatriciaTreeNode<V> | null;
+      const result: SearchResult<V> = this.search(key);
+      for (let i = 1; i < result.stack.length; i++) {
+        nextNode = this.getNodeCopy(result.stack[i]);
+        if (currNode instanceof BranchNode) {
+          currNode.branches[keyNibbles[0]] = nextNode;
+          keyNibbles.shift();
+        } else if (currNode instanceof ExtensionNode) {
+          currNode.nextNode = nextNode;
+          keyNibbles = keyNibbles.slice(nextNode.nibbles.length);
+        }
+        currNode = nextNode;
+      }
+      newTree.del(key);
     }
     return newTree;
   }
