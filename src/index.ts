@@ -1468,7 +1468,7 @@ export function VerifyWitness(
  * @param recentState Merkle Paticia Tree horizontally caches nodes to some depth and veritically caches most recent keys
  */
 export function VerifyStaleWitness(
-    staleRoot: Buffer, key: Buffer, witness: Witness<Buffer>, recentState: MerklePatriciaTree): Witness<Buffer> | null {
+    staleRoot: Buffer, key: Buffer, witness: Witness<Buffer>, recentState: MerklePatriciaTree) {
   // Verify if the witness is valid against the stale root
   VerifyWitness(staleRoot, key, witness);
   // If the stale root and recent root match, return the witness
@@ -1489,24 +1489,37 @@ export function VerifyStaleWitness(
       }
     }
     recentWitness.proof = witProof;
-    return recentWitness;
+    VerifyWitness(recentState.root, key, recentWitness);
+    return;
   }
   // If it was not vertically cached, then the key wasn't changed so the node hashes should match at some depth
+  const newNodeHashes = [];
+  recentWitness.proof = [];
+  recentWitness.value = witness.value;
   for (const [idx, witNode] of result.stack.entries()) {
     const rlp = witNode.getRlpNodeEncoding(recentState.convertValue);
     if (rlp.length >= 32 || (idx === 0)) {
-      const staleSerializedNode: Buffer = witness.proof[0];
-      witness.proof.shift();
       recentWitness.proof.push(rlp);
       const recentHash = hashAsBuffer(HashType.KECCAK256, rlp);
-      const staleHash = hashAsBuffer(HashType.KECCAK256, staleSerializedNode);
-      if (Buffer.compare(recentHash, staleHash) === 0) {
-        for (const validPartialProof of witness.proof) {
-          recentWitness.proof.push(validPartialProof);
+      newNodeHashes.push(recentHash);
+    }
+  }
+  const oldNodeHashes = [];
+  for (const serializedOldNode of witness.proof) {
+    oldNodeHashes.push(hashAsBuffer(HashType.KECCAK256, serializedOldNode));
+  }
+  for (let i = 0; i < newNodeHashes.length; i++) {
+    for (let j = 0; j < oldNodeHashes.length; j++) {
+      if (Buffer.compare(newNodeHashes[i], oldNodeHashes[j]) === 0) {
+        while (i++ < newNodeHashes.length) {
+          recentWitness.proof.pop();
         }
-        recentWitness.value = witness.value;
-        return recentWitness;
-      }  
+        while(j++ < oldNodeHashes.length) {
+          recentWitness.proof.push(oldNodeHashes[j]);
+        }
+        VerifyWitness(recentState.root, key, recentWitness);
+        return;
+      }
     }
   }
   throw new VerificationError("stale witness verification failed");
