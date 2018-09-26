@@ -1499,7 +1499,7 @@ export function VerifyStaleWitness(
       witness.proof.shift();
       recentWitness.proof.push(rlp);
       const recentHash = hashAsBuffer(HashType.KECCAK256, rlp);
-      const staleHash = hashAsBuffer(HashType.KECCAK256, staleSerializedNode)
+      const staleHash = hashAsBuffer(HashType.KECCAK256, staleSerializedNode);
       if (Buffer.compare(recentHash, staleHash) === 0) {
         for (const validPartialProof of witness.proof) {
           recentWitness.proof.push(validPartialProof);
