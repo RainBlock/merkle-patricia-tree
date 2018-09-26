@@ -30,8 +30,12 @@ describe('Try original simple-save-retrieve', () => {
     const val = tree.get('test');
     should.exist(val.value);
     val.value!.should.equal('one');
+  });
+
+  it('should batch get a value', async() => {
     const val1 = tree.batchGet([Buffer.from('test')]);
-    should.equal(val.value, val1[0].value);
+    const val = tree.get('test');
+    val.value!.should.deep.equal(val1[0].value);
     for (let i = 0; i < val.proof.length; i++) {
       should.equal(val.proof[i], val1[0].proof[i]);
     }
@@ -42,8 +46,12 @@ describe('Try original simple-save-retrieve', () => {
     const val = tree.get('test');
     should.exist(val.value);
     val.value!.should.equal('two');
+  });
+
+  it('should batch get an updated value', async() => {
     const val1 = tree.batchGet([Buffer.from('test')]);
-    should.equal(val.value, val1[0].value);
+    const val = tree.get('test');
+    val.value!.should.deep.equal(val1[0].value);
     for (let i = 0; i < val.proof.length; i++) {
       should.equal(val.proof[i], val1[0].proof[i]);
     }
@@ -62,8 +70,12 @@ describe('Try original simple-save-retrieve', () => {
     const val = tree.get('test');
     should.exist(val.value);
     val.value!.should.equal('one');
+  });
+
+  it('should batch get an updated value', async() => {
     const val1 = tree.batchGet([Buffer.from('test')]);
-    should.equal(val.value, val1[0].value);
+    const val = tree.get('test');
+    val.value!.should.deep.equal(val1[0].value);
     for (let i = 0; i < val.proof.length; i++) {
       should.equal(val.proof[i], val1[0].proof[i]);
     }
@@ -79,8 +91,12 @@ describe('Try original simple-save-retrieve', () => {
     const val = tree.get('doge');
     should.exist(val.value);
     val.value!.should.equal('coin');
+  });
+
+  it('should batch get value from branch', async() => {
     const val1 = tree.batchGet([Buffer.from('doge')]);
-    should.equal(val.value, val1[0].value);
+    const val = tree.get('doge');
+    val.value!.should.deep.equal(val1[0].value);
     for (let i = 0; i < val.proof.length; i++) {
       should.equal(val.proof[i], val1[0].proof[i]);
     }
@@ -110,8 +126,12 @@ describe('Try original storing larger values', () => {
     const val = tree.get(Buffer.from('done'));
     should.exist(val.value);
     val.value!.should.deep.equal(Buffer.from(longString));
+  });
+
+  it('should batch get longer values', async() => {
     const val1 = tree.batchGet([Buffer.from('done')]);
-    should.equal(val.value, val1[0].value);
+    const val = tree.get(Buffer.from('done'));
+    val.value!.should.deep.equal(val1[0].value);
     for (let i = 0; i < val.proof.length; i++) {
       should.equal(val.proof[i], val1[0].proof[i]);
     }
@@ -122,12 +142,17 @@ describe('Try original storing larger values', () => {
     const val = tree.get(Buffer.from('done'));
     should.exist(val.value);
     val.value!.should.deep.equal(Buffer.from('test'));
+  });
+
+  it('should batch get updated older values', async() => {
     const val1 = tree.batchGet([Buffer.from('done')]);
-    should.equal(val.value, val1[0].value);
+    const val = tree.get(Buffer.from('done'));
+    val.value!.should.deep.equal(val1[0].value);
     for (let i = 0; i < val.proof.length; i++) {
       should.equal(val.proof[i], val1[0].proof[i]);
     }
   });
+
 });
 
 describe('Try simple 3 node test', () => {
@@ -145,7 +170,9 @@ describe('Try simple 3 node test', () => {
     VerifyWitness(tree.root, Buffer.from('12345'), w1);
     VerifyWitness(tree.root, Buffer.from('123456'), w2);
     VerifyWitness(tree.root, Buffer.from('1234'), w3);
+  });
 
+  it('Should verify batch get in forward mode', async() => {
     const W = tree.batchGet([Buffer.from('12345'), Buffer.from('123456'), Buffer.from('1234')]);
     VerifyWitness(tree.root, Buffer.from('12345'), W[0]);
     VerifyWitness(tree.root, Buffer.from('123456'), W[1]);
@@ -164,12 +191,15 @@ describe('Try simple 3 node test', () => {
     VerifyWitness(tree.root, Buffer.from('12345'), w1);
     VerifyWitness(tree.root, Buffer.from('123456'), w2);
     VerifyWitness(tree.root, Buffer.from('1234'), w3);
+  });
 
+  it('Should verify batch get out of order', async() => {
     const W = tree.batchGet([Buffer.from('12345'), Buffer.from('123456'), Buffer.from('1234')]);
     VerifyWitness(tree.root, Buffer.from('12345'), W[0]);
     VerifyWitness(tree.root, Buffer.from('123456'), W[1]);
     VerifyWitness(tree.root, Buffer.from('1234'), W[2]);
   });
+
 });
 
 describe('Try original extensions and branches', () => {
@@ -327,6 +357,15 @@ describe('Try batch operations', () => {
     VerifyWitness(root, Buffer.from('a'), w1);
     VerifyWitness(root, Buffer.from('b'), w2);
     VerifyWitness(root, Buffer.from('c'), w3);
+  });
+
+  it('put simple batch verifying with batch get', async () => {
+    const tree = new MerklePatriciaTree();
+    const root = tree.batch([
+      {key: Buffer.from('a'), val: Buffer.from('a')},
+      {key: Buffer.from('b'), val: Buffer.from('b')},
+      {key: Buffer.from('c'), val: Buffer.from('c')}
+    ]);
 
     const W = tree.batchGet([Buffer.from('a'), Buffer.from('b'), Buffer.from('c')]);
     VerifyWitness(root, Buffer.from('a'), W[0]);
@@ -354,13 +393,26 @@ describe('Try batch operations', () => {
     VerifyWitness(root, Buffer.from('b'), w2);
     VerifyWitness(root, Buffer.from('c'), w3);
 
+    const w4 = tree.get(Buffer.from('d'));
+    should.not.exist(w4.value);
+  });
+
+  it ('put and del a simple batch verifying with batch get', async () => {
+    const tree = new MerklePatriciaTree();
+    tree.put(Buffer.from('d'), Buffer.from('d'));
+
+    const root = tree.batch(
+        [
+          {key: Buffer.from('a'), val: Buffer.from('a')},
+          {key: Buffer.from('b'), val: Buffer.from('b')},
+          {key: Buffer.from('c'), val: Buffer.from('c')}
+        ],
+        [Buffer.from('d')]);
+
     const W = tree.batchGet([Buffer.from('a'), Buffer.from('b'), Buffer.from('c')]);
     VerifyWitness(root, Buffer.from('a'), W[0]);
     VerifyWitness(root, Buffer.from('b'), W[1]);
     VerifyWitness(root, Buffer.from('c'), W[2]);
-
-    const w4 = tree.get(Buffer.from('d'));
-    should.not.exist(w4.value);
   });
 
   it('put and del a simple batch with overlap', async () => {
@@ -380,6 +432,17 @@ describe('Try batch operations', () => {
     VerifyWitness(root, Buffer.from('a'), w1);
     VerifyWitness(root, Buffer.from('b'), w2);
     should.not.exist(w3.value);
+  });
+
+  it('put and del a simple batch with overlap, verifying with batch get', async () => {
+    const tree = new MerklePatriciaTree();
+    const root = tree.batch(
+        [
+          {key: Buffer.from('a'), val: Buffer.from('a')},
+          {key: Buffer.from('b'), val: Buffer.from('b')},
+          {key: Buffer.from('c'), val: Buffer.from('c')}
+        ],
+        [Buffer.from('c')]);
 
     const W = tree.batchGet([Buffer.from('a'), Buffer.from('b')]);
     VerifyWitness(root, Buffer.from('a'), W[0]);
