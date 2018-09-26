@@ -37,7 +37,7 @@ describe('Try original simple-save-retrieve', () => {
     const val = tree.get('test');
     val.value!.should.deep.equal(val1[0].value);
     for (let i = 0; i < val.proof.length; i++) {
-      should.equal(val.proof[i], val1[0].proof[i]);
+      val.proof[i].should.deep.equal(val1[0].proof[i]);
     }
   });
 
@@ -53,7 +53,7 @@ describe('Try original simple-save-retrieve', () => {
     const val = tree.get('test');
     val.value!.should.deep.equal(val1[0].value);
     for (let i = 0; i < val.proof.length; i++) {
-      should.equal(val.proof[i], val1[0].proof[i]);
+      val.proof[i].should.deep.equal(val1[0].proof[i]);
     }
   });
 
@@ -77,7 +77,7 @@ describe('Try original simple-save-retrieve', () => {
     const val = tree.get('test');
     val.value!.should.deep.equal(val1[0].value);
     for (let i = 0; i < val.proof.length; i++) {
-      should.equal(val.proof[i], val1[0].proof[i]);
+      val.proof[i].should.deep.equal(val1[0].proof[i]);
     }
   });
 
@@ -98,7 +98,7 @@ describe('Try original simple-save-retrieve', () => {
     const val = tree.get('doge');
     val.value!.should.deep.equal(val1[0].value);
     for (let i = 0; i < val.proof.length; i++) {
-      should.equal(val.proof[i], val1[0].proof[i]);
+      val.proof[i].should.deep.equal(val1[0].proof[i]);
     }
   });
 
@@ -133,7 +133,7 @@ describe('Try original storing larger values', () => {
     const val = tree.get(Buffer.from('done'));
     val.value!.should.deep.equal(val1[0].value);
     for (let i = 0; i < val.proof.length; i++) {
-      should.equal(val.proof[i], val1[0].proof[i]);
+      val.proof[i].should.deep.equal(val1[0].proof[i]);
     }
   });
 
@@ -149,7 +149,7 @@ describe('Try original storing larger values', () => {
     const val = tree.get(Buffer.from('done'));
     val.value!.should.deep.equal(val1[0].value);
     for (let i = 0; i < val.proof.length; i++) {
-      should.equal(val.proof[i], val1[0].proof[i]);
+      val.proof[i].should.deep.equal(val1[0].proof[i]);
     }
   });
 
