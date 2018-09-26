@@ -1493,28 +1493,22 @@ export function VerifyStaleWitness(
     return;
   }
   // If it was not vertically cached, then the key wasn't changed so the node hashes should match at some depth
-  const newNodeHashes = [];
   recentWitness.proof = [];
   recentWitness.value = witness.value;
-  for (const [idx, witNode] of result.stack.entries()) {
-    const rlp = witNode.getRlpNodeEncoding(recentState.convertValue);
-    if (rlp.length >= 32 || (idx === 0)) {
-      recentWitness.proof.push(rlp);
-      const recentHash = hashAsBuffer(HashType.KECCAK256, rlp);
-      newNodeHashes.push(recentHash);
-    }
-  }
   const oldNodeHashes = [];
   for (const serializedOldNode of witness.proof) {
     oldNodeHashes.push(hashAsBuffer(HashType.KECCAK256, serializedOldNode));
   }
-  for (let i = 0; i < newNodeHashes.length; i++) {
+  for (const [idx, witNode] of result.stack.entries()) {
+    const rlp = witNode.getRlpNodeEncoding(recentState.convertValue);
+    let recentHash = Buffer.from("");
+    if (rlp.length >= 32 || (idx === 0)) {
+      recentWitness.proof.push(rlp);
+      recentHash = hashAsBuffer(HashType.KECCAK256, rlp);
+    }
     for (let j = 0; j < oldNodeHashes.length; j++) {
-      if (Buffer.compare(newNodeHashes[i], oldNodeHashes[j]) === 0) {
-        while (i++ < newNodeHashes.length) {
-          recentWitness.proof.pop();
-        }
-        while(j++ < oldNodeHashes.length) {
+      if (Buffer.compare(recentHash, oldNodeHashes[j]) === 0) {
+        for(j = j+1; j < oldNodeHashes.length; j++) {
           recentWitness.proof.push(oldNodeHashes[j]);
         }
         VerifyWitness(recentState.root, key, recentWitness);
