@@ -638,7 +638,7 @@ export interface MerklePatriciaTreeOptions<K, V> {
 export class MerklePatriciaTree<K = Buffer, V = Buffer> implements
     MerkleTree<K, V> {
   /** The root node of the tree. */
-  private rootNode: MerklePatriciaTreeNode<V>;
+  rootNode: MerklePatriciaTreeNode<V>;
 
   /**
    * A Buffer representing the root hash of the tree. Always 256-bits (32
@@ -1458,4 +1458,56 @@ export function VerifyWitness(
     }
   }
   throw new VerificationError(`Unexpected end of proof`);
+}
+
+/**
+ * Verifies a witness against a staleRoot and returns the recent Witness
+ * @param staleRoot   stale root
+ * @param key         key being read
+ * @param witness     witness against a stale root
+ * @param recentState Merkle Paticia Tree horizontally caches nodes to some depth and veritically caches most recent keys
+ */
+export function VerifyStaleWitness(
+    staleRoot: Buffer, key: Buffer, witness: Witness<Buffer>, recentState: MerklePatriciaTree): Witness<Buffer> | null {
+  // Verify if the witness is valid against the stale root
+  VerifyWitness(staleRoot, key, witness);
+  // If the stale root and recent root match, return the witness
+  if (staleRoot.compare(recentState.root) === 0) {
+    return witness;
+  }
+  // Check if nodes match at any feasible depth (search happens till available cacheDepth)
+  const recentWitness: Witness<Buffer> = {proof: [], value: null};
+  const result: SearchResult = recentState.search(key);
+  // If the key was vertically cached in the recentState; search will find the path along the key
+  if (result.remainder.length === 0 && result.node !== null) {
+    recentWitness.value = result.node.value;
+    const witProof: Buffer[] = [];
+    for (const [idx, witNode] of result.stack.entries()) {
+      const rlp = witNode.getRlpNodeEncoding(recentState.convertValue);
+      if (rlp.length >= 32 || (idx === 0)) {
+        witProof.push(rlp);
+      }
+    }
+    recentWitness.proof = witProof;
+    return recentWitness;
+  }
+  // If it was not vertically cached, then the key wasn't changed so the node hashes should match at some depth
+  for (const [idx, witNode] of result.stack.entries()) {
+    const rlp = witNode.getRlpNodeEncoding(recentState.convertValue);
+    if (rlp.length >= 32 || (idx === 0)) {
+      const staleSerializedNode: Buffer = witness.proof[0];
+      witness.proof.shift();
+      recentWitness.proof.push(rlp);
+      const recentHash = hashAsBuffer(HashType.KECCAK256, rlp);
+      const staleHash = hashAsBuffer(HashType.KECCAK256, staleSerializedNode)
+      if (Buffer.compare(recentHash, staleHash) === 0) {
+        for (const validPartialProof of witness.proof) {
+          recentWitness.proof.push(validPartialProof);
+        }
+        recentWitness.value = witness.value;
+        return recentWitness;
+      }  
+    }
+  }
+  throw new VerificationError("stale witness verification failed");
 }
