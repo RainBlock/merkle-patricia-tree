@@ -122,12 +122,15 @@
 						<section class="tsd-index-section ">
 							<h3>Methods</h3>
 							<ul class="tsd-index-list">
+								<li class="tsd-kind-method tsd-parent-kind-class"><a href="merklepatriciatree.html#arenibblearraysequal" class="tsd-kind-icon">are<wbr>Nibble<wbr>Arrays<wbr>Equal</a></li>
 								<li class="tsd-kind-method tsd-parent-kind-class"><a href="merklepatriciatree.html#batch" class="tsd-kind-icon">batch</a></li>
+								<li class="tsd-kind-method tsd-parent-kind-class"><a href="merklepatriciatree.html#batchget" class="tsd-kind-icon">batch<wbr>Get</a></li>
 								<li class="tsd-kind-method tsd-parent-kind-class"><a href="merklepatriciatree.html#convertkey" class="tsd-kind-icon">convert<wbr>Key</a></li>
 								<li class="tsd-kind-method tsd-parent-kind-class"><a href="merklepatriciatree.html#convertvalue" class="tsd-kind-icon">convert<wbr>Value</a></li>
 								<li class="tsd-kind-method tsd-parent-kind-class"><a href="merklepatriciatree.html#del" class="tsd-kind-icon">del</a></li>
 								<li class="tsd-kind-method tsd-parent-kind-class"><a href="merklepatriciatree.html#get" class="tsd-kind-icon">get</a></li>
 								<li class="tsd-kind-method tsd-parent-kind-class"><a href="merklepatriciatree.html#put" class="tsd-kind-icon">put</a></li>
+								<li class="tsd-kind-method tsd-parent-kind-class"><a href="merklepatriciatree.html#radixsort" class="tsd-kind-icon">radix<wbr>Sort</a></li>
 								<li class="tsd-kind-method tsd-parent-kind-class"><a href="merklepatriciatree.html#search" class="tsd-kind-icon">search</a></li>
 							</ul>
 						</section>
@@ -146,7 +149,7 @@
 						<li class="tsd-description">
 							<aside class="tsd-sources">
 								<ul>
-									<li>Defined in <a href="https://github.com/RainBlock/merkle-patricia-tree/blob/97cb641/src/index.ts#L639">index.ts:639</a></li>
+									<li>Defined in <a href="https://github.com/RainBlock/merkle-patricia-tree/blob/a00614e/src/index.ts#L657">index.ts:657</a></li>
 								</ul>
 							</aside>
 							<div class="tsd-comment tsd-typography">
@@ -173,7 +176,7 @@
 					<div class="tsd-signature tsd-kind-icon">options<span class="tsd-signature-symbol">:</span> <a href="../interfaces/merklepatriciatreeoptions.html" class="tsd-signature-type">MerklePatriciaTreeOptions</a><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">K</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">V</span><span class="tsd-signature-symbol">&gt;</span></div>
 					<aside class="tsd-sources">
 						<ul>
-							<li>Defined in <a href="https://github.com/RainBlock/merkle-patricia-tree/blob/97cb641/src/index.ts#L642">index.ts:642</a></li>
+							<li>Defined in <a href="https://github.com/RainBlock/merkle-patricia-tree/blob/a00614e/src/index.ts#L660">index.ts:660</a></li>
 						</ul>
 					</aside>
 				</section>
@@ -190,7 +193,7 @@
 						<li class="tsd-description">
 							<aside class="tsd-sources">
 								<ul>
-									<li>Defined in <a href="https://github.com/RainBlock/merkle-patricia-tree/blob/97cb641/src/index.ts#L629">index.ts:629</a></li>
+									<li>Defined in <a href="https://github.com/RainBlock/merkle-patricia-tree/blob/a00614e/src/index.ts#L647">index.ts:647</a></li>
 								</ul>
 							</aside>
 							<div class="tsd-comment tsd-typography">
@@ -213,7 +216,7 @@
 						<li class="tsd-description">
 							<aside class="tsd-sources">
 								<ul>
-									<li>Defined in <a href="https://github.com/RainBlock/merkle-patricia-tree/blob/97cb641/src/index.ts#L637">index.ts:637</a></li>
+									<li>Defined in <a href="https://github.com/RainBlock/merkle-patricia-tree/blob/a00614e/src/index.ts#L655">index.ts:655</a></li>
 								</ul>
 							</aside>
 							<div class="tsd-comment tsd-typography">
@@ -230,6 +233,44 @@
 			<section class="tsd-panel-group tsd-member-group ">
 				<h2>Methods</h2>
 				<section class="tsd-panel tsd-member tsd-kind-method tsd-parent-kind-class">
+					<a name="arenibblearraysequal" class="tsd-anchor"></a>
+					<h3>are<wbr>Nibble<wbr>Arrays<wbr>Equal</h3>
+					<ul class="tsd-signatures tsd-kind-method tsd-parent-kind-class">
+						<li class="tsd-signature tsd-kind-icon">are<wbr>Nibble<wbr>Arrays<wbr>Equal<span class="tsd-signature-symbol">(</span>arr1<span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">number</span><span class="tsd-signature-symbol">[]</span>, arr2<span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">number</span><span class="tsd-signature-symbol">[]</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">boolean</span></li>
+					</ul>
+					<ul class="tsd-descriptions">
+						<li class="tsd-description">
+							<aside class="tsd-sources">
+								<ul>
+									<li>Defined in <a href="https://github.com/RainBlock/merkle-patricia-tree/blob/a00614e/src/index.ts#L960">index.ts:960</a></li>
+								</ul>
+							</aside>
+							<div class="tsd-comment tsd-typography">
+								<div class="lead">
+									<p>Checks if two nibble arrays are equal or not</p>
+								</div>
+							</div>
+							<h4 class="tsd-parameters-title">Parameters</h4>
+							<ul class="tsd-parameters">
+								<li>
+									<h5>arr1: <span class="tsd-signature-type">number</span><span class="tsd-signature-symbol">[]</span></h5>
+									<div class="tsd-comment tsd-typography">
+										<p>: First nibble array</p>
+									</div>
+								</li>
+								<li>
+									<h5>arr2: <span class="tsd-signature-type">number</span><span class="tsd-signature-symbol">[]</span></h5>
+									<div class="tsd-comment tsd-typography">
+										<p>: Second nibble array</p>
+									</div>
+								</li>
+							</ul>
+							<h4 class="tsd-returns-title">Returns <span class="tsd-signature-type">boolean</span></h4>
+							<p>bool : True if nibble arrays are equal and false otherwise</p>
+						</li>
+					</ul>
+				</section>
+				<section class="tsd-panel tsd-member tsd-kind-method tsd-parent-kind-class">
 					<a name="batch" class="tsd-anchor"></a>
 					<h3>batch</h3>
 					<ul class="tsd-signatures tsd-kind-method tsd-parent-kind-class">
@@ -239,7 +280,7 @@
 						<li class="tsd-description">
 							<aside class="tsd-sources">
 								<ul>
-									<li>Defined in <a href="https://github.com/RainBlock/merkle-patricia-tree/blob/97cb641/src/index.ts#L1030">index.ts:1030</a></li>
+									<li>Defined in <a href="https://github.com/RainBlock/merkle-patricia-tree/blob/a00614e/src/index.ts#L1198">index.ts:1198</a></li>
 								</ul>
 							</aside>
 							<div class="tsd-comment tsd-typography">
@@ -272,6 +313,38 @@
 					</ul>
 				</section>
 				<section class="tsd-panel tsd-member tsd-kind-method tsd-parent-kind-class">
+					<a name="batchget" class="tsd-anchor"></a>
+					<h3>batch<wbr>Get</h3>
+					<ul class="tsd-signatures tsd-kind-method tsd-parent-kind-class">
+						<li class="tsd-signature tsd-kind-icon">batch<wbr>Get<span class="tsd-signature-symbol">(</span>keys<span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">Buffer</span><span class="tsd-signature-symbol">[]</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">Array</span><span class="tsd-signature-symbol">&lt;</span><a href="../interfaces/witness.html" class="tsd-signature-type">Witness</a><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">V</span><span class="tsd-signature-symbol">&gt;</span><span class="tsd-signature-symbol">&gt;</span></li>
+					</ul>
+					<ul class="tsd-descriptions">
+						<li class="tsd-description">
+							<aside class="tsd-sources">
+								<ul>
+									<li>Defined in <a href="https://github.com/RainBlock/merkle-patricia-tree/blob/a00614e/src/index.ts#L938">index.ts:938</a></li>
+								</ul>
+							</aside>
+							<div class="tsd-comment tsd-typography">
+								<div class="lead">
+									<p>Reads multiple keys and returns a concise reply of witnesses</p>
+								</div>
+							</div>
+							<h4 class="tsd-parameters-title">Parameters</h4>
+							<ul class="tsd-parameters">
+								<li>
+									<h5>keys: <span class="tsd-signature-type">Buffer</span><span class="tsd-signature-symbol">[]</span></h5>
+									<div class="tsd-comment tsd-typography">
+										<p>: bulk keys to be read</p>
+									</div>
+								</li>
+							</ul>
+							<h4 class="tsd-returns-title">Returns <span class="tsd-signature-type">Array</span><span class="tsd-signature-symbol">&lt;</span><a href="../interfaces/witness.html" class="tsd-signature-type">Witness</a><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">V</span><span class="tsd-signature-symbol">&gt;</span><span class="tsd-signature-symbol">&gt;</span></h4>
+							<p>: Array of witnesses</p>
+						</li>
+					</ul>
+				</section>
+				<section class="tsd-panel tsd-member tsd-kind-method tsd-parent-kind-class">
 					<a name="convertkey" class="tsd-anchor"></a>
 					<h3>convert<wbr>Key</h3>
 					<ul class="tsd-signatures tsd-kind-method tsd-parent-kind-class">
@@ -281,7 +354,7 @@
 						<li class="tsd-description">
 							<aside class="tsd-sources">
 								<ul>
-									<li>Defined in <a href="https://github.com/RainBlock/merkle-patricia-tree/blob/97cb641/src/index.ts#L653">index.ts:653</a></li>
+									<li>Defined in <a href="https://github.com/RainBlock/merkle-patricia-tree/blob/a00614e/src/index.ts#L671">index.ts:671</a></li>
 								</ul>
 							</aside>
 							<div class="tsd-comment tsd-typography">
@@ -315,7 +388,7 @@
 						<li class="tsd-description">
 							<aside class="tsd-sources">
 								<ul>
-									<li>Defined in <a href="https://github.com/RainBlock/merkle-patricia-tree/blob/97cb641/src/index.ts#L666">index.ts:666</a></li>
+									<li>Defined in <a href="https://github.com/RainBlock/merkle-patricia-tree/blob/a00614e/src/index.ts#L684">index.ts:684</a></li>
 								</ul>
 							</aside>
 							<div class="tsd-comment tsd-typography">
@@ -349,7 +422,7 @@
 						<li class="tsd-description">
 							<aside class="tsd-sources">
 								<ul>
-									<li>Defined in <a href="https://github.com/RainBlock/merkle-patricia-tree/blob/97cb641/src/index.ts#L917">index.ts:917</a></li>
+									<li>Defined in <a href="https://github.com/RainBlock/merkle-patricia-tree/blob/a00614e/src/index.ts#L1085">index.ts:1085</a></li>
 								</ul>
 							</aside>
 							<div class="tsd-comment tsd-typography">
@@ -380,7 +453,7 @@
 						<li class="tsd-description">
 							<aside class="tsd-sources">
 								<ul>
-									<li>Defined in <a href="https://github.com/RainBlock/merkle-patricia-tree/blob/97cb641/src/index.ts#L896">index.ts:896</a></li>
+									<li>Defined in <a href="https://github.com/RainBlock/merkle-patricia-tree/blob/a00614e/src/index.ts#L914">index.ts:914</a></li>
 								</ul>
 							</aside>
 							<div class="tsd-comment tsd-typography">
@@ -413,7 +486,7 @@
 						<li class="tsd-description">
 							<aside class="tsd-sources">
 								<ul>
-									<li>Defined in <a href="https://github.com/RainBlock/merkle-patricia-tree/blob/97cb641/src/index.ts#L681">index.ts:681</a></li>
+									<li>Defined in <a href="https://github.com/RainBlock/merkle-patricia-tree/blob/a00614e/src/index.ts#L699">index.ts:699</a></li>
 								</ul>
 							</aside>
 							<div class="tsd-comment tsd-typography">
@@ -442,6 +515,29 @@
 					</ul>
 				</section>
 				<section class="tsd-panel tsd-member tsd-kind-method tsd-parent-kind-class">
+					<a name="radixsort" class="tsd-anchor"></a>
+					<h3>radix<wbr>Sort</h3>
+					<ul class="tsd-signatures tsd-kind-method tsd-parent-kind-class">
+						<li class="tsd-signature tsd-kind-icon">radix<wbr>Sort<span class="tsd-signature-symbol">(</span>keys<span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">Buffer</span><span class="tsd-signature-symbol">[]</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">void</span></li>
+					</ul>
+					<ul class="tsd-descriptions">
+						<li class="tsd-description">
+							<aside class="tsd-sources">
+								<ul>
+									<li>Defined in <a href="https://github.com/RainBlock/merkle-patricia-tree/blob/a00614e/src/index.ts#L929">index.ts:929</a></li>
+								</ul>
+							</aside>
+							<h4 class="tsd-parameters-title">Parameters</h4>
+							<ul class="tsd-parameters">
+								<li>
+									<h5>keys: <span class="tsd-signature-type">Buffer</span><span class="tsd-signature-symbol">[]</span></h5>
+								</li>
+							</ul>
+							<h4 class="tsd-returns-title">Returns <span class="tsd-signature-type">void</span></h4>
+						</li>
+					</ul>
+				</section>
+				<section class="tsd-panel tsd-member tsd-kind-method tsd-parent-kind-class">
 					<a name="search" class="tsd-anchor"></a>
 					<h3>search</h3>
 					<ul class="tsd-signatures tsd-kind-method tsd-parent-kind-class">
@@ -451,7 +547,7 @@
 						<li class="tsd-description">
 							<aside class="tsd-sources">
 								<ul>
-									<li>Defined in <a href="https://github.com/RainBlock/merkle-patricia-tree/blob/97cb641/src/index.ts#L1048">index.ts:1048</a></li>
+									<li>Defined in <a href="https://github.com/RainBlock/merkle-patricia-tree/blob/a00614e/src/index.ts#L1216">index.ts:1216</a></li>
 								</ul>
 							</aside>
 							<div class="tsd-comment tsd-typography">
@@ -514,7 +610,13 @@
 								<a href="merklepatriciatree.html#roothash" class="tsd-kind-icon">root<wbr>Hash</a>
 							</li>
 							<li class=" tsd-kind-method tsd-parent-kind-class">
+								<a href="merklepatriciatree.html#arenibblearraysequal" class="tsd-kind-icon">are<wbr>Nibble<wbr>Arrays<wbr>Equal</a>
+							</li>
+							<li class=" tsd-kind-method tsd-parent-kind-class">
 								<a href="merklepatriciatree.html#batch" class="tsd-kind-icon">batch</a>
+							</li>
+							<li class=" tsd-kind-method tsd-parent-kind-class">
+								<a href="merklepatriciatree.html#batchget" class="tsd-kind-icon">batch<wbr>Get</a>
 							</li>
 							<li class=" tsd-kind-method tsd-parent-kind-class">
 								<a href="merklepatriciatree.html#convertkey" class="tsd-kind-icon">convert<wbr>Key</a>
@@ -530,6 +632,9 @@
 							</li>
 							<li class=" tsd-kind-method tsd-parent-kind-class">
 								<a href="merklepatriciatree.html#put" class="tsd-kind-icon">put</a>
+							</li>
+							<li class=" tsd-kind-method tsd-parent-kind-class">
+								<a href="merklepatriciatree.html#radixsort" class="tsd-kind-icon">radix<wbr>Sort</a>
 							</li>
 							<li class=" tsd-kind-method tsd-parent-kind-class">
 								<a href="merklepatriciatree.html#search" class="tsd-kind-icon">search</a>
@@ -550,11 +655,17 @@
 					<li class=" tsd-kind-interface tsd-has-type-parameter">
 						<a href="../interfaces/batchput.html" class="tsd-kind-icon">Batch<wbr>Put</a>
 					</li>
+					<li class=" tsd-kind-interface">
+						<a href="../interfaces/indexedwitness.html" class="tsd-kind-icon">Indexed<wbr>Witness</a>
+					</li>
 					<li class=" tsd-kind-interface tsd-has-type-parameter">
 						<a href="../interfaces/merklepatriciatreeoptions.html" class="tsd-kind-icon">Merkle<wbr>Patricia<wbr>Tree<wbr>Options</a>
 					</li>
 					<li class=" tsd-kind-interface tsd-has-type-parameter">
 						<a href="../interfaces/merkletree.html" class="tsd-kind-icon">Merkle<wbr>Tree</a>
+					</li>
+					<li class=" tsd-kind-interface">
+						<a href="../interfaces/multiwitness.html" class="tsd-kind-icon">Multi<wbr>Witness</a>
 					</li>
 					<li class=" tsd-kind-interface tsd-has-type-parameter">
 						<a href="../interfaces/nextnode.html" class="tsd-kind-icon">Next<wbr>Node</a>

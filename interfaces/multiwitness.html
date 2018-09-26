@@ -3,7 +3,7 @@
 <head>
 	<meta charset="utf-8">
 	<meta http-equiv="X-UA-Compatible" content="IE=edge">
-	<title>NextNode | @rainblock/merkle-patricia-tree</title>
+	<title>MultiWitness | @rainblock/merkle-patricia-tree</title>
 	<meta name="description" content="">
 	<meta name="viewport" content="width=device-width, initial-scale=1">
 	<link rel="stylesheet" href="../assets/css/main.css">
@@ -54,10 +54,10 @@
 					<a href="../globals.html">Globals</a>
 				</li>
 				<li>
-					<a href="nextnode.html">NextNode</a>
+					<a href="multiwitness.html">MultiWitness</a>
 				</li>
 			</ul>
-			<h1>Interface NextNode&lt;V&gt;</h1>
+			<h1>Interface MultiWitness</h1>
 		</div>
 	</div>
 </header>
@@ -67,23 +67,16 @@
 			<section class="tsd-panel tsd-comment">
 				<div class="tsd-comment tsd-typography">
 					<div class="lead">
-						<p>Returned when next() is called on a tree node</p>
+						<p>A concise interface for multiple [[Witnesses]], each a combination of a value and proof
+						in case of bulk reads</p>
 					</div>
 				</div>
-			</section>
-			<section class="tsd-panel tsd-type-parameters">
-				<h3>Type parameters</h3>
-				<ul class="tsd-type-parameters">
-					<li>
-						<h4>V</h4>
-					</li>
-				</ul>
 			</section>
 			<section class="tsd-panel tsd-hierarchy">
 				<h3>Hierarchy</h3>
 				<ul class="tsd-hierarchy">
 					<li>
-						<span class="target">NextNode</span>
+						<span class="target">MultiWitness</span>
 					</li>
 				</ul>
 			</section>
@@ -94,8 +87,8 @@
 						<section class="tsd-index-section ">
 							<h3>Properties</h3>
 							<ul class="tsd-index-list">
-								<li class="tsd-kind-property tsd-parent-kind-interface"><a href="nextnode.html#next" class="tsd-kind-icon">next</a></li>
-								<li class="tsd-kind-property tsd-parent-kind-interface"><a href="nextnode.html#remainingnibbles" class="tsd-kind-icon">remaining<wbr>Nibbles</a></li>
+								<li class="tsd-kind-property tsd-parent-kind-interface"><a href="multiwitness.html#indexedwitnesses" class="tsd-kind-icon">indexed<wbr>Witnesses</a></li>
+								<li class="tsd-kind-property tsd-parent-kind-interface"><a href="multiwitness.html#proofindex" class="tsd-kind-icon">proof<wbr>Index</a></li>
 							</ul>
 						</section>
 					</div>
@@ -104,34 +97,24 @@
 			<section class="tsd-panel-group tsd-member-group ">
 				<h2>Properties</h2>
 				<section class="tsd-panel tsd-member tsd-kind-property tsd-parent-kind-interface">
-					<a name="next" class="tsd-anchor"></a>
-					<h3>next</h3>
-					<div class="tsd-signature tsd-kind-icon">next<span class="tsd-signature-symbol">:</span> <a href="../classes/merklepatriciatreenode.html" class="tsd-signature-type">MerklePatriciaTreeNode</a><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">V</span><span class="tsd-signature-symbol">&gt;</span><span class="tsd-signature-symbol"> | </span><span class="tsd-signature-type">null</span></div>
+					<a name="indexedwitnesses" class="tsd-anchor"></a>
+					<h3>indexed<wbr>Witnesses</h3>
+					<div class="tsd-signature tsd-kind-icon">indexed<wbr>Witnesses<span class="tsd-signature-symbol">:</span> <a href="indexedwitness.html" class="tsd-signature-type">IndexedWitness</a><span class="tsd-signature-symbol">[]</span></div>
 					<aside class="tsd-sources">
 						<ul>
-							<li>Defined in <a href="https://github.com/RainBlock/merkle-patricia-tree/blob/a00614e/src/index.ts#L72">index.ts:72</a></li>
+							<li>Defined in <a href="https://github.com/RainBlock/merkle-patricia-tree/blob/a00614e/src/index.ts#L37">index.ts:37</a></li>
 						</ul>
 					</aside>
-					<div class="tsd-comment tsd-typography">
-						<div class="lead">
-							<p>The next node, or null, if no node was present.</p>
-						</div>
-					</div>
 				</section>
 				<section class="tsd-panel tsd-member tsd-kind-property tsd-parent-kind-interface">
-					<a name="remainingnibbles" class="tsd-anchor"></a>
-					<h3>remaining<wbr>Nibbles</h3>
-					<div class="tsd-signature tsd-kind-icon">remaining<wbr>Nibbles<span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">number</span><span class="tsd-signature-symbol">[]</span></div>
+					<a name="proofindex" class="tsd-anchor"></a>
+					<h3>proof<wbr>Index</h3>
+					<div class="tsd-signature tsd-kind-icon">proof<wbr>Index<span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">Buffer</span><span class="tsd-signature-symbol">[]</span></div>
 					<aside class="tsd-sources">
 						<ul>
-							<li>Defined in <a href="https://github.com/RainBlock/merkle-patricia-tree/blob/a00614e/src/index.ts#L70">index.ts:70</a></li>
+							<li>Defined in <a href="https://github.com/RainBlock/merkle-patricia-tree/blob/a00614e/src/index.ts#L36">index.ts:36</a></li>
 						</ul>
 					</aside>
-					<div class="tsd-comment tsd-typography">
-						<div class="lead">
-							<p>Any remaining nibbles after traversing the node.</p>
-						</div>
-					</div>
 				</section>
 			</section>
 		</div>
@@ -178,24 +161,24 @@
 					<li class=" tsd-kind-interface tsd-has-type-parameter">
 						<a href="merkletree.html" class="tsd-kind-icon">Merkle<wbr>Tree</a>
 					</li>
-					<li class=" tsd-kind-interface">
-						<a href="multiwitness.html" class="tsd-kind-icon">Multi<wbr>Witness</a>
-					</li>
 				</ul>
 				<ul class="current">
-					<li class="current tsd-kind-interface tsd-has-type-parameter">
-						<a href="nextnode.html" class="tsd-kind-icon">Next<wbr>Node</a>
+					<li class="current tsd-kind-interface">
+						<a href="multiwitness.html" class="tsd-kind-icon">Multi<wbr>Witness</a>
 						<ul>
 							<li class=" tsd-kind-property tsd-parent-kind-interface">
-								<a href="nextnode.html#next" class="tsd-kind-icon">next</a>
+								<a href="multiwitness.html#indexedwitnesses" class="tsd-kind-icon">indexed<wbr>Witnesses</a>
 							</li>
 							<li class=" tsd-kind-property tsd-parent-kind-interface">
-								<a href="nextnode.html#remainingnibbles" class="tsd-kind-icon">remaining<wbr>Nibbles</a>
+								<a href="multiwitness.html#proofindex" class="tsd-kind-icon">proof<wbr>Index</a>
 							</li>
 						</ul>
 					</li>
 				</ul>
 				<ul class="after-current">
+					<li class=" tsd-kind-interface tsd-has-type-parameter">
+						<a href="nextnode.html" class="tsd-kind-icon">Next<wbr>Node</a>
+					</li>
 					<li class=" tsd-kind-interface tsd-has-type-parameter">
 						<a href="searchresult.html" class="tsd-kind-icon">Search<wbr>Result</a>
 					</li>
