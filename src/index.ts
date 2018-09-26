@@ -1461,7 +1461,7 @@ export function VerifyWitness(
 }
 
 /**
- * Verifies a witness against a staleRoot and returns the recent Witness
+ * Verifies a witness against a staleRoot, constructs newest witness from the recentState and verifies it
  * @param staleRoot   stale root
  * @param key         key being read
  * @param witness     witness against a stale root
