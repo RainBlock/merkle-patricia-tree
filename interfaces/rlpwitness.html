@@ -3,17 +3,17 @@
 <head>
 	<meta charset="utf-8">
 	<meta http-equiv="X-UA-Compatible" content="IE=edge">
-	<title>@rainblock/merkle-patricia-tree</title>
+	<title>RlpWitness | @rainblock/merkle-patricia-tree</title>
 	<meta name="description" content="">
 	<meta name="viewport" content="width=device-width, initial-scale=1">
-	<link rel="stylesheet" href="assets/css/main.css">
+	<link rel="stylesheet" href="../assets/css/main.css">
 </head>
 <body>
 <header>
 	<div class="tsd-page-toolbar">
 		<div class="container">
 			<div class="table-wrap">
-				<div class="table-cell" id="tsd-search" data-index="assets/js/search.js" data-base=".">
+				<div class="table-cell" id="tsd-search" data-index="../assets/js/search.js" data-base="..">
 					<div class="field">
 						<label for="tsd-search-field" class="tsd-widget search no-caption">Search</label>
 						<input id="tsd-search-field" type="text" />
@@ -22,7 +22,7 @@
 						<li class="state loading">Preparing search index...</li>
 						<li class="state failure">The search index is not available</li>
 					</ul>
-					<a href="index.html" class="title">@rainblock/merkle-patricia-tree</a>
+					<a href="../index.html" class="title">@rainblock/merkle-patricia-tree</a>
 				</div>
 				<div class="table-cell" id="tsd-widgets">
 					<div id="tsd-filter">
@@ -51,114 +51,155 @@
 		<div class="container">
 			<ul class="tsd-breadcrumb">
 				<li>
-					<a href="globals.html">Globals</a>
+					<a href="../globals.html">Globals</a>
+				</li>
+				<li>
+					<a href="rlpwitness.html">RlpWitness</a>
 				</li>
 			</ul>
-			<h1> @rainblock/merkle-patricia-tree</h1>
+			<h1>Interface RlpWitness</h1>
 		</div>
 	</div>
 </header>
 <div class="container container-main">
 	<div class="row">
 		<div class="col-8 col-content">
-			<div class="tsd-panel tsd-typography">
-				<h1 id="-rainblock-s-in-memory-merkle-tree">☔️🌲 RainBlock&#39;s In-Memory Merkle Tree</h1>
-				<p><a href="https://www.npmjs.org/package/@rainblock/merkle-patricia-tree"><img src="https://img.shields.io/npm/v/@rainblock/merkle-patricia-tree.svg?style=flat-square" alt="NPM Package"></a>
-					<a href="https://travis-ci.com/RainBlock/merkle-patricia-tree"><img src="https://img.shields.io/travis/com/RainBlock/merkle-patricia-tree.svg?branch=master&style=flat-square" alt="Build Status"></a>
-					<a href="https://coveralls.io/r/RainBlock/merkle-patricia-tree"><img src="https://img.shields.io/coveralls/RainBlock/merkle-patricia-tree.svg?style=flat-square" alt="Coverage Status"></a>
-				<img src="https://img.shields.io/node/v/@rainblock/merkle-patricia-tree.svg" alt="node"></p>
-				<p><a href="https://www.npmjs.org/package/@rainblock/merkle-patricia-tree">@rainblock/merkle-patricia-tree</a> is an in-memory merkle tree which conforms to the specifications of the modified merkle patricia tree used by Ethereum. It is a fork of the <a href="https://github.com/ethereumjs">EthereumJS</a> <a href="https://github.com/ethereumjs/merkle-patricia-tree">library</a>, and released under the same license, however, the API has changed to be synchronous instead of callback based. The goals of @rainblock/merkle-patricia-tree are to be:</p>
-				<ul>
-					<li><p><strong>In-Memory Optimized.</strong>  @rainblock/merkle-patricia-tree is optimized for in-memory use and does not support persistence. </p>
-					</li>
-					<li><p><strong>High performance.</strong>  By taking advantage of in-memory optimizations, @rainblock/merkle-patricia-tree aims to be high performance - currently, it is 2-8x more performant than EthereumJS&#39;s merkle tree on standard benchmarks.</p>
-					</li>
-					<li><p><strong>Well documented.</strong>  <a href="https://rainblock.github.io/merkle-patricia-tree/">API documentation</a> is automatically generated from the JSdoc embedded in the typescript source, and the source code aims to be commented and maintainable.</p>
-					</li>
-					<li><p><strong>Ethereum compatible.</strong> The root hashes produced by @rainblock/merkle-patricia-tree should produce the same root hashes as other Ethereum merkle tree libraries given the same input data.</p>
+			<section class="tsd-panel tsd-comment">
+				<div class="tsd-comment tsd-typography">
+					<div class="lead">
+						<p>An interface for a RlpWitness, which is a serialized witness in RLP format.</p>
+					</div>
+				</div>
+			</section>
+			<section class="tsd-panel tsd-hierarchy">
+				<h3>Hierarchy</h3>
+				<ul class="tsd-hierarchy">
+					<li>
+						<span class="target">RlpWitness</span>
 					</li>
 				</ul>
-				<h1 id="install">Install</h1>
-				<p>Add @rainblock/merkle-patricia-tree to your project with:</p>
-				<blockquote>
-					<p><code>npm install @rainblock/merkle-patricia-tree</code></p>
-				</blockquote>
-				<h1 id="usage">Usage</h1>
-				<p>Basic API documentation can be found <a href="https://rainblock.github.io/merkle-patricia-tree/">here</a>, but the following example shows basic use of puts and gets and verification:</p>
-				<pre><code class="language-typescript"><span class="hljs-keyword">import</span> {MerklePatriciaTree, VerifyWitness} <span class="hljs-keyword">from</span> <span class="hljs-string">'@rainblock/merkle-patricia-tree'</span>;
-<span class="hljs-keyword">const</span> tree = <span class="hljs-keyword">new</span> MerklePatriciaTree();
-
-tree.put(Buffer.from(<span class="hljs-string">'a'</span>), Buffer.from(<span class="hljs-string">'b'</span>));
-
-<span class="hljs-comment">// Get returns a witness which contains { value, proof }</span>
-<span class="hljs-keyword">const</span> witness = tree.get(Buffer.from(<span class="hljs-string">'a'</span>));
-
-<span class="hljs-comment">// VerifyWitness will throw an error if the proof doesn't match the given root</span>
-VerifyWitness(witness, tree.root);</code></pre>
-				<h1 id="benchmarks">Benchmarks</h1>
-				<p>Benchmarks can be run by executing <code>npm run benchmark</code> from the package directory.</p>
-			</div>
+			</section>
+			<section class="tsd-panel-group tsd-index-group">
+				<h2>Index</h2>
+				<section class="tsd-panel tsd-index-panel">
+					<div class="tsd-index-content">
+						<section class="tsd-index-section ">
+							<h3>Properties</h3>
+							<ul class="tsd-index-list">
+								<li class="tsd-kind-property tsd-parent-kind-interface"><a href="rlpwitness.html#proof" class="tsd-kind-icon">proof</a></li>
+								<li class="tsd-kind-property tsd-parent-kind-interface"><a href="rlpwitness.html#value" class="tsd-kind-icon">value</a></li>
+							</ul>
+						</section>
+					</div>
+				</section>
+			</section>
+			<section class="tsd-panel-group tsd-member-group ">
+				<h2>Properties</h2>
+				<section class="tsd-panel tsd-member tsd-kind-property tsd-parent-kind-interface">
+					<a name="proof" class="tsd-anchor"></a>
+					<h3>proof</h3>
+					<div class="tsd-signature tsd-kind-icon">proof<span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">Buffer</span><span class="tsd-signature-symbol">[]</span></div>
+					<aside class="tsd-sources">
+						<ul>
+							<li>Defined in <a href="https://github.com/RainBlock/merkle-patricia-tree/blob/bde08b2/src/index.ts#L41">index.ts:41</a></li>
+						</ul>
+					</aside>
+					<div class="tsd-comment tsd-typography">
+						<div class="lead">
+							<p>A proof, which consists a RLP serialized list of nodes traversed to reach
+							the node containing the value.</p>
+						</div>
+					</div>
+				</section>
+				<section class="tsd-panel tsd-member tsd-kind-property tsd-parent-kind-interface">
+					<a name="value" class="tsd-anchor"></a>
+					<h3>value</h3>
+					<div class="tsd-signature tsd-kind-icon">value<span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">Buffer</span><span class="tsd-signature-symbol"> | </span><span class="tsd-signature-type">null</span></div>
+					<aside class="tsd-sources">
+						<ul>
+							<li>Defined in <a href="https://github.com/RainBlock/merkle-patricia-tree/blob/bde08b2/src/index.ts#L36">index.ts:36</a></li>
+						</ul>
+					</aside>
+					<div class="tsd-comment tsd-typography">
+						<div class="lead">
+							<p>The value mapped to the key, or null, if nothing is mapped</p>
+						</div>
+					</div>
+				</section>
+			</section>
 		</div>
 		<div class="col-4 col-menu menu-sticky-wrap menu-highlight">
 			<nav class="tsd-navigation primary">
 				<ul>
 					<li class="globals  ">
-						<a href="globals.html"><em>Globals</em></a>
+						<a href="../globals.html"><em>Globals</em></a>
 					</li>
 				</ul>
 			</nav>
 			<nav class="tsd-navigation secondary menu-sticky">
 				<ul class="before-current">
 					<li class=" tsd-kind-class tsd-has-type-parameter">
-						<a href="classes/branchnode.html" class="tsd-kind-icon">Branch<wbr>Node</a>
+						<a href="../classes/branchnode.html" class="tsd-kind-icon">Branch<wbr>Node</a>
 					</li>
 					<li class=" tsd-kind-class tsd-has-type-parameter">
-						<a href="classes/extensionnode.html" class="tsd-kind-icon">Extension<wbr>Node</a>
+						<a href="../classes/extensionnode.html" class="tsd-kind-icon">Extension<wbr>Node</a>
 					</li>
 					<li class=" tsd-kind-class tsd-has-type-parameter">
-						<a href="classes/leafnode.html" class="tsd-kind-icon">Leaf<wbr>Node</a>
+						<a href="../classes/leafnode.html" class="tsd-kind-icon">Leaf<wbr>Node</a>
 					</li>
 					<li class=" tsd-kind-class tsd-has-type-parameter">
-						<a href="classes/merklepatriciatree.html" class="tsd-kind-icon">Merkle<wbr>Patricia<wbr>Tree</a>
+						<a href="../classes/merklepatriciatree.html" class="tsd-kind-icon">Merkle<wbr>Patricia<wbr>Tree</a>
 					</li>
 					<li class=" tsd-kind-class tsd-has-type-parameter">
-						<a href="classes/merklepatriciatreenode.html" class="tsd-kind-icon">Merkle<wbr>Patricia<wbr>Tree<wbr>Node</a>
+						<a href="../classes/merklepatriciatreenode.html" class="tsd-kind-icon">Merkle<wbr>Patricia<wbr>Tree<wbr>Node</a>
 					</li>
 					<li class=" tsd-kind-class tsd-has-type-parameter">
-						<a href="classes/nullnode.html" class="tsd-kind-icon">Null<wbr>Node</a>
+						<a href="../classes/nullnode.html" class="tsd-kind-icon">Null<wbr>Node</a>
 					</li>
 					<li class=" tsd-kind-class">
-						<a href="classes/verificationerror.html" class="tsd-kind-icon">Verification<wbr>Error</a>
+						<a href="../classes/verificationerror.html" class="tsd-kind-icon">Verification<wbr>Error</a>
 					</li>
 					<li class=" tsd-kind-interface tsd-has-type-parameter">
-						<a href="interfaces/batchput.html" class="tsd-kind-icon">Batch<wbr>Put</a>
+						<a href="batchput.html" class="tsd-kind-icon">Batch<wbr>Put</a>
 					</li>
 					<li class=" tsd-kind-interface">
-						<a href="interfaces/indexedwitness.html" class="tsd-kind-icon">Indexed<wbr>Witness</a>
+						<a href="indexedwitness.html" class="tsd-kind-icon">Indexed<wbr>Witness</a>
 					</li>
 					<li class=" tsd-kind-interface tsd-has-type-parameter">
-						<a href="interfaces/merklepatriciatreeoptions.html" class="tsd-kind-icon">Merkle<wbr>Patricia<wbr>Tree<wbr>Options</a>
+						<a href="merklepatriciatreeoptions.html" class="tsd-kind-icon">Merkle<wbr>Patricia<wbr>Tree<wbr>Options</a>
 					</li>
 					<li class=" tsd-kind-interface tsd-has-type-parameter">
-						<a href="interfaces/merkletree.html" class="tsd-kind-icon">Merkle<wbr>Tree</a>
+						<a href="merkletree.html" class="tsd-kind-icon">Merkle<wbr>Tree</a>
 					</li>
 					<li class=" tsd-kind-interface">
-						<a href="interfaces/multiwitness.html" class="tsd-kind-icon">Multi<wbr>Witness</a>
+						<a href="multiwitness.html" class="tsd-kind-icon">Multi<wbr>Witness</a>
 					</li>
 					<li class=" tsd-kind-interface tsd-has-type-parameter">
-						<a href="interfaces/nextnode.html" class="tsd-kind-icon">Next<wbr>Node</a>
+						<a href="nextnode.html" class="tsd-kind-icon">Next<wbr>Node</a>
 					</li>
-					<li class=" tsd-kind-interface">
-						<a href="interfaces/rlpwitness.html" class="tsd-kind-icon">Rlp<wbr>Witness</a>
+				</ul>
+				<ul class="current">
+					<li class="current tsd-kind-interface">
+						<a href="rlpwitness.html" class="tsd-kind-icon">Rlp<wbr>Witness</a>
+						<ul>
+							<li class=" tsd-kind-property tsd-parent-kind-interface">
+								<a href="rlpwitness.html#proof" class="tsd-kind-icon">proof</a>
+							</li>
+							<li class=" tsd-kind-property tsd-parent-kind-interface">
+								<a href="rlpwitness.html#value" class="tsd-kind-icon">value</a>
+							</li>
+						</ul>
+					</li>
+				</ul>
+				<ul class="after-current">
+					<li class=" tsd-kind-interface tsd-has-type-parameter">
+						<a href="searchresult.html" class="tsd-kind-icon">Search<wbr>Result</a>
 					</li>
 					<li class=" tsd-kind-interface tsd-has-type-parameter">
-						<a href="interfaces/searchresult.html" class="tsd-kind-icon">Search<wbr>Result</a>
-					</li>
-					<li class=" tsd-kind-interface tsd-has-type-parameter">
-						<a href="interfaces/witness.html" class="tsd-kind-icon">Witness</a>
+						<a href="witness.html" class="tsd-kind-icon">Witness</a>
 					</li>
 					<li class=" tsd-kind-function">
-						<a href="globals.html#verifywitness" class="tsd-kind-icon">verify<wbr>Witness</a>
+						<a href="../globals.html#verifywitness" class="tsd-kind-icon">verify<wbr>Witness</a>
 					</li>
 				</ul>
 			</nav>
@@ -228,7 +269,7 @@ VerifyWitness(witness, tree.root);</code></pre>
 	<p>Generated using <a href="http://typedoc.org/" target="_blank">TypeDoc</a></p>
 </div>
 <div class="overlay"></div>
-<script src="assets/js/main.js"></script>
-<script>if (location.protocol == 'file:') document.write('<script src="assets/js/search.js"><' + '/script>');</script>
+<script src="../assets/js/main.js"></script>
+<script>if (location.protocol == 'file:') document.write('<script src="../assets/js/search.js"><' + '/script>');</script>
 </body>
 </html>
