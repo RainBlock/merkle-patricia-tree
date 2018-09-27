@@ -19,14 +19,28 @@ interface OriginalTreeNode {
  * (witnessed at a certain root)
  */
 export interface Witness<V> {
-  /** The value mapped to the key */
+  /** The value mapped to the key, or null, if nothing  */
   value: V|null;
   /**
    * A proof, which consists of the list of nodes traversed to reach the node
    * containing the value.
    */
+  proof: Array<MerklePatriciaTreeNode<V>>;
+}
+
+/**
+ * An interface for a RlpWitness, which is a serialized witness in RLP format.
+ */
+export interface RlpWitness {
+  /** The value mapped to the key, or null, if nothing is mapped */
+  value: Buffer|null;
+  /**
+   * A proof, which consists a RLP serialized list of nodes traversed to reach
+   * the node containing the value.
+   */
   proof: Buffer[];
 }
+
 
 /**
  * A concise interface for multiple [[Witnesses]], each a combination of a value
@@ -971,15 +985,7 @@ export class MerklePatriciaTree<K = Buffer, V = Buffer> implements
   get(key: K): Witness<V> {
     const search = this.search(key);
     const value = search.node === null ? null : search.node.value;
-
-    const proof: Buffer[] = [];
-    for (const [idx, node] of search.stack.entries()) {
-      const rlp = node.getRlpNodeEncoding(
-          this.options as {} as MerklePatriciaTreeOptions<{}, V>);
-      if (rlp.length >= 32 || (idx === 0)) {
-        proof.push(rlp);
-      }
-    }
+    const proof = search.stack;
 
     return {value, proof};
   }
@@ -1046,15 +1052,7 @@ export class MerklePatriciaTree<K = Buffer, V = Buffer> implements
             }
           } else if (nibIndex === -1 && currNode.value.length !== 0) {
             nodesInPath.push(currNode);
-            const witProof: Buffer[] = [];
-            for (const [idx, node] of nodesInPath.entries()) {
-              const rlp = node.getRlpNodeEncoding(
-                  this.options as {} as MerklePatriciaTreeOptions<{}, V>);
-              if (rlp.length >= 32 || (idx === 0)) {
-                witProof.push(rlp);
-              }
-            }
-            const wit: Witness<V> = {value: currNode.value, proof: witProof};
+            const wit: Witness<V> = {value: currNode.value, proof: nodesInPath};
             reply.push(wit);
             readComplete = 1;
           } else {
@@ -1088,15 +1086,7 @@ export class MerklePatriciaTree<K = Buffer, V = Buffer> implements
                    currNode.nibbles) === true)) {
             nodesInPath.push(currNode);
             readComplete = 1;
-            const witProof: Buffer[] = [];
-            for (const [idx, node] of nodesInPath.entries()) {
-              const rlp = node.getRlpNodeEncoding(
-                  this.options as {} as MerklePatriciaTreeOptions<{}, V>);
-              if (rlp.length >= 32 || (idx === 0)) {
-                witProof.push(rlp);
-              }
-            }
-            const wit: Witness<V> = {value: currNode.value, proof: witProof};
+            const wit: Witness<V> = {value: currNode.value, proof: nodesInPath};
             reply.push(wit);
           } else {
             throw new Error('Key doesn\'t match at LeafNode!');
@@ -1319,6 +1309,29 @@ export class MerklePatriciaTree<K = Buffer, V = Buffer> implements
 
     return {node, remainder, stack};
   }
+
+  /**
+   * Serialize a witness into RLP format.
+   *
+   * @param     witness   A witness returned from a get() operation on a Merkle
+   * Patricia Tree
+   *
+   * @returns   An RLP serialized witness, with non-essential nodes removed.
+   */
+  rlpSerializeWitness(witness: Witness<V>): RlpWitness {
+    const value = witness.value === null ?
+        null :
+        this.options.valueConverter!(witness.value);
+    const proof: Buffer[] = [];
+    for (const [idx, node] of witness.proof.entries()) {
+      const rlp = node.getRlpNodeEncoding(
+          this.options as {} as MerklePatriciaTreeOptions<{}, V>);
+      if (rlp.length >= 32 || (idx === 0)) {
+        proof.push(rlp);
+      }
+    }
+    return {value, proof};
+  }
 }
 
 /** This Error indicates that there was a problem verifying a witness. */
@@ -1338,11 +1351,11 @@ export class VerificationError extends Error {}
  * valid. Otherwise, the promise is completed exceptionally with the failure
  * reason.
  */
-export function VerifyWitness(
-    root: Buffer, key: Buffer, witness: Witness<Buffer>) {
+export function verifyWitness(root: Buffer, key: Buffer, witness: RlpWitness) {
   let targetHash: Buffer = root;
   let currentKey: number[] = originalNode.stringToNibbles(key);
   let cld;
+
 
   for (const [idx, serializedNode] of witness.proof.entries()) {
     const hash = hashAsBuffer(HashType.KECCAK256, serializedNode);
