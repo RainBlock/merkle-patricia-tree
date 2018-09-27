@@ -4,7 +4,7 @@ import * as chai from 'chai';
 import * as path from 'path';
 import {RlpEncode, RlpList} from 'rlp-stream';
 
-import {MerklePatriciaTree, VerifyWitness} from './index';
+import {MerklePatriciaTree, verifyWitness} from './index';
 
 
 
@@ -166,17 +166,22 @@ describe('Try simple 3 node test', () => {
     const w2 = tree.get(Buffer.from('123456'));
     const w3 = tree.get(Buffer.from('1234'));
 
-    VerifyWitness(tree.root, Buffer.from('12345'), w1);
-    VerifyWitness(tree.root, Buffer.from('123456'), w2);
-    VerifyWitness(tree.root, Buffer.from('1234'), w3);
+    verifyWitness(
+        tree.root, Buffer.from('12345'), tree.rlpSerializeWitness(w1));
+    verifyWitness(
+        tree.root, Buffer.from('123456'), tree.rlpSerializeWitness(w2));
+    verifyWitness(tree.root, Buffer.from('1234'), tree.rlpSerializeWitness(w3));
   });
 
   it('Should verify batch get in forward mode', async () => {
-    const W = tree.batchGet(
+    const w = tree.batchGet(
         [Buffer.from('12345'), Buffer.from('123456'), Buffer.from('1234')]);
-    VerifyWitness(tree.root, Buffer.from('12345'), W[0]);
-    VerifyWitness(tree.root, Buffer.from('123456'), W[1]);
-    VerifyWitness(tree.root, Buffer.from('1234'), W[2]);
+    verifyWitness(
+        tree.root, Buffer.from('12345'), tree.rlpSerializeWitness(w[0]));
+    verifyWitness(
+        tree.root, Buffer.from('123456'), tree.rlpSerializeWitness(w[1]));
+    verifyWitness(
+        tree.root, Buffer.from('1234'), tree.rlpSerializeWitness(w[2]));
   });
 
   it('should work out of order', async () => {
@@ -188,17 +193,22 @@ describe('Try simple 3 node test', () => {
     const w2 = tree.get(Buffer.from('123456'));
     const w3 = tree.get(Buffer.from('1234'));
 
-    VerifyWitness(tree.root, Buffer.from('12345'), w1);
-    VerifyWitness(tree.root, Buffer.from('123456'), w2);
-    VerifyWitness(tree.root, Buffer.from('1234'), w3);
+    verifyWitness(
+        tree.root, Buffer.from('12345'), tree.rlpSerializeWitness(w1));
+    verifyWitness(
+        tree.root, Buffer.from('123456'), tree.rlpSerializeWitness(w2));
+    verifyWitness(tree.root, Buffer.from('1234'), tree.rlpSerializeWitness(w3));
   });
 
   it('Should verify batch get out of order', async () => {
-    const W = tree.batchGet(
+    const w = tree.batchGet(
         [Buffer.from('12345'), Buffer.from('123456'), Buffer.from('1234')]);
-    VerifyWitness(tree.root, Buffer.from('12345'), W[0]);
-    VerifyWitness(tree.root, Buffer.from('123456'), W[1]);
-    VerifyWitness(tree.root, Buffer.from('1234'), W[2]);
+    verifyWitness(
+        tree.root, Buffer.from('12345'), tree.rlpSerializeWitness(w[0]));
+    verifyWitness(
+        tree.root, Buffer.from('123456'), tree.rlpSerializeWitness(w[1]));
+    verifyWitness(
+        tree.root, Buffer.from('1234'), tree.rlpSerializeWitness(w[2]));
   });
 });
 
@@ -354,9 +364,9 @@ describe('Try batch operations', () => {
     const w2 = tree.get(Buffer.from('b'));
     const w3 = tree.get(Buffer.from('c'));
 
-    VerifyWitness(root, Buffer.from('a'), w1);
-    VerifyWitness(root, Buffer.from('b'), w2);
-    VerifyWitness(root, Buffer.from('c'), w3);
+    verifyWitness(root, Buffer.from('a'), tree.rlpSerializeWitness(w1));
+    verifyWitness(root, Buffer.from('b'), tree.rlpSerializeWitness(w2));
+    verifyWitness(root, Buffer.from('c'), tree.rlpSerializeWitness(w3));
   });
 
   it('put simple batch verifying with batch get', async () => {
@@ -367,11 +377,11 @@ describe('Try batch operations', () => {
       {key: Buffer.from('c'), val: Buffer.from('c')}
     ]);
 
-    const W =
+    const w =
         tree.batchGet([Buffer.from('a'), Buffer.from('b'), Buffer.from('c')]);
-    VerifyWitness(root, Buffer.from('a'), W[0]);
-    VerifyWitness(root, Buffer.from('b'), W[1]);
-    VerifyWitness(root, Buffer.from('c'), W[2]);
+    verifyWitness(root, Buffer.from('a'), tree.rlpSerializeWitness(w[0]));
+    verifyWitness(root, Buffer.from('b'), tree.rlpSerializeWitness(w[1]));
+    verifyWitness(root, Buffer.from('c'), tree.rlpSerializeWitness(w[2]));
   });
 
   it('put and del a simple batch', async () => {
@@ -390,9 +400,9 @@ describe('Try batch operations', () => {
     const w2 = tree.get(Buffer.from('b'));
     const w3 = tree.get(Buffer.from('c'));
 
-    VerifyWitness(root, Buffer.from('a'), w1);
-    VerifyWitness(root, Buffer.from('b'), w2);
-    VerifyWitness(root, Buffer.from('c'), w3);
+    verifyWitness(root, Buffer.from('a'), tree.rlpSerializeWitness(w1));
+    verifyWitness(root, Buffer.from('b'), tree.rlpSerializeWitness(w2));
+    verifyWitness(root, Buffer.from('c'), tree.rlpSerializeWitness(w3));
 
     const w4 = tree.get(Buffer.from('d'));
     should.not.exist(w4.value);
@@ -410,11 +420,11 @@ describe('Try batch operations', () => {
         ],
         [Buffer.from('d')]);
 
-    const W =
+    const w =
         tree.batchGet([Buffer.from('a'), Buffer.from('b'), Buffer.from('c')]);
-    VerifyWitness(root, Buffer.from('a'), W[0]);
-    VerifyWitness(root, Buffer.from('b'), W[1]);
-    VerifyWitness(root, Buffer.from('c'), W[2]);
+    verifyWitness(root, Buffer.from('a'), tree.rlpSerializeWitness(w[0]));
+    verifyWitness(root, Buffer.from('b'), tree.rlpSerializeWitness(w[1]));
+    verifyWitness(root, Buffer.from('c'), tree.rlpSerializeWitness(w[2]));
   });
 
   it('put and del a simple batch with overlap', async () => {
@@ -431,8 +441,8 @@ describe('Try batch operations', () => {
     const w2 = tree.get(Buffer.from('b'));
     const w3 = tree.get(Buffer.from('c'));
 
-    VerifyWitness(root, Buffer.from('a'), w1);
-    VerifyWitness(root, Buffer.from('b'), w2);
+    verifyWitness(root, Buffer.from('a'), tree.rlpSerializeWitness(w1));
+    verifyWitness(root, Buffer.from('b'), tree.rlpSerializeWitness(w2));
     should.not.exist(w3.value);
   });
 
@@ -447,8 +457,8 @@ describe('Try batch operations', () => {
            ],
            [Buffer.from('c')]);
 
-       const W = tree.batchGet([Buffer.from('a'), Buffer.from('b')]);
-       VerifyWitness(root, Buffer.from('a'), W[0]);
-       VerifyWitness(root, Buffer.from('b'), W[1]);
+       const w = tree.batchGet([Buffer.from('a'), Buffer.from('b')]);
+       verifyWitness(root, Buffer.from('a'), tree.rlpSerializeWitness(w[0]));
+       verifyWitness(root, Buffer.from('b'), tree.rlpSerializeWitness(w[1]));
      });
 });

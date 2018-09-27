@@ -4,7 +4,7 @@ import * as chai from 'chai';
 import * as path from 'path';
 import {RlpEncode, RlpList} from 'rlp-stream';
 
-import {MerklePatriciaTree, VerifyWitness} from './index';
+import {MerklePatriciaTree, verifyWitness} from './index';
 
 
 
@@ -34,9 +34,12 @@ describe(
         const w2 = tree.get(Buffer.from('key2bb'));
         const w3 = tree.get(Buffer.from('key3cc'));
 
-        VerifyWitness(tree.root, Buffer.from('key1aa'), w1);
-        VerifyWitness(tree.root, Buffer.from('key2bb'), w2);
-        VerifyWitness(tree.root, Buffer.from('key3cc'), w3);
+        verifyWitness(
+            tree.root, Buffer.from('key1aa'), tree.rlpSerializeWitness(w1));
+        verifyWitness(
+            tree.root, Buffer.from('key2bb'), tree.rlpSerializeWitness(w2));
+        verifyWitness(
+            tree.root, Buffer.from('key3cc'), tree.rlpSerializeWitness(w3));
       });
 
       it('should create a merkle proof and verify it with a single long key',
@@ -45,14 +48,16 @@ describe(
                Buffer.from('key1aa'),
                Buffer.from('0123456789012345678901234567890123456789xx'));
            const w1 = tree.get(Buffer.from('key1aa'));
-           VerifyWitness(tree.root, Buffer.from('key1aa'), w1);
+           verifyWitness(
+               tree.root, Buffer.from('key1aa'), tree.rlpSerializeWitness(w1));
          });
 
       it('should create a merkle proof and verify it with a single short key',
          async () => {
            tree.put(Buffer.from('key1aa'), Buffer.from('01234'));
            const w1 = tree.get(Buffer.from('key1aa'));
-           VerifyWitness(tree.root, Buffer.from('key1aa'), w1);
+           verifyWitness(
+               tree.root, Buffer.from('key1aa'), tree.rlpSerializeWitness(w1));
          });
 
       it('should create a merkle proof with keys in the middle', async () => {
@@ -73,9 +78,12 @@ describe(
         const w2 = tree.get(Buffer.from('key2'));
         const w3 = tree.get(Buffer.from('key3'));
 
-        VerifyWitness(tree.root, Buffer.from('key1'), w1);
-        VerifyWitness(tree.root, Buffer.from('key2'), w2);
-        VerifyWitness(tree.root, Buffer.from('key3'), w3);
+        verifyWitness(
+            tree.root, Buffer.from('key1'), tree.rlpSerializeWitness(w1));
+        verifyWitness(
+            tree.root, Buffer.from('key2'), tree.rlpSerializeWitness(w2));
+        verifyWitness(
+            tree.root, Buffer.from('key3'), tree.rlpSerializeWitness(w3));
       });
 
 
@@ -89,8 +97,11 @@ describe(
            const w2 = tree.get(Buffer.from('b'));
            const w3 = tree.get(Buffer.from('c'));
 
-           VerifyWitness(tree.root, Buffer.from('a'), w1);
-           VerifyWitness(tree.root, Buffer.from('b'), w2);
-           VerifyWitness(tree.root, Buffer.from('c'), w3);
+           verifyWitness(
+               tree.root, Buffer.from('a'), tree.rlpSerializeWitness(w1));
+           verifyWitness(
+               tree.root, Buffer.from('b'), tree.rlpSerializeWitness(w2));
+           verifyWitness(
+               tree.root, Buffer.from('c'), tree.rlpSerializeWitness(w3));
          });
     });
