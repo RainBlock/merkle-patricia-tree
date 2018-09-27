@@ -638,7 +638,7 @@ export interface MerklePatriciaTreeOptions<K, V> {
 export class MerklePatriciaTree<K = Buffer, V = Buffer> implements
     MerkleTree<K, V> {
   /** The root node of the tree. */
-  rootNode: MerklePatriciaTreeNode<V>;
+  private rootNode: MerklePatriciaTreeNode<V>;
 
   /**
    * A Buffer representing the root hash of the tree. Always 256-bits (32
