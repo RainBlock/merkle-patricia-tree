@@ -1480,39 +1480,32 @@ export function VerifyStaleWitness(
   const result: SearchResult = recentState.search(key);
   // If the key was vertically cached in the recentState; search will find the path along the key
   if (result.remainder.length === 0 && result.node !== null) {
-    recentWitness.value = result.node.value;
-    const witProof: Buffer[] = [];
-    for (const [idx, witNode] of result.stack.entries()) {
-      const rlp = witNode.getRlpNodeEncoding(recentState.convertValue);
-      if (rlp.length >= 32 || (idx === 0)) {
-        witProof.push(rlp);
-      }
+    if (result.node.value!.compare(witness.value!) !== 0) {
+      throw new Error("key has been updated, witness cannot be used");
     }
-    recentWitness.proof = witProof;
-    VerifyWitness(recentState.root, key, recentWitness);
     return;
   }
   // If it was not vertically cached, then the key wasn't changed so the node hashes should match at some depth
   recentWitness.proof = [];
   recentWitness.value = witness.value;
-  const oldNodeHashes = [];
+  const oldNodeHashes: bigint[] = [];
   for (const serializedOldNode of witness.proof) {
-    oldNodeHashes.push(hashAsBuffer(HashType.KECCAK256, serializedOldNode));
+    oldNodeHashes.push(hashAsBigInt(HashType.KECCAK256, serializedOldNode));
   }
   for (const [idx, witNode] of result.stack.entries()) {
     const rlp = witNode.getRlpNodeEncoding(recentState.convertValue);
-    let recentHash = Buffer.from("");
+    let recentHash: bigint;
     if (rlp.length >= 32 || (idx === 0)) {
       recentWitness.proof.push(rlp);
-      recentHash = hashAsBuffer(HashType.KECCAK256, rlp);
-    }
-    for (let j = 0; j < oldNodeHashes.length; j++) {
-      if (Buffer.compare(recentHash, oldNodeHashes[j]) === 0) {
-        for(j = j+1; j < oldNodeHashes.length; j++) {
-          recentWitness.proof.push(oldNodeHashes[j]);
+      recentHash = witNode.hash(recentState.convertValue, rlp);
+      for (let j = 0; j < oldNodeHashes.length; j++) {
+        if (recentHash === oldNodeHashes[j]) {
+          for(j = j+1; j < oldNodeHashes.length; j++) {
+            recentWitness.proof.push(witness.proof[j]);
+          }
+          VerifyWitness(recentState.root, key, recentWitness);
+          return;
         }
-        VerifyWitness(recentState.root, key, recentWitness);
-        return;
       }
     }
   }
