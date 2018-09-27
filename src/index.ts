@@ -1488,7 +1488,7 @@ export function VerifyStaleWitness(
   // If it was not vertically cached, then the key wasn't changed so the node hashes should match at some depth
   recentWitness.proof = [];
   recentWitness.value = witness.value;
-  const oldNodeHashes: bigint[] = [];
+  const oldNodeHashes: Array<bigint> = [];
   for (const serializedOldNode of witness.proof) {
     oldNodeHashes.push(hashAsBigInt(HashType.KECCAK256, serializedOldNode));
   }
