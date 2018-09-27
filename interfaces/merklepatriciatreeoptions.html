@@ -98,6 +98,7 @@
 							<h3>Properties</h3>
 							<ul class="tsd-index-list">
 								<li class="tsd-kind-property tsd-parent-kind-interface"><a href="merklepatriciatreeoptions.html#keyconverter" class="tsd-kind-icon">key<wbr>Converter</a></li>
+								<li class="tsd-kind-property tsd-parent-kind-interface"><a href="merklepatriciatreeoptions.html#memoizeserialization" class="tsd-kind-icon">memoize<wbr>Serialization</a></li>
 								<li class="tsd-kind-property tsd-parent-kind-interface"><a href="merklepatriciatreeoptions.html#putcandelete" class="tsd-kind-icon">put<wbr>Can<wbr>Delete</a></li>
 								<li class="tsd-kind-property tsd-parent-kind-interface"><a href="merklepatriciatreeoptions.html#valueconverter" class="tsd-kind-icon">value<wbr>Converter</a></li>
 							</ul>
@@ -113,7 +114,7 @@
 					<div class="tsd-signature tsd-kind-icon">key<wbr>Converter<span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">undefined</span><span class="tsd-signature-symbol"> | </span><span class="tsd-signature-type">function</span></div>
 					<aside class="tsd-sources">
 						<ul>
-							<li>Defined in <a href="https://github.com/RainBlock/merkle-patricia-tree/blob/38d1cb6/src/index.ts#L627">index.ts:627</a></li>
+							<li>Defined in <a href="https://github.com/RainBlock/merkle-patricia-tree/blob/037284d/src/index.ts#L616">index.ts:616</a></li>
 						</ul>
 					</aside>
 					<div class="tsd-comment tsd-typography">
@@ -123,12 +124,29 @@
 					</div>
 				</section>
 				<section class="tsd-panel tsd-member tsd-kind-property tsd-parent-kind-interface">
+					<a name="memoizeserialization" class="tsd-anchor"></a>
+					<h3><span class="tsd-flag ts-flagOptional">Optional</span> memoize<wbr>Serialization</h3>
+					<div class="tsd-signature tsd-kind-icon">memoize<wbr>Serialization<span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">undefined</span><span class="tsd-signature-symbol"> | </span><span class="tsd-signature-type">false</span><span class="tsd-signature-symbol"> | </span><span class="tsd-signature-type">true</span></div>
+					<aside class="tsd-sources">
+						<ul>
+							<li>Defined in <a href="https://github.com/RainBlock/merkle-patricia-tree/blob/037284d/src/index.ts#L629">index.ts:629</a></li>
+						</ul>
+					</aside>
+					<div class="tsd-comment tsd-typography">
+						<div class="lead">
+							<p>Whether or not to memoize serializations or not. If true, serializations
+								will be memoized, which will increase the speed of proof generation at
+							the cost of increased memory overhead.</p>
+						</div>
+					</div>
+				</section>
+				<section class="tsd-panel tsd-member tsd-kind-property tsd-parent-kind-interface">
 					<a name="putcandelete" class="tsd-anchor"></a>
 					<h3>put<wbr>Can<wbr>Delete</h3>
 					<div class="tsd-signature tsd-kind-icon">put<wbr>Can<wbr>Delete<span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">boolean</span></div>
 					<aside class="tsd-sources">
 						<ul>
-							<li>Defined in <a href="https://github.com/RainBlock/merkle-patricia-tree/blob/38d1cb6/src/index.ts#L634">index.ts:634</a></li>
+							<li>Defined in <a href="https://github.com/RainBlock/merkle-patricia-tree/blob/037284d/src/index.ts#L623">index.ts:623</a></li>
 						</ul>
 					</aside>
 					<div class="tsd-comment tsd-typography">
@@ -144,7 +162,7 @@
 					<div class="tsd-signature tsd-kind-icon">value<wbr>Converter<span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">undefined</span><span class="tsd-signature-symbol"> | </span><span class="tsd-signature-type">function</span></div>
 					<aside class="tsd-sources">
 						<ul>
-							<li>Defined in <a href="https://github.com/RainBlock/merkle-patricia-tree/blob/38d1cb6/src/index.ts#L629">index.ts:629</a></li>
+							<li>Defined in <a href="https://github.com/RainBlock/merkle-patricia-tree/blob/037284d/src/index.ts#L618">index.ts:618</a></li>
 						</ul>
 					</aside>
 					<div class="tsd-comment tsd-typography">
@@ -201,6 +219,9 @@
 								<a href="merklepatriciatreeoptions.html#keyconverter" class="tsd-kind-icon">key<wbr>Converter</a>
 							</li>
 							<li class=" tsd-kind-property tsd-parent-kind-interface">
+								<a href="merklepatriciatreeoptions.html#memoizeserialization" class="tsd-kind-icon">memoize<wbr>Serialization</a>
+							</li>
+							<li class=" tsd-kind-property tsd-parent-kind-interface">
 								<a href="merklepatriciatreeoptions.html#putcandelete" class="tsd-kind-icon">put<wbr>Can<wbr>Delete</a>
 							</li>
 							<li class=" tsd-kind-property tsd-parent-kind-interface">
@@ -221,9 +242,6 @@
 					</li>
 					<li class=" tsd-kind-interface tsd-has-type-parameter">
 						<a href="searchresult.html" class="tsd-kind-icon">Search<wbr>Result</a>
-					</li>
-					<li class=" tsd-kind-interface tsd-has-type-parameter">
-						<a href="typedmerklepatriciatreeoptions.html" class="tsd-kind-icon">Typed<wbr>Merkle<wbr>Patricia<wbr>Tree<wbr>Options</a>
 					</li>
 					<li class=" tsd-kind-interface tsd-has-type-parameter">
 						<a href="witness.html" class="tsd-kind-icon">Witness</a>
