@@ -566,6 +566,46 @@ export class LeafNode<V> extends MerklePatriciaTreeNode<V> {
   }
 }
 
+/**
+ * Represents a hash node, which is -only- used for pruning the CachedMerklePatriciaTreeNode to maxCacheDepth.
+ */
+export class HashNode<V> extends MerklePatriciaTreeNode<V> {
+  /** A hash node always has no nibbles. */
+  readonly nibbles = [];
+
+  /** The value of a hash node cannot be set. */
+  set value(val: V) {
+    throw new Error('Attempted to set the value of a NullNode');
+  }
+
+  /** nodeHash stores the hash of the next node. */
+  nodeHash: bigint;
+  constructor (hash: bigint) {
+    super();
+    this.nodeHash = hash;
+  }
+
+  /** The hash of a hash node returned. */
+  hash() {
+    return this.nodeHash;
+  }
+
+  /** The serialized version of a hash node. */
+  serialize() : RlpItem {
+    throw new Error("Cannot serialize HashNode");
+  }
+
+  /** Traversing a hash node always yields nothing. */
+  next(nibbles: number[]) {
+    return {remainingNibbles: nibbles, next: null};
+  }
+
+  /** Returns the string representation of this null node. */
+  toString() {
+    return `[HashNode ${this.nodeHash}]`;
+  }
+}
+
 /** The interface for a merkle tree. */
 export interface MerkleTree<K, V> {
   /** The root hash of the tree. */
@@ -647,7 +687,7 @@ export interface MerklePatriciaTreeOptions<K, V> {
 export class MerklePatriciaTree<K = Buffer, V = Buffer> implements
     MerkleTree<K, V> {
   /** The root node of the tree. */
-  private rootNode: MerklePatriciaTreeNode<V>;
+  rootNode: MerklePatriciaTreeNode<V>;
 
   /**
    * A Buffer representing the root hash of the tree. Always 256-bits (32
@@ -1356,7 +1396,6 @@ export function verifyWitness(root: Buffer, key: Buffer, witness: RlpWitness) {
   let currentKey: number[] = originalNode.stringToNibbles(key);
   let cld;
 
-
   for (const [idx, serializedNode] of witness.proof.entries()) {
     const hash = hashAsBuffer(HashType.KECCAK256, serializedNode);
     if (Buffer.compare(hash, targetHash)) {
@@ -1480,7 +1519,7 @@ export function verifyStaleWitness(
   if (staleRoot.compare(recentState.root) === 0) {
     return witness;
   }
-  // Check if nodes match at any feasible depth (search happens till available cacheDepth)
+  // Check if nodes match at any feasible depth (search happens till available maxCacheDepth)
   const recentWitness: Witness<Buffer> = {proof: [], value: null};
   const result: SearchResult = recentState.search(key);
   // If the key was vertically cached in the recentState; search will find the path along the key
@@ -1513,4 +1552,62 @@ export function verifyStaleWitness(
     }
   }
   throw new VerificationError("stale witness verification failed");
+}
+
+export class CachedMerklePatriciaTree extends MerklePatriciaTree<Buffer, Buffer> {
+  /** Maximum depth of the cached MerklePatriciaTree
+   * rootNode is at a depth 1. */
+  private maxCacheDepth: number;
+
+  constructor (depth: number = 6) {
+    super();
+    // Set the default maxCacheDepth to 6
+    this.maxCacheDepth = depth;
+  }
+
+  /** Returns the maxCacheDepth */
+  getmaxCacheDepth () : number {
+    return this.maxCacheDepth;
+  }
+
+  /**
+   * Recursively prunes the cachedStateTree to maxCacheDepth by adding HashNodes
+   * @param currNode current node at a depth, starting from rootNode at depth = 1
+   * @param depth Ranges from 1 to maxCacheDepth
+   */
+  pruneCacheState(currNode: MerklePatriciaTreeNode<Buffer> = this.rootNode, depth: number = 1) {
+    while (depth < this.maxCacheDepth) {
+      if (currNode instanceof LeafNode || currNode instanceof HashNode || currNode instanceof NullNode) {
+        return;
+      }
+      if (currNode instanceof BranchNode) {
+        for (const branch of currNode.branches) {
+          if (branch !== undefined) {
+            this.pruneCacheState(branch, depth + 1);
+          }
+        }
+        return;
+      } else if (currNode instanceof ExtensionNode) {
+        this.pruneCacheState(currNode.nextNode, depth + 1);
+        return;
+      }
+      depth += 1;
+    }
+    if (currNode instanceof BranchNode) {
+      for (const [idx, branch] of currNode.branches.entries()) {
+        if (branch instanceof LeafNode || branch instanceof HashNode || branch === undefined) {
+          continue;
+        }
+        let nodeHash = branch.hash(this.options as {} as MerklePatriciaTreeOptions<{}, Buffer>);
+        currNode.branches[idx] = new HashNode(nodeHash);
+      }
+    } else if (currNode instanceof ExtensionNode) {
+      if (currNode.nextNode instanceof LeafNode || currNode instanceof HashNode) {
+        return;
+      }
+      let nodeHash = currNode.nextNode.hash(this.options as {} as MerklePatriciaTreeOptions<{}, Buffer>);
+      currNode.nextNode = new HashNode(nodeHash);
+    }
+    return;
+  }
 }
