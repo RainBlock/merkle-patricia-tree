@@ -1472,10 +1472,10 @@ export function verifyWitness(root: Buffer, key: Buffer, witness: RlpWitness) {
  * @param witness     witness against a stale root
  * @param recentState Merkle Paticia Tree horizontally caches nodes to some depth and veritically caches most recent keys
  */
-export function VerifyStaleWitness(
-    staleRoot: Buffer, key: Buffer, witness: Witness<Buffer>, recentState: MerklePatriciaTree) {
+export function verifyStaleWitness(
+    staleRoot: Buffer, key: Buffer, witness: RlpWitness, recentState: MerklePatriciaTree) {
   // Verify if the witness is valid against the stale root
-  VerifyWitness(staleRoot, key, witness);
+  verifyWitness(staleRoot, key, witness);
   // If the stale root and recent root match, return the witness
   if (staleRoot.compare(recentState.root) === 0) {
     return witness;
@@ -1498,19 +1498,17 @@ export function VerifyStaleWitness(
     oldNodeHashes.push(hashAsBigInt(HashType.KECCAK256, serializedOldNode));
   }
   for (const [idx, witNode] of result.stack.entries()) {
-    const rlp = witNode.getRlpNodeEncoding(recentState.convertValue);
     let recentHash: bigint;
-    if (rlp.length >= 32 || (idx === 0)) {
-      recentWitness.proof.push(rlp);
-      recentHash = witNode.hash(recentState.convertValue, rlp);
-      for (let j = 0; j < oldNodeHashes.length; j++) {
-        if (recentHash === oldNodeHashes[j]) {
-          for(j = j+1; j < oldNodeHashes.length; j++) {
-            recentWitness.proof.push(witness.proof[j]);
-          }
-          VerifyWitness(recentState.root, key, recentWitness);
-          return;
+    recentWitness.proof.push(witNode);
+    recentHash = witNode.hash(options as {} as MerklePatriciaTreeOptions<{}, Buffer>);
+    for (let j = 0; j < oldNodeHashes.length; j++) {
+      if (recentHash === oldNodeHashes[j]) {
+        const curWit = recentState.rlpSerializeWitness(recentWitness);
+        for(j = j+1; j < oldNodeHashes.length; j++) {
+          curWit.proof.push(witness.proof[j]);
         }
+        verifyWitness(recentState.root, key, curWit);
+        return;
       }
     }
   }
