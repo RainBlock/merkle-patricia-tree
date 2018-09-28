@@ -1555,11 +1555,10 @@ export function verifyStaleWitness(
 }
 
 export class CachedMerklePatriciaTree extends MerklePatriciaTree<Buffer, Buffer> {
-  /** Maximum depth of the cached MerklePatriciaTree
-   * rootNode is at a depth 1. */
+  // Maximum depth of the cached MerklePatriciaTree with rootNode is at a depth 1.
   private maxCacheDepth: number;
 
-  constructor (depth: number = 6) {
+  constructor (depth = 6) {
     super();
     // Set the default maxCacheDepth to 6
     this.maxCacheDepth = depth;
@@ -1575,7 +1574,7 @@ export class CachedMerklePatriciaTree extends MerklePatriciaTree<Buffer, Buffer>
    * @param currNode current node at a depth, starting from rootNode at depth = 1
    * @param depth Ranges from 1 to maxCacheDepth
    */
-  pruneCacheState(currNode: MerklePatriciaTreeNode<Buffer> = this.rootNode, depth: number = 1) {
+  pruneCacheState(currNode: MerklePatriciaTreeNode<Buffer> = this.rootNode, depth = 1) {
     while (depth < this.maxCacheDepth) {
       if (currNode instanceof LeafNode || currNode instanceof HashNode || currNode instanceof NullNode) {
         return;
@@ -1598,14 +1597,14 @@ export class CachedMerklePatriciaTree extends MerklePatriciaTree<Buffer, Buffer>
         if (branch instanceof LeafNode || branch instanceof HashNode || branch === undefined) {
           continue;
         }
-        let nodeHash = branch.hash(this.options as {} as MerklePatriciaTreeOptions<{}, Buffer>);
+        const nodeHash = branch.hash(this.options as {} as MerklePatriciaTreeOptions<{}, Buffer>);
         currNode.branches[idx] = new HashNode(nodeHash);
       }
     } else if (currNode instanceof ExtensionNode) {
       if (currNode.nextNode instanceof LeafNode || currNode instanceof HashNode) {
         return;
       }
-      let nodeHash = currNode.nextNode.hash(this.options as {} as MerklePatriciaTreeOptions<{}, Buffer>);
+      const nodeHash = currNode.nextNode.hash(this.options as {} as MerklePatriciaTreeOptions<{}, Buffer>);
       currNode.nextNode = new HashNode(nodeHash);
     }
     return;
