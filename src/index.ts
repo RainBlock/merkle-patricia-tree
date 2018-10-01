@@ -1613,7 +1613,7 @@ export class CachedMerklePatriciaTree<K, V> extends MerklePatriciaTree<K, V> {
 
   verifyAndAddWitness(root: Buffer, key: K, witness: Witness<V>) {
     // Verify witness
-    let convKey = this.options.keyConverter!(key);
+    const convKey = this.options.keyConverter!(key);
     verifyWitness(root, convKey, this.rlpSerializeWitness(witness));
     // Add witness into the cache
     if (this.rootNode instanceof NullNode) {
@@ -1629,7 +1629,7 @@ export class CachedMerklePatriciaTree<K, V> extends MerklePatriciaTree<K, V> {
         result.node!.value = witness.value;
       } else if (result.stack[result.stack.length - 1] instanceof HashNode) {
         // Partial path ending with a HashNode; replace the HashNode (search stack depth >= 6)
-        let currNode = result.stack[result.stack.length - 2];
+        const currNode = result.stack[result.stack.length - 2];
         if (currNode instanceof BranchNode) {
           currNode.branches[result.remainder[0]] = witness.proof[result.stack.length - 1];
         } else if (currNode instanceof ExtensionNode) {
