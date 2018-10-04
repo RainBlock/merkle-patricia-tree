@@ -69,7 +69,9 @@
 							<h3>Classes</h3>
 							<ul class="tsd-index-list">
 								<li class="tsd-kind-class tsd-has-type-parameter"><a href="classes/branchnode.html" class="tsd-kind-icon">Branch<wbr>Node</a></li>
+								<li class="tsd-kind-class tsd-has-type-parameter"><a href="classes/cachedmerklepatriciatree.html" class="tsd-kind-icon">Cached<wbr>Merkle<wbr>Patricia<wbr>Tree</a></li>
 								<li class="tsd-kind-class tsd-has-type-parameter"><a href="classes/extensionnode.html" class="tsd-kind-icon">Extension<wbr>Node</a></li>
+								<li class="tsd-kind-class tsd-has-type-parameter"><a href="classes/hashnode.html" class="tsd-kind-icon">Hash<wbr>Node</a></li>
 								<li class="tsd-kind-class tsd-has-type-parameter"><a href="classes/leafnode.html" class="tsd-kind-icon">Leaf<wbr>Node</a></li>
 								<li class="tsd-kind-class tsd-has-type-parameter"><a href="classes/merklepatriciatree.html" class="tsd-kind-icon">Merkle<wbr>Patricia<wbr>Tree</a></li>
 								<li class="tsd-kind-class tsd-has-type-parameter"><a href="classes/merklepatriciatreenode.html" class="tsd-kind-icon">Merkle<wbr>Patricia<wbr>Tree<wbr>Node</a></li>
@@ -94,6 +96,7 @@
 						<section class="tsd-index-section ">
 							<h3>Functions</h3>
 							<ul class="tsd-index-list">
+								<li class="tsd-kind-function"><a href="globals.html#verifystalewitness" class="tsd-kind-icon">verify<wbr>Stale<wbr>Witness</a></li>
 								<li class="tsd-kind-function"><a href="globals.html#verifywitness" class="tsd-kind-icon">verify<wbr>Witness</a></li>
 							</ul>
 						</section>
@@ -102,6 +105,58 @@
 			</section>
 			<section class="tsd-panel-group tsd-member-group ">
 				<h2>Functions</h2>
+				<section class="tsd-panel tsd-member tsd-kind-function">
+					<a name="verifystalewitness" class="tsd-anchor"></a>
+					<h3>verify<wbr>Stale<wbr>Witness</h3>
+					<ul class="tsd-signatures tsd-kind-function">
+						<li class="tsd-signature tsd-kind-icon">verify<wbr>Stale<wbr>Witness<span class="tsd-signature-symbol">(</span>staleRoot<span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">Buffer</span>, key<span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">Buffer</span>, witness<span class="tsd-signature-symbol">: </span><a href="interfaces/rlpwitness.html" class="tsd-signature-type">RlpWitness</a>, recentState<span class="tsd-signature-symbol">: </span><a href="classes/cachedmerklepatriciatree.html" class="tsd-signature-type">CachedMerklePatriciaTree</a><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">Buffer</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">Buffer</span><span class="tsd-signature-symbol">&gt;</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">undefined</span><span class="tsd-signature-symbol"> | </span><a href="interfaces/rlpwitness.html" class="tsd-signature-type">RlpWitness</a></li>
+					</ul>
+					<ul class="tsd-descriptions">
+						<li class="tsd-description">
+							<aside class="tsd-sources">
+								<ul>
+									<li>Defined in <a href="https://github.com/RainBlock/merkle-patricia-tree/blob/734eb24/src/index.ts#L1515">index.ts:1515</a></li>
+								</ul>
+							</aside>
+							<div class="tsd-comment tsd-typography">
+								<div class="lead">
+									<p>Verifies a witness against a staleRoot, constructs newest witness from the recentState and verifies it</p>
+								</div>
+							</div>
+							<h4 class="tsd-parameters-title">Parameters</h4>
+							<ul class="tsd-parameters">
+								<li>
+									<h5>staleRoot: <span class="tsd-signature-type">Buffer</span></h5>
+									<div class="tsd-comment tsd-typography">
+										<p>stale root</p>
+									</div>
+								</li>
+								<li>
+									<h5>key: <span class="tsd-signature-type">Buffer</span></h5>
+									<div class="tsd-comment tsd-typography">
+										<p>key being read</p>
+									</div>
+								</li>
+								<li>
+									<h5>witness: <a href="interfaces/rlpwitness.html" class="tsd-signature-type">RlpWitness</a></h5>
+									<div class="tsd-comment tsd-typography">
+										<p>witness against a stale root</p>
+									</div>
+								</li>
+								<li>
+									<h5>recentState: <a href="classes/cachedmerklepatriciatree.html" class="tsd-signature-type">CachedMerklePatriciaTree</a><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">Buffer</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">Buffer</span><span class="tsd-signature-symbol">&gt;</span></h5>
+									<div class="tsd-comment tsd-typography">
+										<p>Merkle Paticia Tree horizontally caches nodes to some depth and veritically caches most recent keys</p>
+									</div>
+								</li>
+							</ul>
+							<h4 class="tsd-returns-title">Returns <span class="tsd-signature-type">undefined</span>
+								<span class="tsd-signature-symbol"> | </span>
+								<a href="interfaces/rlpwitness.html" class="tsd-signature-type">RlpWitness</a>
+							</h4>
+						</li>
+					</ul>
+				</section>
 				<section class="tsd-panel tsd-member tsd-kind-function">
 					<a name="verifywitness" class="tsd-anchor"></a>
 					<h3>verify<wbr>Witness</h3>
@@ -112,7 +167,7 @@
 						<li class="tsd-description">
 							<aside class="tsd-sources">
 								<ul>
-									<li>Defined in <a href="https://github.com/RainBlock/merkle-patricia-tree/blob/4833d82/src/index.ts#L1354">index.ts:1354</a></li>
+									<li>Defined in <a href="https://github.com/RainBlock/merkle-patricia-tree/blob/734eb24/src/index.ts#L1395">index.ts:1395</a></li>
 								</ul>
 							</aside>
 							<div class="tsd-comment tsd-typography">
@@ -171,7 +226,13 @@
 						<a href="classes/branchnode.html" class="tsd-kind-icon">Branch<wbr>Node</a>
 					</li>
 					<li class=" tsd-kind-class tsd-has-type-parameter">
+						<a href="classes/cachedmerklepatriciatree.html" class="tsd-kind-icon">Cached<wbr>Merkle<wbr>Patricia<wbr>Tree</a>
+					</li>
+					<li class=" tsd-kind-class tsd-has-type-parameter">
 						<a href="classes/extensionnode.html" class="tsd-kind-icon">Extension<wbr>Node</a>
+					</li>
+					<li class=" tsd-kind-class tsd-has-type-parameter">
+						<a href="classes/hashnode.html" class="tsd-kind-icon">Hash<wbr>Node</a>
 					</li>
 					<li class=" tsd-kind-class tsd-has-type-parameter">
 						<a href="classes/leafnode.html" class="tsd-kind-icon">Leaf<wbr>Node</a>
@@ -214,6 +275,9 @@
 					</li>
 					<li class=" tsd-kind-interface tsd-has-type-parameter">
 						<a href="interfaces/witness.html" class="tsd-kind-icon">Witness</a>
+					</li>
+					<li class=" tsd-kind-function">
+						<a href="globals.html#verifystalewitness" class="tsd-kind-icon">verify<wbr>Stale<wbr>Witness</a>
 					</li>
 					<li class=" tsd-kind-function">
 						<a href="globals.html#verifywitness" class="tsd-kind-icon">verify<wbr>Witness</a>

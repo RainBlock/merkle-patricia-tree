@@ -3,7 +3,7 @@
 <head>
 	<meta charset="utf-8">
 	<meta http-equiv="X-UA-Compatible" content="IE=edge">
-	<title>ExtensionNode | @rainblock/merkle-patricia-tree</title>
+	<title>HashNode | @rainblock/merkle-patricia-tree</title>
 	<meta name="description" content="">
 	<meta name="viewport" content="width=device-width, initial-scale=1">
 	<link rel="stylesheet" href="../assets/css/main.css">
@@ -54,10 +54,10 @@
 					<a href="../globals.html">Globals</a>
 				</li>
 				<li>
-					<a href="extensionnode.html">ExtensionNode</a>
+					<a href="hashnode.html">HashNode</a>
 				</li>
 			</ul>
-			<h1>Class ExtensionNode&lt;V&gt;</h1>
+			<h1>Class HashNode&lt;V&gt;</h1>
 		</div>
 	</div>
 </header>
@@ -67,8 +67,7 @@
 			<section class="tsd-panel tsd-comment">
 				<div class="tsd-comment tsd-typography">
 					<div class="lead">
-						<p>Represents an extension node, which &quot;consumes&quot; a set of nibbles and points to
-						another node.</p>
+						<p>Represents a hash node, which is -only- used for pruning the CachedMerklePatriciaTreeNode to maxCacheDepth.</p>
 					</div>
 				</div>
 			</section>
@@ -87,7 +86,7 @@
 						<a href="merklepatriciatreenode.html" class="tsd-signature-type">MerklePatriciaTreeNode</a><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">V</span><span class="tsd-signature-symbol">&gt;</span>
 						<ul class="tsd-hierarchy">
 							<li>
-								<span class="target">ExtensionNode</span>
+								<span class="target">HashNode</span>
 							</li>
 						</ul>
 					</li>
@@ -100,44 +99,41 @@
 						<section class="tsd-index-section ">
 							<h3>Constructors</h3>
 							<ul class="tsd-index-list">
-								<li class="tsd-kind-constructor tsd-parent-kind-class"><a href="extensionnode.html#constructor" class="tsd-kind-icon">constructor</a></li>
+								<li class="tsd-kind-constructor tsd-parent-kind-class"><a href="hashnode.html#constructor" class="tsd-kind-icon">constructor</a></li>
 							</ul>
 						</section>
 						<section class="tsd-index-section ">
 							<h3>Properties</h3>
 							<ul class="tsd-index-list">
-								<li class="tsd-kind-property tsd-parent-kind-class"><a href="extensionnode.html#nextnode" class="tsd-kind-icon">next<wbr>Node</a></li>
-								<li class="tsd-kind-property tsd-parent-kind-class tsd-is-overwrite"><a href="extensionnode.html#nibbles" class="tsd-kind-icon">nibbles</a></li>
-								<li class="tsd-kind-property tsd-parent-kind-class tsd-is-inherited"><a href="extensionnode.html#rlpnodeencoding" class="tsd-kind-icon">rlp<wbr>Node<wbr>Encoding</a></li>
-								<li class="tsd-kind-property tsd-parent-kind-class tsd-is-overwrite"><a href="extensionnode.html#value" class="tsd-kind-icon">value</a></li>
-								<li class="tsd-kind-property tsd-parent-kind-class tsd-is-inherited tsd-is-static"><a href="extensionnode.html#human_readable_hash_length" class="tsd-kind-icon">HUMAN_<wbr>READABLE_<wbr>HASH_<wbr>LENGTH</a></li>
-								<li class="tsd-kind-property tsd-parent-kind-class tsd-is-inherited tsd-is-static"><a href="extensionnode.html#human_readable_val_length" class="tsd-kind-icon">HUMAN_<wbr>READABLE_<wbr>VAL_<wbr>LENGTH</a></li>
-								<li class="tsd-kind-property tsd-parent-kind-class tsd-is-static"><a href="extensionnode.html#prefix_extension_even" class="tsd-kind-icon">PREFIX_<wbr>EXTENSION_<wbr>EVEN</a></li>
-								<li class="tsd-kind-property tsd-parent-kind-class tsd-is-static"><a href="extensionnode.html#prefix_extension_odd" class="tsd-kind-icon">PREFIX_<wbr>EXTENSION_<wbr>ODD</a></li>
+								<li class="tsd-kind-property tsd-parent-kind-class tsd-is-overwrite"><a href="hashnode.html#nibbles" class="tsd-kind-icon">nibbles</a></li>
+								<li class="tsd-kind-property tsd-parent-kind-class"><a href="hashnode.html#nodehash" class="tsd-kind-icon">node<wbr>Hash</a></li>
+								<li class="tsd-kind-property tsd-parent-kind-class tsd-is-inherited"><a href="hashnode.html#rlpnodeencoding" class="tsd-kind-icon">rlp<wbr>Node<wbr>Encoding</a></li>
+								<li class="tsd-kind-property tsd-parent-kind-class tsd-is-inherited tsd-is-static"><a href="hashnode.html#human_readable_hash_length" class="tsd-kind-icon">HUMAN_<wbr>READABLE_<wbr>HASH_<wbr>LENGTH</a></li>
+								<li class="tsd-kind-property tsd-parent-kind-class tsd-is-inherited tsd-is-static"><a href="hashnode.html#human_readable_val_length" class="tsd-kind-icon">HUMAN_<wbr>READABLE_<wbr>VAL_<wbr>LENGTH</a></li>
 							</ul>
 						</section>
 						<section class="tsd-index-section ">
 							<h3>Accessors</h3>
 							<ul class="tsd-index-list">
-								<li class="tsd-kind-get-signature tsd-parent-kind-class"><a href="extensionnode.html#prefix" class="tsd-kind-icon">prefix</a></li>
+								<li class="tsd-kind-set-signature tsd-parent-kind-class tsd-is-overwrite"><a href="hashnode.html#value" class="tsd-kind-icon">value</a></li>
 							</ul>
 						</section>
 						<section class="tsd-index-section ">
 							<h3>Methods</h3>
 							<ul class="tsd-index-list">
-								<li class="tsd-kind-method tsd-parent-kind-class tsd-is-inherited"><a href="extensionnode.html#clearmemoizedhash" class="tsd-kind-icon">clear<wbr>Memoized<wbr>Hash</a></li>
-								<li class="tsd-kind-method tsd-parent-kind-class tsd-is-inherited"><a href="extensionnode.html#clearrlpnodeencoding" class="tsd-kind-icon">clear<wbr>Rlp<wbr>Node<wbr>Encoding</a></li>
-								<li class="tsd-kind-method tsd-parent-kind-class tsd-is-inherited"><a href="extensionnode.html#getrlpnodeencoding" class="tsd-kind-icon">get<wbr>Rlp<wbr>Node<wbr>Encoding</a></li>
-								<li class="tsd-kind-method tsd-parent-kind-class tsd-is-inherited"><a href="extensionnode.html#hash" class="tsd-kind-icon">hash</a></li>
-								<li class="tsd-kind-method tsd-parent-kind-class tsd-is-overwrite"><a href="extensionnode.html#next" class="tsd-kind-icon">next</a></li>
-								<li class="tsd-kind-method tsd-parent-kind-class tsd-is-overwrite"><a href="extensionnode.html#serialize" class="tsd-kind-icon">serialize</a></li>
-								<li class="tsd-kind-method tsd-parent-kind-class tsd-is-inherited"><a href="extensionnode.html#toreadablehash" class="tsd-kind-icon">to<wbr>Readable<wbr>Hash</a></li>
-								<li class="tsd-kind-method tsd-parent-kind-class"><a href="extensionnode.html#tostring" class="tsd-kind-icon">to<wbr>String</a></li>
-								<li class="tsd-kind-method tsd-parent-kind-class tsd-is-inherited tsd-is-static"><a href="extensionnode.html#buffertonibbles" class="tsd-kind-icon">buffer<wbr>ToNibbles</a></li>
-								<li class="tsd-kind-method tsd-parent-kind-class tsd-is-inherited tsd-is-static"><a href="extensionnode.html#intersectingprefix" class="tsd-kind-icon">intersecting<wbr>Prefix</a></li>
-								<li class="tsd-kind-method tsd-parent-kind-class tsd-is-inherited tsd-is-static"><a href="extensionnode.html#nibblesashex" class="tsd-kind-icon">nibbles<wbr>AsHex</a></li>
-								<li class="tsd-kind-method tsd-parent-kind-class tsd-is-inherited tsd-is-static"><a href="extensionnode.html#tobuffer" class="tsd-kind-icon">to<wbr>Buffer</a></li>
-								<li class="tsd-kind-method tsd-parent-kind-class tsd-has-type-parameter tsd-is-inherited tsd-is-static"><a href="extensionnode.html#toreadablevalue" class="tsd-kind-icon">to<wbr>Readable<wbr>Value</a></li>
+								<li class="tsd-kind-method tsd-parent-kind-class tsd-is-inherited"><a href="hashnode.html#clearmemoizedhash" class="tsd-kind-icon">clear<wbr>Memoized<wbr>Hash</a></li>
+								<li class="tsd-kind-method tsd-parent-kind-class tsd-is-inherited"><a href="hashnode.html#clearrlpnodeencoding" class="tsd-kind-icon">clear<wbr>Rlp<wbr>Node<wbr>Encoding</a></li>
+								<li class="tsd-kind-method tsd-parent-kind-class tsd-is-inherited"><a href="hashnode.html#getrlpnodeencoding" class="tsd-kind-icon">get<wbr>Rlp<wbr>Node<wbr>Encoding</a></li>
+								<li class="tsd-kind-method tsd-parent-kind-class tsd-is-overwrite"><a href="hashnode.html#hash" class="tsd-kind-icon">hash</a></li>
+								<li class="tsd-kind-method tsd-parent-kind-class tsd-is-overwrite"><a href="hashnode.html#next" class="tsd-kind-icon">next</a></li>
+								<li class="tsd-kind-method tsd-parent-kind-class tsd-is-overwrite"><a href="hashnode.html#serialize" class="tsd-kind-icon">serialize</a></li>
+								<li class="tsd-kind-method tsd-parent-kind-class tsd-is-inherited"><a href="hashnode.html#toreadablehash" class="tsd-kind-icon">to<wbr>Readable<wbr>Hash</a></li>
+								<li class="tsd-kind-method tsd-parent-kind-class"><a href="hashnode.html#tostring" class="tsd-kind-icon">to<wbr>String</a></li>
+								<li class="tsd-kind-method tsd-parent-kind-class tsd-is-inherited tsd-is-static"><a href="hashnode.html#buffertonibbles" class="tsd-kind-icon">buffer<wbr>ToNibbles</a></li>
+								<li class="tsd-kind-method tsd-parent-kind-class tsd-is-inherited tsd-is-static"><a href="hashnode.html#intersectingprefix" class="tsd-kind-icon">intersecting<wbr>Prefix</a></li>
+								<li class="tsd-kind-method tsd-parent-kind-class tsd-is-inherited tsd-is-static"><a href="hashnode.html#nibblesashex" class="tsd-kind-icon">nibbles<wbr>AsHex</a></li>
+								<li class="tsd-kind-method tsd-parent-kind-class tsd-is-inherited tsd-is-static"><a href="hashnode.html#tobuffer" class="tsd-kind-icon">to<wbr>Buffer</a></li>
+								<li class="tsd-kind-method tsd-parent-kind-class tsd-has-type-parameter tsd-is-inherited tsd-is-static"><a href="hashnode.html#toreadablevalue" class="tsd-kind-icon">to<wbr>Readable<wbr>Value</a></li>
 							</ul>
 						</section>
 					</div>
@@ -149,76 +145,56 @@
 					<a name="constructor" class="tsd-anchor"></a>
 					<h3>constructor</h3>
 					<ul class="tsd-signatures tsd-kind-constructor tsd-parent-kind-class">
-						<li class="tsd-signature tsd-kind-icon">new <wbr>Extension<wbr>Node<span class="tsd-signature-symbol">(</span>nibbles<span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">number</span><span class="tsd-signature-symbol">[]</span>, nextNode<span class="tsd-signature-symbol">: </span><a href="merklepatriciatreenode.html" class="tsd-signature-type">MerklePatriciaTreeNode</a><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">V</span><span class="tsd-signature-symbol">&gt;</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><a href="extensionnode.html" class="tsd-signature-type">ExtensionNode</a></li>
+						<li class="tsd-signature tsd-kind-icon">new <wbr>Hash<wbr>Node<span class="tsd-signature-symbol">(</span>hash<span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">bigint</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><a href="hashnode.html" class="tsd-signature-type">HashNode</a></li>
 					</ul>
 					<ul class="tsd-descriptions">
 						<li class="tsd-description">
 							<aside class="tsd-sources">
 								<ul>
-									<li>Defined in <a href="https://github.com/RainBlock/merkle-patricia-tree/blob/734eb24/src/index.ts#L475">index.ts:475</a></li>
+									<li>Defined in <a href="https://github.com/RainBlock/merkle-patricia-tree/blob/734eb24/src/index.ts#L583">index.ts:583</a></li>
 								</ul>
 							</aside>
-							<div class="tsd-comment tsd-typography">
-								<div class="lead">
-									<p>Construct a new extension node.</p>
-								</div>
-							</div>
 							<h4 class="tsd-parameters-title">Parameters</h4>
 							<ul class="tsd-parameters">
 								<li>
-									<h5>nibbles: <span class="tsd-signature-type">number</span><span class="tsd-signature-symbol">[]</span></h5>
-									<div class="tsd-comment tsd-typography">
-										<div class="lead">
-											<p>The nibbles that will be consumed when this node is
-											traversed.</p>
-										</div>
-									</div>
-								</li>
-								<li>
-									<h5>nextNode: <a href="merklepatriciatreenode.html" class="tsd-signature-type">MerklePatriciaTreeNode</a><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">V</span><span class="tsd-signature-symbol">&gt;</span></h5>
-									<div class="tsd-comment tsd-typography">
-										<div class="lead">
-											<p>The node that this node points to.</p>
-										</div>
-									</div>
+									<h5>hash: <span class="tsd-signature-type">bigint</span></h5>
 								</li>
 							</ul>
-							<h4 class="tsd-returns-title">Returns <a href="extensionnode.html" class="tsd-signature-type">ExtensionNode</a></h4>
+							<h4 class="tsd-returns-title">Returns <a href="hashnode.html" class="tsd-signature-type">HashNode</a></h4>
 						</li>
 					</ul>
 				</section>
 			</section>
 			<section class="tsd-panel-group tsd-member-group ">
 				<h2>Properties</h2>
-				<section class="tsd-panel tsd-member tsd-kind-property tsd-parent-kind-class">
-					<a name="nextnode" class="tsd-anchor"></a>
-					<h3>next<wbr>Node</h3>
-					<div class="tsd-signature tsd-kind-icon">next<wbr>Node<span class="tsd-signature-symbol">:</span> <a href="merklepatriciatreenode.html" class="tsd-signature-type">MerklePatriciaTreeNode</a><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">V</span><span class="tsd-signature-symbol">&gt;</span></div>
-					<aside class="tsd-sources">
-						<ul>
-							<li>Defined in <a href="https://github.com/RainBlock/merkle-patricia-tree/blob/734eb24/src/index.ts#L484">index.ts:484</a></li>
-						</ul>
-					</aside>
-					<div class="tsd-comment tsd-typography">
-						<div class="lead">
-							<p>The node that this node points to.</p>
-						</div>
-					</div>
-				</section>
 				<section class="tsd-panel tsd-member tsd-kind-property tsd-parent-kind-class tsd-is-overwrite">
 					<a name="nibbles" class="tsd-anchor"></a>
 					<h3>nibbles</h3>
-					<div class="tsd-signature tsd-kind-icon">nibbles<span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">number</span><span class="tsd-signature-symbol">[]</span></div>
+					<div class="tsd-signature tsd-kind-icon">nibbles<span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">never</span><span class="tsd-signature-symbol">[]</span><span class="tsd-signature-symbol"> =&nbsp;[]</span></div>
 					<aside class="tsd-sources">
 						<p>Overrides <a href="merklepatriciatreenode.html">MerklePatriciaTreeNode</a>.<a href="merklepatriciatreenode.html#nibbles">nibbles</a></p>
 						<ul>
-							<li>Defined in <a href="https://github.com/RainBlock/merkle-patricia-tree/blob/734eb24/src/index.ts#L484">index.ts:484</a></li>
+							<li>Defined in <a href="https://github.com/RainBlock/merkle-patricia-tree/blob/734eb24/src/index.ts#L575">index.ts:575</a></li>
 						</ul>
 					</aside>
 					<div class="tsd-comment tsd-typography">
 						<div class="lead">
-							<p>The nibbles that will be consumed when this node is
-							traversed.</p>
+							<p>A hash node always has no nibbles.</p>
+						</div>
+					</div>
+				</section>
+				<section class="tsd-panel tsd-member tsd-kind-property tsd-parent-kind-class">
+					<a name="nodehash" class="tsd-anchor"></a>
+					<h3>node<wbr>Hash</h3>
+					<div class="tsd-signature tsd-kind-icon">node<wbr>Hash<span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">bigint</span></div>
+					<aside class="tsd-sources">
+						<ul>
+							<li>Defined in <a href="https://github.com/RainBlock/merkle-patricia-tree/blob/734eb24/src/index.ts#L583">index.ts:583</a></li>
+						</ul>
+					</aside>
+					<div class="tsd-comment tsd-typography">
+						<div class="lead">
+							<p>nodeHash stores the hash of the current node.</p>
 						</div>
 					</div>
 				</section>
@@ -235,22 +211,6 @@
 					<div class="tsd-comment tsd-typography">
 						<div class="lead">
 							<p>Memoizing RLP encoding of the serialized node</p>
-						</div>
-					</div>
-				</section>
-				<section class="tsd-panel tsd-member tsd-kind-property tsd-parent-kind-class tsd-is-overwrite">
-					<a name="value" class="tsd-anchor"></a>
-					<h3>value</h3>
-					<div class="tsd-signature tsd-kind-icon">value<span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">null</span><span class="tsd-signature-symbol"> =&nbsp;null</span></div>
-					<aside class="tsd-sources">
-						<p>Overrides <a href="merklepatriciatreenode.html">MerklePatriciaTreeNode</a>.<a href="merklepatriciatreenode.html#value">value</a></p>
-						<ul>
-							<li>Defined in <a href="https://github.com/RainBlock/merkle-patricia-tree/blob/734eb24/src/index.ts#L445">index.ts:445</a></li>
-						</ul>
-					</aside>
-					<div class="tsd-comment tsd-typography">
-						<div class="lead">
-							<p>Extension nodes never contain a value.</p>
 						</div>
 					</div>
 				</section>
@@ -287,59 +247,35 @@
 						</div>
 					</div>
 				</section>
-				<section class="tsd-panel tsd-member tsd-kind-property tsd-parent-kind-class tsd-is-static">
-					<a name="prefix_extension_even" class="tsd-anchor"></a>
-					<h3><span class="tsd-flag ts-flagStatic">Static</span> PREFIX_<wbr>EXTENSION_<wbr>EVEN</h3>
-					<div class="tsd-signature tsd-kind-icon">PREFIX_<wbr>EXTENSION_<wbr>EVEN<span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">number</span><span class="tsd-signature-symbol"> =&nbsp;0</span></div>
-					<aside class="tsd-sources">
-						<ul>
-							<li>Defined in <a href="https://github.com/RainBlock/merkle-patricia-tree/blob/734eb24/src/index.ts#L450">index.ts:450</a></li>
-						</ul>
-					</aside>
-					<div class="tsd-comment tsd-typography">
-						<div class="lead">
-							<p>The prefix when the number of nibbles in the extension node is even.</p>
-						</div>
-					</div>
-				</section>
-				<section class="tsd-panel tsd-member tsd-kind-property tsd-parent-kind-class tsd-is-static">
-					<a name="prefix_extension_odd" class="tsd-anchor"></a>
-					<h3><span class="tsd-flag ts-flagStatic">Static</span> PREFIX_<wbr>EXTENSION_<wbr>ODD</h3>
-					<div class="tsd-signature tsd-kind-icon">PREFIX_<wbr>EXTENSION_<wbr>ODD<span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">number</span><span class="tsd-signature-symbol"> =&nbsp;1</span></div>
-					<aside class="tsd-sources">
-						<ul>
-							<li>Defined in <a href="https://github.com/RainBlock/merkle-patricia-tree/blob/734eb24/src/index.ts#L448">index.ts:448</a></li>
-						</ul>
-					</aside>
-					<div class="tsd-comment tsd-typography">
-						<div class="lead">
-							<p>The prefix when the number of nibbles in the extension node is odd.</p>
-						</div>
-					</div>
-				</section>
 			</section>
 			<section class="tsd-panel-group tsd-member-group ">
 				<h2>Accessors</h2>
-				<section class="tsd-panel tsd-member tsd-kind-get-signature tsd-parent-kind-class">
-					<a name="prefix" class="tsd-anchor"></a>
-					<h3>prefix</h3>
-					<ul class="tsd-signatures tsd-kind-get-signature tsd-parent-kind-class">
-						<li class="tsd-signature tsd-kind-icon"><span class="tsd-signature-symbol">get</span> prefix<span class="tsd-signature-symbol">(</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">number</span></li>
+				<section class="tsd-panel tsd-member tsd-kind-set-signature tsd-parent-kind-class tsd-is-overwrite">
+					<a name="value" class="tsd-anchor"></a>
+					<h3>value</h3>
+					<ul class="tsd-signatures tsd-kind-set-signature tsd-parent-kind-class tsd-is-overwrite">
+						<li class="tsd-signature tsd-kind-icon"><span class="tsd-signature-symbol">set</span> value<span class="tsd-signature-symbol">(</span>val<span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">V</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">void</span></li>
 					</ul>
 					<ul class="tsd-descriptions">
 						<li class="tsd-description">
 							<aside class="tsd-sources">
+								<p>Overrides <a href="merklepatriciatreenode.html">MerklePatriciaTreeNode</a>.<a href="merklepatriciatreenode.html#value">value</a></p>
 								<ul>
-									<li>Defined in <a href="https://github.com/RainBlock/merkle-patricia-tree/blob/734eb24/src/index.ts#L456">index.ts:456</a></li>
+									<li>Defined in <a href="https://github.com/RainBlock/merkle-patricia-tree/blob/734eb24/src/index.ts#L578">index.ts:578</a></li>
 								</ul>
 							</aside>
 							<div class="tsd-comment tsd-typography">
 								<div class="lead">
-									<p>Return the prefix for this extension node.</p>
+									<p>The value of a hash node cannot be set.</p>
 								</div>
 							</div>
-							<h4 class="tsd-returns-title">Returns <span class="tsd-signature-type">number</span></h4>
-							<p>The prefix for the node.</p>
+							<h4 class="tsd-parameters-title">Parameters</h4>
+							<ul class="tsd-parameters">
+								<li>
+									<h5>val: <span class="tsd-signature-type">V</span></h5>
+								</li>
+							</ul>
+							<h4 class="tsd-returns-title">Returns <span class="tsd-signature-type">void</span></h4>
 						</li>
 					</ul>
 				</section>
@@ -417,40 +353,26 @@
 						</li>
 					</ul>
 				</section>
-				<section class="tsd-panel tsd-member tsd-kind-method tsd-parent-kind-class tsd-is-inherited">
+				<section class="tsd-panel tsd-member tsd-kind-method tsd-parent-kind-class tsd-is-overwrite">
 					<a name="hash" class="tsd-anchor"></a>
 					<h3>hash</h3>
-					<ul class="tsd-signatures tsd-kind-method tsd-parent-kind-class tsd-is-inherited">
-						<li class="tsd-signature tsd-kind-icon">hash<span class="tsd-signature-symbol">(</span>options<span class="tsd-signature-symbol">: </span><a href="../interfaces/merklepatriciatreeoptions.html" class="tsd-signature-type">MerklePatriciaTreeOptions</a><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">__type</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">V</span><span class="tsd-signature-symbol">&gt;</span>, rlpEncodedBuffer<span class="tsd-signature-symbol">?: </span><span class="tsd-signature-type">Buffer</span><span class="tsd-signature-symbol"> | </span><span class="tsd-signature-type">null</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">bigint</span></li>
+					<ul class="tsd-signatures tsd-kind-method tsd-parent-kind-class tsd-is-overwrite">
+						<li class="tsd-signature tsd-kind-icon">hash<span class="tsd-signature-symbol">(</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">bigint</span></li>
 					</ul>
 					<ul class="tsd-descriptions">
 						<li class="tsd-description">
 							<aside class="tsd-sources">
-								<p>Inherited from <a href="merklepatriciatreenode.html">MerklePatriciaTreeNode</a>.<a href="merklepatriciatreenode.html#hash">hash</a></p>
+								<p>Overrides <a href="merklepatriciatreenode.html">MerklePatriciaTreeNode</a>.<a href="merklepatriciatreenode.html#hash">hash</a></p>
 								<ul>
-									<li>Defined in <a href="https://github.com/RainBlock/merkle-patricia-tree/blob/734eb24/src/index.ts#L157">index.ts:157</a></li>
+									<li>Defined in <a href="https://github.com/RainBlock/merkle-patricia-tree/blob/734eb24/src/index.ts#L590">index.ts:590</a></li>
 								</ul>
 							</aside>
 							<div class="tsd-comment tsd-typography">
 								<div class="lead">
-									<p>Return the hash for the node.</p>
+									<p>The hash of a hash node returned.</p>
 								</div>
 							</div>
-							<h4 class="tsd-parameters-title">Parameters</h4>
-							<ul class="tsd-parameters">
-								<li>
-									<h5>options: <a href="../interfaces/merklepatriciatreeoptions.html" class="tsd-signature-type">MerklePatriciaTreeOptions</a><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">__type</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">V</span><span class="tsd-signature-symbol">&gt;</span></h5>
-								</li>
-								<li>
-									<h5><span class="tsd-flag ts-flagDefault value">Default value</span> rlpEncodedBuffer: <span class="tsd-signature-type">Buffer</span><span class="tsd-signature-symbol"> | </span><span class="tsd-signature-type">null</span><span class="tsd-signature-symbol"> =&nbsp;null</span></h5>
-									<div class="tsd-comment tsd-typography">
-										<p>An optional RLP encoded buffer of the node to use
-										for hashing</p>
-									</div>
-								</li>
-							</ul>
 							<h4 class="tsd-returns-title">Returns <span class="tsd-signature-type">bigint</span></h4>
-							<p>A Buffer containing the hash for the node.</p>
 						</li>
 					</ul>
 				</section>
@@ -458,21 +380,20 @@
 					<a name="next" class="tsd-anchor"></a>
 					<h3>next</h3>
 					<ul class="tsd-signatures tsd-kind-method tsd-parent-kind-class tsd-is-overwrite">
-						<li class="tsd-signature tsd-kind-icon">next<span class="tsd-signature-symbol">(</span>nibbles<span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">number</span><span class="tsd-signature-symbol">[]</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">object</span><span class="tsd-signature-symbol"> | </span><span class="tsd-signature-type">object</span></li>
+						<li class="tsd-signature tsd-kind-icon">next<span class="tsd-signature-symbol">(</span>nibbles<span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">number</span><span class="tsd-signature-symbol">[]</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">object</span></li>
 					</ul>
 					<ul class="tsd-descriptions">
 						<li class="tsd-description">
 							<aside class="tsd-sources">
 								<p>Overrides <a href="merklepatriciatreenode.html">MerklePatriciaTreeNode</a>.<a href="merklepatriciatreenode.html#next">next</a></p>
 								<ul>
-									<li>Defined in <a href="https://github.com/RainBlock/merkle-patricia-tree/blob/734eb24/src/index.ts#L464">index.ts:464</a></li>
+									<li>Defined in <a href="https://github.com/RainBlock/merkle-patricia-tree/blob/734eb24/src/index.ts#L600">index.ts:600</a></li>
 								</ul>
 							</aside>
 							<div class="tsd-comment tsd-typography">
-								<dl class="tsd-comment-tags">
-									<dt>inheritdoc</dt>
-									<dd></dd>
-								</dl>
+								<div class="lead">
+									<p>Traversing a hash node always yields nothing.</p>
+								</div>
 							</div>
 							<h4 class="tsd-parameters-title">Parameters</h4>
 							<ul class="tsd-parameters">
@@ -480,10 +401,9 @@
 									<h5>nibbles: <span class="tsd-signature-type">number</span><span class="tsd-signature-symbol">[]</span></h5>
 								</li>
 							</ul>
-							<h4 class="tsd-returns-title">Returns <span class="tsd-signature-type">object</span>
-								<span class="tsd-signature-symbol"> | </span>
-								<span class="tsd-signature-type">object</span>
-							</h4>
+							<h4 class="tsd-returns-title">Returns <span class="tsd-signature-type">object</span></h4>
+							<ul class="tsd-parameters">
+							</ul>
 						</li>
 					</ul>
 				</section>
@@ -491,29 +411,22 @@
 					<a name="serialize" class="tsd-anchor"></a>
 					<h3>serialize</h3>
 					<ul class="tsd-signatures tsd-kind-method tsd-parent-kind-class tsd-is-overwrite">
-						<li class="tsd-signature tsd-kind-icon">serialize<span class="tsd-signature-symbol">(</span>options<span class="tsd-signature-symbol">: </span><a href="../interfaces/merklepatriciatreeoptions.html" class="tsd-signature-type">MerklePatriciaTreeOptions</a><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">__type</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">V</span><span class="tsd-signature-symbol">&gt;</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-symbol">(</span><span class="tsd-signature-type">Buffer</span><span class="tsd-signature-symbol"> | </span><span class="tsd-signature-type">RlpList</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">[]</span></li>
+						<li class="tsd-signature tsd-kind-icon">serialize<span class="tsd-signature-symbol">(</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">RlpItem</span></li>
 					</ul>
 					<ul class="tsd-descriptions">
 						<li class="tsd-description">
 							<aside class="tsd-sources">
 								<p>Overrides <a href="merklepatriciatreenode.html">MerklePatriciaTreeNode</a>.<a href="merklepatriciatreenode.html#serialize">serialize</a></p>
 								<ul>
-									<li>Defined in <a href="https://github.com/RainBlock/merkle-patricia-tree/blob/734eb24/src/index.ts#L492">index.ts:492</a></li>
+									<li>Defined in <a href="https://github.com/RainBlock/merkle-patricia-tree/blob/734eb24/src/index.ts#L595">index.ts:595</a></li>
 								</ul>
 							</aside>
 							<div class="tsd-comment tsd-typography">
-								<dl class="tsd-comment-tags">
-									<dt>inheritdoc</dt>
-									<dd></dd>
-								</dl>
+								<div class="lead">
+									<p>The serialized version of a hash node.</p>
+								</div>
 							</div>
-							<h4 class="tsd-parameters-title">Parameters</h4>
-							<ul class="tsd-parameters">
-								<li>
-									<h5>options: <a href="../interfaces/merklepatriciatreeoptions.html" class="tsd-signature-type">MerklePatriciaTreeOptions</a><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">__type</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">V</span><span class="tsd-signature-symbol">&gt;</span></h5>
-								</li>
-							</ul>
-							<h4 class="tsd-returns-title">Returns <span class="tsd-signature-symbol">(</span><span class="tsd-signature-type">Buffer</span><span class="tsd-signature-symbol"> | </span><span class="tsd-signature-type">RlpList</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">[]</span></h4>
+							<h4 class="tsd-returns-title">Returns <span class="tsd-signature-type">RlpItem</span></h4>
 						</li>
 					</ul>
 				</section>
@@ -553,28 +466,21 @@
 					<a name="tostring" class="tsd-anchor"></a>
 					<h3>to<wbr>String</h3>
 					<ul class="tsd-signatures tsd-kind-method tsd-parent-kind-class">
-						<li class="tsd-signature tsd-kind-icon">to<wbr>String<span class="tsd-signature-symbol">(</span>options<span class="tsd-signature-symbol">?: </span><a href="../interfaces/merklepatriciatreeoptions.html" class="tsd-signature-type">MerklePatriciaTreeOptions</a><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">__type</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">V</span><span class="tsd-signature-symbol">&gt;</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">string</span></li>
+						<li class="tsd-signature tsd-kind-icon">to<wbr>String<span class="tsd-signature-symbol">(</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">string</span></li>
 					</ul>
 					<ul class="tsd-descriptions">
 						<li class="tsd-description">
 							<aside class="tsd-sources">
 								<ul>
-									<li>Defined in <a href="https://github.com/RainBlock/merkle-patricia-tree/blob/734eb24/src/index.ts#L508">index.ts:508</a></li>
+									<li>Defined in <a href="https://github.com/RainBlock/merkle-patricia-tree/blob/734eb24/src/index.ts#L605">index.ts:605</a></li>
 								</ul>
 							</aside>
 							<div class="tsd-comment tsd-typography">
 								<div class="lead">
-									<p>Returns the string reperesntation of this node.</p>
+									<p>Returns the string representation of this null node.</p>
 								</div>
 							</div>
-							<h4 class="tsd-parameters-title">Parameters</h4>
-							<ul class="tsd-parameters">
-								<li>
-									<h5><span class="tsd-flag ts-flagOptional">Optional</span> options: <a href="../interfaces/merklepatriciatreeoptions.html" class="tsd-signature-type">MerklePatriciaTreeOptions</a><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">__type</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">V</span><span class="tsd-signature-symbol">&gt;</span></h5>
-								</li>
-							</ul>
 							<h4 class="tsd-returns-title">Returns <span class="tsd-signature-type">string</span></h4>
-							<p>The string representation of this node.</p>
 						</li>
 					</ul>
 				</section>
@@ -785,87 +691,78 @@
 					<li class=" tsd-kind-class tsd-has-type-parameter">
 						<a href="cachedmerklepatriciatree.html" class="tsd-kind-icon">Cached<wbr>Merkle<wbr>Patricia<wbr>Tree</a>
 					</li>
+					<li class=" tsd-kind-class tsd-has-type-parameter">
+						<a href="extensionnode.html" class="tsd-kind-icon">Extension<wbr>Node</a>
+					</li>
 				</ul>
 				<ul class="current">
 					<li class="current tsd-kind-class tsd-has-type-parameter">
-						<a href="extensionnode.html" class="tsd-kind-icon">Extension<wbr>Node</a>
+						<a href="hashnode.html" class="tsd-kind-icon">Hash<wbr>Node</a>
 						<ul>
 							<li class=" tsd-kind-constructor tsd-parent-kind-class">
-								<a href="extensionnode.html#constructor" class="tsd-kind-icon">constructor</a>
+								<a href="hashnode.html#constructor" class="tsd-kind-icon">constructor</a>
+							</li>
+							<li class=" tsd-kind-property tsd-parent-kind-class tsd-is-overwrite">
+								<a href="hashnode.html#nibbles" class="tsd-kind-icon">nibbles</a>
 							</li>
 							<li class=" tsd-kind-property tsd-parent-kind-class">
-								<a href="extensionnode.html#nextnode" class="tsd-kind-icon">next<wbr>Node</a>
-							</li>
-							<li class=" tsd-kind-property tsd-parent-kind-class tsd-is-overwrite">
-								<a href="extensionnode.html#nibbles" class="tsd-kind-icon">nibbles</a>
+								<a href="hashnode.html#nodehash" class="tsd-kind-icon">node<wbr>Hash</a>
 							</li>
 							<li class=" tsd-kind-property tsd-parent-kind-class tsd-is-inherited">
-								<a href="extensionnode.html#rlpnodeencoding" class="tsd-kind-icon">rlp<wbr>Node<wbr>Encoding</a>
-							</li>
-							<li class=" tsd-kind-property tsd-parent-kind-class tsd-is-overwrite">
-								<a href="extensionnode.html#value" class="tsd-kind-icon">value</a>
+								<a href="hashnode.html#rlpnodeencoding" class="tsd-kind-icon">rlp<wbr>Node<wbr>Encoding</a>
 							</li>
 							<li class=" tsd-kind-property tsd-parent-kind-class tsd-is-inherited tsd-is-static">
-								<a href="extensionnode.html#human_readable_hash_length" class="tsd-kind-icon">HUMAN_<wbr>READABLE_<wbr>HASH_<wbr>LENGTH</a>
+								<a href="hashnode.html#human_readable_hash_length" class="tsd-kind-icon">HUMAN_<wbr>READABLE_<wbr>HASH_<wbr>LENGTH</a>
 							</li>
 							<li class=" tsd-kind-property tsd-parent-kind-class tsd-is-inherited tsd-is-static">
-								<a href="extensionnode.html#human_readable_val_length" class="tsd-kind-icon">HUMAN_<wbr>READABLE_<wbr>VAL_<wbr>LENGTH</a>
+								<a href="hashnode.html#human_readable_val_length" class="tsd-kind-icon">HUMAN_<wbr>READABLE_<wbr>VAL_<wbr>LENGTH</a>
 							</li>
-							<li class=" tsd-kind-property tsd-parent-kind-class tsd-is-static">
-								<a href="extensionnode.html#prefix_extension_even" class="tsd-kind-icon">PREFIX_<wbr>EXTENSION_<wbr>EVEN</a>
-							</li>
-							<li class=" tsd-kind-property tsd-parent-kind-class tsd-is-static">
-								<a href="extensionnode.html#prefix_extension_odd" class="tsd-kind-icon">PREFIX_<wbr>EXTENSION_<wbr>ODD</a>
-							</li>
-							<li class=" tsd-kind-get-signature tsd-parent-kind-class">
-								<a href="extensionnode.html#prefix" class="tsd-kind-icon">prefix</a>
+							<li class=" tsd-kind-set-signature tsd-parent-kind-class tsd-is-overwrite">
+								<a href="hashnode.html#value" class="tsd-kind-icon">value</a>
 							</li>
 							<li class=" tsd-kind-method tsd-parent-kind-class tsd-is-inherited">
-								<a href="extensionnode.html#clearmemoizedhash" class="tsd-kind-icon">clear<wbr>Memoized<wbr>Hash</a>
+								<a href="hashnode.html#clearmemoizedhash" class="tsd-kind-icon">clear<wbr>Memoized<wbr>Hash</a>
 							</li>
 							<li class=" tsd-kind-method tsd-parent-kind-class tsd-is-inherited">
-								<a href="extensionnode.html#clearrlpnodeencoding" class="tsd-kind-icon">clear<wbr>Rlp<wbr>Node<wbr>Encoding</a>
+								<a href="hashnode.html#clearrlpnodeencoding" class="tsd-kind-icon">clear<wbr>Rlp<wbr>Node<wbr>Encoding</a>
 							</li>
 							<li class=" tsd-kind-method tsd-parent-kind-class tsd-is-inherited">
-								<a href="extensionnode.html#getrlpnodeencoding" class="tsd-kind-icon">get<wbr>Rlp<wbr>Node<wbr>Encoding</a>
-							</li>
-							<li class=" tsd-kind-method tsd-parent-kind-class tsd-is-inherited">
-								<a href="extensionnode.html#hash" class="tsd-kind-icon">hash</a>
+								<a href="hashnode.html#getrlpnodeencoding" class="tsd-kind-icon">get<wbr>Rlp<wbr>Node<wbr>Encoding</a>
 							</li>
 							<li class=" tsd-kind-method tsd-parent-kind-class tsd-is-overwrite">
-								<a href="extensionnode.html#next" class="tsd-kind-icon">next</a>
+								<a href="hashnode.html#hash" class="tsd-kind-icon">hash</a>
 							</li>
 							<li class=" tsd-kind-method tsd-parent-kind-class tsd-is-overwrite">
-								<a href="extensionnode.html#serialize" class="tsd-kind-icon">serialize</a>
+								<a href="hashnode.html#next" class="tsd-kind-icon">next</a>
+							</li>
+							<li class=" tsd-kind-method tsd-parent-kind-class tsd-is-overwrite">
+								<a href="hashnode.html#serialize" class="tsd-kind-icon">serialize</a>
 							</li>
 							<li class=" tsd-kind-method tsd-parent-kind-class tsd-is-inherited">
-								<a href="extensionnode.html#toreadablehash" class="tsd-kind-icon">to<wbr>Readable<wbr>Hash</a>
+								<a href="hashnode.html#toreadablehash" class="tsd-kind-icon">to<wbr>Readable<wbr>Hash</a>
 							</li>
 							<li class=" tsd-kind-method tsd-parent-kind-class">
-								<a href="extensionnode.html#tostring" class="tsd-kind-icon">to<wbr>String</a>
+								<a href="hashnode.html#tostring" class="tsd-kind-icon">to<wbr>String</a>
 							</li>
 							<li class=" tsd-kind-method tsd-parent-kind-class tsd-is-inherited tsd-is-static">
-								<a href="extensionnode.html#buffertonibbles" class="tsd-kind-icon">buffer<wbr>ToNibbles</a>
+								<a href="hashnode.html#buffertonibbles" class="tsd-kind-icon">buffer<wbr>ToNibbles</a>
 							</li>
 							<li class=" tsd-kind-method tsd-parent-kind-class tsd-is-inherited tsd-is-static">
-								<a href="extensionnode.html#intersectingprefix" class="tsd-kind-icon">intersecting<wbr>Prefix</a>
+								<a href="hashnode.html#intersectingprefix" class="tsd-kind-icon">intersecting<wbr>Prefix</a>
 							</li>
 							<li class=" tsd-kind-method tsd-parent-kind-class tsd-is-inherited tsd-is-static">
-								<a href="extensionnode.html#nibblesashex" class="tsd-kind-icon">nibbles<wbr>AsHex</a>
+								<a href="hashnode.html#nibblesashex" class="tsd-kind-icon">nibbles<wbr>AsHex</a>
 							</li>
 							<li class=" tsd-kind-method tsd-parent-kind-class tsd-is-inherited tsd-is-static">
-								<a href="extensionnode.html#tobuffer" class="tsd-kind-icon">to<wbr>Buffer</a>
+								<a href="hashnode.html#tobuffer" class="tsd-kind-icon">to<wbr>Buffer</a>
 							</li>
 							<li class=" tsd-kind-method tsd-parent-kind-class tsd-has-type-parameter tsd-is-inherited tsd-is-static">
-								<a href="extensionnode.html#toreadablevalue" class="tsd-kind-icon">to<wbr>Readable<wbr>Value</a>
+								<a href="hashnode.html#toreadablevalue" class="tsd-kind-icon">to<wbr>Readable<wbr>Value</a>
 							</li>
 						</ul>
 					</li>
 				</ul>
 				<ul class="after-current">
-					<li class=" tsd-kind-class tsd-has-type-parameter">
-						<a href="hashnode.html" class="tsd-kind-icon">Hash<wbr>Node</a>
-					</li>
 					<li class=" tsd-kind-class tsd-has-type-parameter">
 						<a href="leafnode.html" class="tsd-kind-icon">Leaf<wbr>Node</a>
 					</li>
