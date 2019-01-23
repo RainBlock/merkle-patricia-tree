@@ -663,7 +663,7 @@ export interface MerkleTree<K, V> {
    *
    * @returns       The root that results from this set of operations.
    */
-  batch: (putOps: Array<BatchPut<K, V>>, delOps?: K[]) => void;
+  batch: (putOps: Array<BatchPut<K, V>>, delOps?: K[]) => Buffer;
   /**
    * Search for the given key, returning a [[SearchResult]] which contains the
    * path traversed to search for the key.
