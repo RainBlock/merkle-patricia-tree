@@ -53,7 +53,7 @@ export interface MultiWitness {
 }
 
 /**
- * A consice interface for a witness, where the proof is a list of indexes
+ * A concise interface for a witness, where the proof is a list of indexes
  * index refers to the node at the corresponding index in a list of RLP encoded
  * nodes
  */
@@ -106,7 +106,7 @@ export abstract class MerklePatriciaTreeNode<V> {
   rlpNodeEncoding: Buffer|null = null;
 
   /**
-   * Serialzes and computed the RLP encoding of the node
+   * Serializes and computed the RLP encoding of the node
    * Also stores it for future references.
    */
   getRlpNodeEncoding(options: MerklePatriciaTreeOptions<{}, V>): Buffer {
@@ -213,8 +213,8 @@ export abstract class MerklePatriciaTreeNode<V> {
    * @param n0 The first set of nibbles
    * @param n1 The second set of nibbles
    *
-   * @returns A set of nibbles representing the intesecting prefix of both input
-   * sets.
+   * @returns A set of nibbles representing the intersecting prefix of both
+   * input sets.
    */
   static intersectingPrefix(n0: number[], n1: number[]): number[] {
     const prefix: number[] = [];
@@ -386,7 +386,7 @@ export class BranchNode<V> extends MerklePatriciaTreeNode<V> {
   }
 
   /**
-   * Returns the string reperesntation of this node.
+   * Returns the string representation of this node.
    *
    * @returns The string representation of this node.
    */
@@ -501,7 +501,7 @@ export class ExtensionNode<V> extends MerklePatriciaTreeNode<V> {
   }
 
   /**
-   * Returns the string reperesntation of this node.
+   * Returns the string representation of this node.
    *
    * @returns The string representation of this node.
    */
@@ -554,7 +554,7 @@ export class LeafNode<V> extends MerklePatriciaTreeNode<V> {
   }
 
   /**
-   * Returns the string reperesntation of this node.
+   * Returns the string representation of this node.
    *
    * @returns The string representation of this node.
    */
@@ -575,16 +575,23 @@ export class HashNode<V> extends MerklePatriciaTreeNode<V> {
   /** A hash node always has no nibbles. */
   readonly nibbles = [];
 
+  /** nodeHash stores the hash of the current node. */
+  nodeHash: bigint;
+
+  /** The serialized version of a hash node. */
+  serialization: RlpItem|null = null;
+
   /** The value of a hash node cannot be set. */
   set value(val: V) {
     throw new Error('Attempted to set the value of a NullNode');
   }
 
-  /** nodeHash stores the hash of the current node. */
-  nodeHash: bigint;
-  constructor(hash: bigint) {
+  constructor(hash: bigint, serialization?: RlpItem) {
     super();
     this.nodeHash = hash;
+    if (serialization) {
+      this.serialization = serialization;
+    }
   }
 
   /** The hash of a hash node returned. */
@@ -592,9 +599,11 @@ export class HashNode<V> extends MerklePatriciaTreeNode<V> {
     return this.nodeHash;
   }
 
-  /** The serialized version of a hash node. */
   serialize(): RlpItem {
-    throw new Error('Cannot serialize HashNode');
+    if (!this.serialization) {
+      throw new Error('Cannot serialize HashNode');
+    }
+    return this.serialization;
   }
 
   /** Traversing a hash node always yields nothing. */
@@ -654,7 +663,7 @@ export interface MerkleTree<K, V> {
    *
    * @returns       The root that results from this set of operations.
    */
-  batch: (putOps: Array<BatchPut<K, V>>, delOps?: K[]) => void;
+  batch: (putOps: Array<BatchPut<K, V>>, delOps?: K[]) => Buffer;
   /**
    * Search for the given key, returning a [[SearchResult]] which contains the
    * path traversed to search for the key.
@@ -1512,8 +1521,8 @@ export function verifyWitness(root: Buffer, key: Buffer, witness: RlpWitness) {
  * @param staleRoot   stale root
  * @param key         key being read
  * @param witness     witness against a stale root
- * @param recentState Merkle Paticia Tree horizontally caches nodes to some
- * depth and veritically caches most recent keys
+ * @param recentState Merkle Patricia Tree horizontally caches nodes to some
+ * depth and vertically caches most recent keys
  */
 export function verifyStaleWitness(
     staleRoot: Buffer, key: Buffer, witness: RlpWitness,
@@ -1613,7 +1622,10 @@ export class CachedMerklePatriciaTree<K, V> extends MerklePatriciaTree<K, V> {
         }
         const nodeHash = branch.hash(
             this.options as {} as MerklePatriciaTreeOptions<{}, Buffer>);
-        currNode.branches[idx] = new HashNode(nodeHash);
+        currNode.branches[idx] = new HashNode(
+            nodeHash,
+            branch.getRlpNodeEncoding(
+                this.options as {} as MerklePatriciaTreeOptions<{}, Buffer>));
       }
     } else if (currNode instanceof ExtensionNode) {
       if (currNode.nextNode instanceof LeafNode ||
@@ -1622,7 +1634,10 @@ export class CachedMerklePatriciaTree<K, V> extends MerklePatriciaTree<K, V> {
       }
       const nodeHash = currNode.nextNode.hash(
           this.options as {} as MerklePatriciaTreeOptions<{}, Buffer>);
-      currNode.nextNode = new HashNode(nodeHash);
+      currNode.nextNode = new HashNode(
+          nodeHash,
+          currNode.nextNode.getRlpNodeEncoding(
+              this.options as {} as MerklePatriciaTreeOptions<{}, Buffer>));
     }
     return;
   }
