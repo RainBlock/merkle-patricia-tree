@@ -2,10 +2,9 @@ import {options} from 'benchmark';
 import {toBufferBE} from 'bigint-buffer';
 import {hashAsBigInt, hashAsBuffer, HashType} from 'bigint-hash';
 import {RlpDecode, RlpEncode, RlpItem, RlpList} from 'rlp-stream';
-import {Readable} from 'stream';
+const Readable = require('readable-stream').Readable;
 
 const originalNode = require('./trieNode');
-const ReadStream = require('./readStream.ts').ReadStream;
 const matchingNibbleLength = require('./util').matchingNibbleLength;
 const nibblesToBuffer = require('./util').nibblesToBuffer;
 
@@ -1714,6 +1713,22 @@ export class CachedMerklePatriciaTree<K, V> extends
   }
 }
 
+export class ReadStream extends Readable {
+  constructor() {
+    super({objectMode: true});
+    this._started = false;
+    this.next = null;
+  }
+
+  _read() {
+    if (!this._started) {
+      this._started = true;
+      this.trie.findValueNodes(this, this.trie.rootNode, []);
+      this.push(null);
+    }
+  }
+}
+
 export class MerklePatriciaTree<K = Buffer, V = Buffer> extends
     MerklePatriciaTreeBase<K, V> {
   needsCOW = false;
@@ -1751,7 +1766,7 @@ export class MerklePatriciaTree<K = Buffer, V = Buffer> extends
     }
   }
 
-  createReadStream() {
+  createReadStream(): ReadStream {
     const stream = new ReadStream();
     stream.trie = this;
     return stream;
@@ -1765,7 +1780,7 @@ export class MerklePatriciaTree<K = Buffer, V = Buffer> extends
   }
 
   findValueNodes(
-      stream: Readable, node: MerklePatriciaTreeNode<Buffer>, key: number[]) {
+      stream: ReadStream, node: MerklePatriciaTreeNode<V>, key: number[]) {
     if (node instanceof NullNode) {
       return;
     } else if (node instanceof LeafNode) {
