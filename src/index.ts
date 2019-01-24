@@ -2,10 +2,12 @@ import {options} from 'benchmark';
 import {toBufferBE} from 'bigint-buffer';
 import {hashAsBigInt, hashAsBuffer, HashType} from 'bigint-hash';
 import {RlpDecode, RlpEncode, RlpItem, RlpList} from 'rlp-stream';
+import {Readable} from 'stream';
 
 const originalNode = require('./trieNode');
-const ReadStream = require('./readStream').ReadStream;
+const ReadStream = require('./readStream.ts').ReadStream;
 const matchingNibbleLength = require('./util').matchingNibbleLength;
+const nibblesToBuffer = require('./util').nibblesToBuffer;
 
 interface OriginalTreeNode {
   value: Buffer;
@@ -1750,7 +1752,9 @@ export class MerklePatriciaTree<K = Buffer, V = Buffer> extends
   }
 
   createReadStream() {
-    return new ReadStream(this);
+    const stream = new ReadStream();
+    stream.trie = this;
+    return stream;
   }
 
   batchCOW(putOps: Array<BatchPut<K, V>>, delOps: K[] = []):
@@ -1758,5 +1762,29 @@ export class MerklePatriciaTree<K = Buffer, V = Buffer> extends
     const copyTrie = new MerklePatriciaTree(this.options);
     copyTrie.rootNode = super.batchCOW(putOps, delOps).rootNode;
     return copyTrie;
+  }
+
+  findValueNodes(
+      stream: Readable, node: MerklePatriciaTreeNode<Buffer>, key: number[]) {
+    if (node instanceof NullNode) {
+      return;
+    } else if (node instanceof LeafNode) {
+      stream.push(nibblesToBuffer(key.concat(node.nibbles)), node.value);
+      return;
+    } else if (node instanceof BranchNode) {
+      if (node.value) {
+        stream.push(nibblesToBuffer(key.concat(node.nibbles)), node.value);
+      }
+      for (let i = 0; i < node.branches.length; i++) {
+        if (node.branches[i] === undefined) continue;
+        this.findValueNodes(stream, node.branches[i], key.concat(node.nibbles));
+      }
+      return;
+    } else if (node instanceof ExtensionNode) {
+      this.findValueNodes(stream, node.nextNode, key.concat(node.nibbles));
+      return;
+    } else {
+      throw new Error('node of unknown type');
+    }
   }
 }
