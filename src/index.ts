@@ -1,10 +1,10 @@
 import {options} from 'benchmark';
 import {toBufferBE} from 'bigint-buffer';
 import {hashAsBigInt, hashAsBuffer, HashType} from 'bigint-hash';
-import {EPROTONOSUPPORT} from 'constants';
 import {RlpDecode, RlpEncode, RlpItem, RlpList} from 'rlp-stream';
 
 const originalNode = require('./trieNode');
+const ReadStream = require('./readStream').ReadStream;
 const matchingNibbleLength = require('./util').matchingNibbleLength;
 
 interface OriginalTreeNode {
@@ -1747,6 +1747,10 @@ export class MerklePatriciaTree<K = Buffer, V = Buffer> extends
     } else {
       return super.batch(putOps, delOps);
     }
+  }
+
+  createReadStream() {
+    return new ReadStream(this);
   }
 
   batchCOW(putOps: Array<BatchPut<K, V>>, delOps: K[] = []):
