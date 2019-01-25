@@ -1,8 +1,7 @@
 import {options} from 'benchmark';
 import {toBufferBE} from 'bigint-buffer';
 import {hashAsBigInt, hashAsBuffer, HashType} from 'bigint-hash';
-import {EPROTONOSUPPORT} from 'constants';
-import {RlpDecode, RlpEncode, RlpItem, RlpList} from 'rlp-stream';
+import {RlpDecode, RlpEncode, RlpItem} from 'rlp-stream';
 
 const originalNode = require('./trieNode');
 const matchingNibbleLength = require('./util').matchingNibbleLength;
