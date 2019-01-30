@@ -801,7 +801,7 @@ export class MerklePatriciaTree<K = Buffer, V = Buffer> implements
    */
   private cowPutDel(putOps: Array<BatchPut<K, V>>, delOps: K[]):
       MerklePatriciaTree<K, V> {
-    const newTree = new MerklePatriciaTree<K, V>();
+    const newTree = new MerklePatriciaTree<K, V>(this.options);
     newTree.rootNode = this.getNodeCopy(this.rootNode);
     for (const put of putOps) {
       if (newTree.rootNode instanceof NullNode) {
@@ -822,7 +822,7 @@ export class MerklePatriciaTree<K = Buffer, V = Buffer> implements
             keyNibbles.shift();
           } else if (currNode instanceof ExtensionNode) {
             currNode.nextNode = nextNode;
-            keyNibbles = keyNibbles.slice(nextNode.nibbles.length);
+            keyNibbles = keyNibbles.slice(currNode.nibbles.length);
           }
           currNode = nextNode;
         }
@@ -842,7 +842,7 @@ export class MerklePatriciaTree<K = Buffer, V = Buffer> implements
           keyNibbles.shift();
         } else if (currNode instanceof ExtensionNode) {
           currNode.nextNode = nextNode;
-          keyNibbles = keyNibbles.slice(nextNode.nibbles.length);
+          keyNibbles = keyNibbles.slice(currNode.nibbles.length);
         }
         currNode = nextNode;
       }
