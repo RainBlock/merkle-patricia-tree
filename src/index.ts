@@ -2,8 +2,8 @@ import {options} from 'benchmark';
 import {toBufferBE} from 'bigint-buffer';
 import {hashAsBigInt, hashAsBuffer, HashType} from 'bigint-hash';
 import {RlpDecode, RlpEncode, RlpItem} from 'rlp-stream';
-const Readable = require('readable-stream').Readable;
 
+const Readable = require('readable-stream').Readable;
 const originalNode = require('./trieNode');
 const matchingNibbleLength = require('./util').matchingNibbleLength;
 const nibblesToBuffer = require('./util').nibblesToBuffer;
@@ -1784,15 +1784,19 @@ export class MerklePatriciaTree<K = Buffer, V = Buffer> extends
     if (node instanceof NullNode) {
       return;
     } else if (node instanceof LeafNode) {
-      stream.push(nibblesToBuffer(key.concat(node.nibbles)), node.value);
+      stream.push(
+          {key: nibblesToBuffer(key.concat(node.nibbles)), value: node.value});
       return;
     } else if (node instanceof BranchNode) {
       if (node.value) {
-        stream.push(nibblesToBuffer(key.concat(node.nibbles)), node.value);
+        stream.push({
+          key: nibblesToBuffer(key.concat(node.nibbles)),
+          value: node.value
+        });
       }
       for (let i = 0; i < node.branches.length; i++) {
         if (node.branches[i] === undefined) continue;
-        this.findValueNodes(stream, node.branches[i], key.concat(node.nibbles));
+        this.findValueNodes(stream, node.branches[i], key.concat(i));
       }
       return;
     } else if (node instanceof ExtensionNode) {
