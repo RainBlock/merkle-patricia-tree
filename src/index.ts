@@ -1,7 +1,10 @@
 import {options} from 'benchmark';
 import {toBufferBE} from 'bigint-buffer';
 import {hashAsBigInt, hashAsBuffer, HashType} from 'bigint-hash';
+import {copyFile} from 'fs';
 import {RlpDecode, RlpEncode, RlpItem} from 'rlp-stream';
+
+import {MemDB} from './inMemDB';
 
 const Readable = require('readable-stream').Readable;
 const originalNode = require('./trieNode');
@@ -1723,6 +1726,7 @@ export class ReadStream extends Readable {
 export class MerklePatriciaTree<K = Buffer, V = Buffer> extends
     MerklePatriciaTreeBase<K, V> {
   needsCOW = false;
+  copies = new MemDB<Buffer, MerklePatriciaTreeNode<V>>();
 
   copy() {
     const copyTrie = new MerklePatriciaTree(this.options);
@@ -1734,6 +1738,9 @@ export class MerklePatriciaTree<K = Buffer, V = Buffer> extends
   put(key: K, value: V) {
     if (this.needsCOW === true) {
       const op: BatchPut<K, V> = {key, val: value};
+      if (!this.copies.has(this.root)) {
+        this.copies.set(this.root, this.rootNode);
+      }
       this.rootNode = super.batchCOW([op], []).rootNode;
     } else {
       super.put(key, value);
@@ -1742,6 +1749,9 @@ export class MerklePatriciaTree<K = Buffer, V = Buffer> extends
 
   del(key: K) {
     if (this.needsCOW === true) {
+      if (!this.copies.has(this.root)) {
+        this.copies.set(this.root, this.rootNode);
+      }
       this.rootNode = super.batchCOW([], [key]).rootNode;
     } else {
       super.del(key);
@@ -1750,11 +1760,21 @@ export class MerklePatriciaTree<K = Buffer, V = Buffer> extends
 
   batch(putOps: Array<BatchPut<K, V>>, delOps?: K[]): Buffer {
     if (this.needsCOW === true) {
+      if (!this.copies.has(this.root)) {
+        this.copies.set(this.root, this.rootNode);
+      }
       this.rootNode = super.batchCOW(putOps, delOps).rootNode;
       return this.root;
     } else {
       return super.batch(putOps, delOps);
     }
+  }
+
+  checkRoot(root: Buffer): boolean {
+    if (this.root.compare(root) === 0) {
+      return true;
+    }
+    return this.copies.has(root);
   }
 
   createReadStream(): ReadStream {
