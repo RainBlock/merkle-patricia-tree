@@ -827,7 +827,7 @@ export class MerklePatriciaTreeBase<K, V> implements MerkleTreeBase<K, V> {
     return new NullNode<V>();
   }
 
-  private copyPath(key: K, newTree: MerklePatriciaTree<K, V>, flag?:boolean) {
+  private copyPath(key: K, newTree: MerklePatriciaTreeBase<K, V>, flag?:boolean) {
     let keyNibbles: number[] =
         MerklePatriciaTreeNode.bufferToNibbles(this.options.keyConverter!(key));
     let currNode: MerklePatriciaTreeNode<V>|null = newTree.rootNode;
@@ -847,9 +847,9 @@ export class MerklePatriciaTreeBase<K, V> implements MerkleTreeBase<K, V> {
   }
 
   /**
-   * Copy on write batch puts to MerklePatriciaTree
+   * Copy on write batch puts to MerklePatriciaTreeBase
    * @param putOps List of PutOps
-   * @returns A copy of the MerklePatriciaTree with the inserts
+   * @returns A copy of the MerklePatriciaTreeBase with the inserts
    */
   private cowPutDel(putOps: Array<BatchPut<K, V>>, delOps: K[]):
       MerklePatriciaTreeBase<K, V> {
