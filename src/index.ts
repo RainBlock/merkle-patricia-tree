@@ -1,9 +1,7 @@
 import {options} from 'benchmark';
 import {toBufferBE} from 'bigint-buffer';
 import {hashAsBigInt, hashAsBuffer, HashType} from 'bigint-hash';
-import {copyFile} from 'fs';
 import {RlpDecode, RlpEncode, RlpItem} from 'rlp-stream';
-
 import {MemDB} from './inMemDB';
 
 const Readable = require('readable-stream').Readable;
