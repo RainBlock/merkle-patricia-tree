@@ -1,7 +1,7 @@
 import {options} from 'benchmark';
 import {toBufferBE} from 'bigint-buffer';
 import {hashAsBigInt, hashAsBuffer, HashType} from 'bigint-hash';
-import {RlpDecode, RlpEncode, RlpItem, RlpList} from 'rlp-stream';
+import {RlpDecode, RlpEncode, RlpItem} from 'rlp-stream';
 const Readable = require('readable-stream').Readable;
 
 const originalNode = require('./trieNode');
@@ -834,7 +834,7 @@ export class MerklePatriciaTreeBase<K, V> implements MerkleTreeBase<K, V> {
    */
   private cowPutDel(putOps: Array<BatchPut<K, V>>, delOps: K[]):
       MerklePatriciaTreeBase<K, V> {
-    const newTree = new MerklePatriciaTreeBase<K, V>();
+    const newTree = new MerklePatriciaTreeBase<K, V>(this.options);
     newTree.rootNode = this.getNodeCopy(this.rootNode);
     for (const put of putOps) {
       if (newTree.rootNode instanceof NullNode) {
@@ -855,7 +855,7 @@ export class MerklePatriciaTreeBase<K, V> implements MerkleTreeBase<K, V> {
             keyNibbles.shift();
           } else if (currNode instanceof ExtensionNode) {
             currNode.nextNode = nextNode;
-            keyNibbles = keyNibbles.slice(nextNode.nibbles.length);
+            keyNibbles = keyNibbles.slice(currNode.nibbles.length);
           }
           currNode = nextNode;
         }
@@ -875,7 +875,7 @@ export class MerklePatriciaTreeBase<K, V> implements MerkleTreeBase<K, V> {
           keyNibbles.shift();
         } else if (currNode instanceof ExtensionNode) {
           currNode.nextNode = nextNode;
-          keyNibbles = keyNibbles.slice(nextNode.nibbles.length);
+          keyNibbles = keyNibbles.slice(currNode.nibbles.length);
         }
         currNode = nextNode;
       }
@@ -1731,7 +1731,7 @@ export class ReadStream extends Readable {
 
 export class MerklePatriciaTree<K = Buffer, V = Buffer> extends
     MerklePatriciaTreeBase<K, V> {
-  needsCOW = false;
+  needsCOW = true;
 
   copy() {
     const copyTrie = new MerklePatriciaTree(this.options);
