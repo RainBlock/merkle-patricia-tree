@@ -827,7 +827,14 @@ export class MerklePatriciaTreeBase<K, V> implements MerkleTreeBase<K, V> {
     return new NullNode<V>();
   }
 
-  private copyPath(key: K, newTree: MerklePatriciaTreeBase<K, V>, flag?:boolean) {
+  /**
+   * CopyPath copies the path that gets modified when
+   * a key is inserted or deleted
+   * @param key The key this is updated
+   * @param newTree The tree which needs to be cow-updated
+   * @returns newTree with a unique copied path
+   */
+  private copyPath(key: K, newTree: MerklePatriciaTreeBase<K, V>) {
     let keyNibbles: number[] =
         MerklePatriciaTreeNode.bufferToNibbles(this.options.keyConverter!(key));
     let currNode: MerklePatriciaTreeNode<V>|null = newTree.rootNode;
@@ -860,7 +867,7 @@ export class MerklePatriciaTreeBase<K, V> implements MerkleTreeBase<K, V> {
       newTree.put(put.key, put.val);
     }
     for (const key of delOps) {
-      this.copyPath(key, newTree, true);
+      this.copyPath(key, newTree);
       newTree.del(key);
     }
     return newTree;
