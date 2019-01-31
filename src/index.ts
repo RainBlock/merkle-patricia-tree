@@ -827,6 +827,25 @@ export class MerklePatriciaTreeBase<K, V> implements MerkleTreeBase<K, V> {
     return new NullNode<V>();
   }
 
+  private copyPath(key: K, newTree: MerklePatriciaTree<K, V>, flag?:boolean) {
+    let keyNibbles: number[] =
+        MerklePatriciaTreeNode.bufferToNibbles(this.options.keyConverter!(key));
+    let currNode: MerklePatriciaTreeNode<V>|null = newTree.rootNode;
+    let nextNode: MerklePatriciaTreeNode<V>|null;
+    const result: SearchResult<V> = this.search(key);
+    for (let i = 1; i < result.stack.length; i++) {
+      nextNode = this.getNodeCopy(result.stack[i]);
+      if (currNode instanceof BranchNode) {
+        currNode.branches[keyNibbles[0]] = nextNode;
+        keyNibbles.shift();
+      } else if (currNode instanceof ExtensionNode) {
+        currNode.nextNode = nextNode;
+        keyNibbles = keyNibbles.slice(currNode.nibbles.length);
+      }
+      currNode = nextNode;
+    }
+  }
+
   /**
    * Copy on write batch puts to MerklePatriciaTree
    * @param putOps List of PutOps
@@ -837,48 +856,11 @@ export class MerklePatriciaTreeBase<K, V> implements MerkleTreeBase<K, V> {
     const newTree = new MerklePatriciaTreeBase<K, V>(this.options);
     newTree.rootNode = this.getNodeCopy(this.rootNode);
     for (const put of putOps) {
-      if (newTree.rootNode instanceof NullNode) {
-        newTree.rootNode = new LeafNode(
-            MerklePatriciaTreeNode.bufferToNibbles(this.options.keyConverter!
-                                                   (put.key)),
-            put.val);
-      } else {
-        let keyNibbles: number[] = MerklePatriciaTreeNode.bufferToNibbles(
-            this.options.keyConverter!(put.key));
-        let currNode: MerklePatriciaTreeNode<V>|null = newTree.rootNode;
-        let nextNode: MerklePatriciaTreeNode<V>|null;
-        const result: SearchResult<V> = this.search(put.key);
-        for (let i = 1; i < result.stack.length; i++) {
-          nextNode = this.getNodeCopy(result.stack[i]);
-          if (currNode instanceof BranchNode) {
-            currNode.branches[keyNibbles[0]] = nextNode;
-            keyNibbles.shift();
-          } else if (currNode instanceof ExtensionNode) {
-            currNode.nextNode = nextNode;
-            keyNibbles = keyNibbles.slice(currNode.nibbles.length);
-          }
-          currNode = nextNode;
-        }
-        newTree.put(put.key, put.val);
-      }
+      this.copyPath(put.key, newTree);
+      newTree.put(put.key, put.val);
     }
     for (const key of delOps) {
-      let keyNibbles: number[] = MerklePatriciaTreeNode.bufferToNibbles(
-          this.options.keyConverter!(key));
-      let currNode: MerklePatriciaTreeNode<V>|null = newTree.rootNode;
-      let nextNode: MerklePatriciaTreeNode<V>|null;
-      const result: SearchResult<V> = this.search(key);
-      for (let i = 1; i < result.stack.length; i++) {
-        nextNode = this.getNodeCopy(result.stack[i]);
-        if (currNode instanceof BranchNode) {
-          currNode.branches[keyNibbles[0]] = nextNode;
-          keyNibbles.shift();
-        } else if (currNode instanceof ExtensionNode) {
-          currNode.nextNode = nextNode;
-          keyNibbles = keyNibbles.slice(currNode.nibbles.length);
-        }
-        currNode = nextNode;
-      }
+      this.copyPath(key, newTree, true);
       newTree.del(key);
     }
     return newTree;
@@ -1279,6 +1261,8 @@ export class MerklePatriciaTreeBase<K, V> implements MerkleTreeBase<K, V> {
                       // Update the leaf node with the extension's nibbles
                       connectNode.nextNode.nibbles = connectNode.nibbles.concat(
                           connectNode.nextNode.nibbles);
+                      branchParent.branches[idx].clearMemoizedHash();
+                      branchParent.branches[idx].clearRlpNodeEncoding();
                     } else {
                       // Otherwise, attach the extension
                       branchParent.branches[idx] = connectNode;
