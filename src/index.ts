@@ -1731,7 +1731,7 @@ export class ReadStream extends Readable {
 
 export class MerklePatriciaTree<K = Buffer, V = Buffer> extends
     MerklePatriciaTreeBase<K, V> {
-  needsCOW = true;
+  needsCOW = false;
 
   copy() {
     const copyTrie = new MerklePatriciaTree(this.options);
