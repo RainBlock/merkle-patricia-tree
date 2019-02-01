@@ -19,7 +19,7 @@ export class CheckpointTrie<K = Buffer, V = Buffer> extends
     if (trie) {
       this.rootNode = trie.rootNode;
       this.needsCOW = trie.needsCOW;
-      this.copies = trie.copies;
+      this.rawdb = new Map(trie.rawdb);
     }
   }
 

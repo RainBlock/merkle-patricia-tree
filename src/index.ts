@@ -2,7 +2,6 @@ import {options} from 'benchmark';
 import {toBufferBE} from 'bigint-buffer';
 import {hashAsBigInt, hashAsBuffer, HashType} from 'bigint-hash';
 import {RlpDecode, RlpEncode, RlpItem} from 'rlp-stream';
-import {MemDB} from './inMemDB';
 
 const Readable = require('readable-stream').Readable;
 const originalNode = require('./trieNode');
@@ -1724,22 +1723,20 @@ export class ReadStream extends Readable {
 export class MerklePatriciaTree<K = Buffer, V = Buffer> extends
     MerklePatriciaTreeBase<K, V> {
   needsCOW = false;
-  copies = new MemDB<Buffer, MerklePatriciaTreeNode<V>>();
+  rawdb = new Map();
 
   copy() {
     const copyTrie = new MerklePatriciaTree(this.options);
     copyTrie.rootNode = this.getNodeCopy(this.rootNode);
     copyTrie.needsCOW = true;
     this.needsCOW = true;
+    copyTrie.rawdb = new Map(this.rawdb);
     return copyTrie;
   }
 
   put(key: K, value: V) {
     if (this.needsCOW === true) {
       const op: BatchPut<K, V> = {key, val: value};
-      if (!this.copies.has(this.root)) {
-        this.copies.set(this.root, this.rootNode);
-      }
       this.rootNode = super.batchCOW([op], []).rootNode;
     } else {
       super.put(key, value);
@@ -1748,9 +1745,6 @@ export class MerklePatriciaTree<K = Buffer, V = Buffer> extends
 
   del(key: K) {
     if (this.needsCOW === true) {
-      if (!this.copies.has(this.root)) {
-        this.copies.set(this.root, this.rootNode);
-      }
       this.rootNode = super.batchCOW([], [key]).rootNode;
     } else {
       super.del(key);
@@ -1759,9 +1753,6 @@ export class MerklePatriciaTree<K = Buffer, V = Buffer> extends
 
   batch(putOps: Array<BatchPut<K, V>>, delOps?: K[]): Buffer {
     if (this.needsCOW === true) {
-      if (!this.copies.has(this.root)) {
-        this.copies.set(this.root, this.rootNode);
-      }
       this.rootNode = super.batchCOW(putOps, delOps).rootNode;
       return this.root;
     } else {
@@ -1769,11 +1760,18 @@ export class MerklePatriciaTree<K = Buffer, V = Buffer> extends
     }
   }
 
+  putRaw(key: K, value: V) {
+    const keyBuffer = this.options.keyConverter!(key);
+    this.rawdb.set(keyBuffer.toString('hex'), value);
+  }
+
+  getRaw(key: K, value: V) {
+    const keyBuffer = this.options.keyConverter!(key);
+    this.rawdb.get(keyBuffer.toString('hex'));
+  }
+
   checkRoot(root: Buffer): boolean {
-    if (this.root.compare(root) === 0) {
-      return true;
-    }
-    return this.copies.has(root);
+    return this.rawdb.has(root.toString('hex'));
   }
 
   createReadStream(): ReadStream {
