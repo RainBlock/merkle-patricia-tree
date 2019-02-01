@@ -1730,6 +1730,7 @@ export class MerklePatriciaTree<K = Buffer, V = Buffer> extends
     const copyTrie = new MerklePatriciaTree(this.options);
     copyTrie.rootNode = this.getNodeCopy(this.rootNode);
     copyTrie.needsCOW = true;
+    this.needsCOW = true;
     return copyTrie;
   }
 
