@@ -13,8 +13,8 @@ export interface SecureInterface<K, V> {
 export class SecureTrie<K = Buffer, V = Buffer> extends
     CheckpointTrie<K, V> implements SecureInterface<K, V> {
   constructor(
-    options: MerklePatriciaTreeOptions<K, V> = {putCanDelete: true},
-    trie?: CheckpointTrie<K, V>) {
+      options: MerklePatriciaTreeOptions<K, V> = {putCanDelete: true},
+      trie?: CheckpointTrie<K, V>) {
     super(options);
     if (trie) {
       this.rootNode = trie.rootNode;
