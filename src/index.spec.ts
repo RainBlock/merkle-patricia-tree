@@ -1,7 +1,6 @@
 import 'mocha';
 
 import * as chai from 'chai';
-import * as path from 'path';
 import {RlpEncode, RlpList} from 'rlp-stream';
 
 import {MerklePatriciaTree, verifyWitness} from './index';

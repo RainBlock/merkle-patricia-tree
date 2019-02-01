@@ -1,8 +1,6 @@
 import 'mocha';
 
 import * as chai from 'chai';
-import * as path from 'path';
-import {stringify} from 'querystring';
 import {RlpEncode, RlpList} from 'rlp-stream';
 
 import {CheckpointTrie} from './checkpointTrie';
