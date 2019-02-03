@@ -16,10 +16,9 @@ export class CheckpointTrie<K = Buffer, V = Buffer> extends
       options: MerklePatriciaTreeOptions<K, V> = {putCanDelete: true},
       trie?: MerklePatriciaTree<K, V>) {
     super(options);
-    if (trie) {
-      if (trie.rootNode) {
+    if (trie &&
+      trie.rootNode instanceof MerklePatriciaTreeNode) {
         this.rootNode = trie.rootNode;
-      }
       this.needsCOW = trie.needsCOW;
       this.rawdb = new Map(trie.rawdb);
     }

@@ -1,5 +1,5 @@
 import {CheckpointTrie} from './checkpointTrie';
-import {MerklePatriciaTreeOptions, Witness} from './index';
+import {MerklePatriciaTreeOptions, MerklePatriciaTreeNode, Witness} from './index';
 
 const ethUtil = require('ethereumjs-util');
 
@@ -16,7 +16,8 @@ export class SecureTrie<K = Buffer, V = Buffer> extends
       options: MerklePatriciaTreeOptions<K, V> = {putCanDelete: true},
       trie?: CheckpointTrie<K, V>) {
     super(options);
-    if (trie && trie.rootNode) {
+    if (trie &&
+      trie.rootNode instanceof MerklePatriciaTreeNode) {
       this.rootNode = trie.rootNode;
     }
   }
