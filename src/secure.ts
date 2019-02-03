@@ -16,7 +16,7 @@ export class SecureTrie<K = Buffer, V = Buffer> extends
       options: MerklePatriciaTreeOptions<K, V> = {putCanDelete: true},
       trie?: CheckpointTrie<K, V>) {
     super(options);
-    if (trie) {
+    if (trie && trie.rootNode) {
       this.rootNode = trie.rootNode;
     }
   }

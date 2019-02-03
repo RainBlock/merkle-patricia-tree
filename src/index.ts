@@ -1722,7 +1722,7 @@ export class ReadStream extends Readable {
 
 export class MerklePatriciaTree<K = Buffer, V = Buffer> extends
     MerklePatriciaTreeBase<K, V> {
-  needsCOW = false;
+  needsCOW = true;
   rawdb = new Map();
 
   copy() {

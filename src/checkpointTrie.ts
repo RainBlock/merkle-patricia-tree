@@ -17,7 +17,9 @@ export class CheckpointTrie<K = Buffer, V = Buffer> extends
       trie?: MerklePatriciaTree<K, V>) {
     super(options);
     if (trie) {
-      this.rootNode = trie.rootNode;
+      if (trie.rootNode) {
+        this.rootNode = trie.rootNode;
+      }
       this.needsCOW = trie.needsCOW;
       this.rawdb = new Map(trie.rawdb);
     }
