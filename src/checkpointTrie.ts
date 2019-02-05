@@ -1,3 +1,6 @@
+import {RlpEncode} from 'rlp-stream';
+import * as fs from 'fs-extra';
+
 import {BatchPut, MerklePatriciaTree, MerklePatriciaTreeNode, MerklePatriciaTreeOptions, Witness} from './index';
 
 export interface CheckpointInterface {
@@ -16,9 +19,8 @@ export class CheckpointTrie<K = Buffer, V = Buffer> extends
       options: MerklePatriciaTreeOptions<K, V> = {putCanDelete: true},
       trie?: MerklePatriciaTree<K, V>) {
     super(options);
-    if (trie &&
-      trie.rootNode instanceof MerklePatriciaTreeNode) {
-        this.rootNode = trie.rootNode;
+    if (trie && trie.rootNode instanceof MerklePatriciaTreeNode) {
+      this.rootNode = trie.rootNode;
       this.needsCOW = trie.needsCOW;
       this.rawdb = new Map(trie.rawdb);
     }
@@ -41,6 +43,7 @@ export class CheckpointTrie<K = Buffer, V = Buffer> extends
       const commitNode = this._checkpoints.pop();
       if (!this.isCheckpoint() && commitNode) {
         this.inCPMode = false;
+        this._dumpData();
       }
     } else {
       throw new Error('Trying to commit when not checkpointed');
@@ -76,5 +79,18 @@ export class CheckpointTrie<K = Buffer, V = Buffer> extends
     cpCopyTrie._checkpoints = this._checkpoints.slice();
     cpCopyTrie.inCPMode = this.inCPMode;
     return cpCopyTrie;
+  }
+
+  _dumpData() {
+    const readstream = super.createReadStream();
+    const dump = fs.open('./stateDump.json', 'w').then(fd => {
+      readstream.on('data', (data: {key: Buffer, value: Buffer}) => {
+        const encoding = RlpEncode([data.key, data.value]);
+        fs.write(fd, encoding, 0, encoding.length);
+      });
+      readstream.on('end', () => {
+        fs.close(fd);
+      });
+    });
   }
 }
