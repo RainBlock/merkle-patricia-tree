@@ -3,8 +3,10 @@ import {toBufferBE} from 'bigint-buffer';
 import {hashAsBigInt, hashAsBuffer, HashType} from 'bigint-hash';
 import {RlpDecode, RlpEncode, RlpItem} from 'rlp-stream';
 
+const Readable = require('readable-stream').Readable;
 const originalNode = require('./trieNode');
 const matchingNibbleLength = require('./util').matchingNibbleLength;
+const nibblesToBuffer = require('./util').nibblesToBuffer;
 
 interface OriginalTreeNode {
   value: Buffer;
@@ -617,7 +619,7 @@ export class HashNode<V> extends MerklePatriciaTreeNode<V> {
 }
 
 /** The interface for a merkle tree. */
-export interface MerkleTree<K, V> {
+export interface MerkleTreeBase<K, V> {
   /** The root hash of the tree. */
   root: Buffer;
   /**
@@ -672,6 +674,36 @@ export interface MerkleTree<K, V> {
    * value if it was present.
    */
   search: (key: K) => SearchResult<V>;
+
+  /**
+   * Execute a batch of put and delete operations. The execution of batch
+   * operations are performed in a copy on write (cow) fashion.
+   *
+   * @param putOps  An array of put operations on the tree, of type
+   * [[BatchPut]].
+   * @param delOps  An optional array of keys to delete from the tree.
+   *
+   * @returns       A new MerklePatriciaTreeBase updated in a cow manner.
+   */
+  batchCOW:
+      (putOps: Array<BatchPut<K, V>>,
+       delOps: K[]) => MerklePatriciaTreeBase<K, V>;
+}
+
+export interface MerkleTree<K, V> extends MerkleTreeBase<K, V> {
+  /**
+   * Creates a copy of the MerklePatriciaTree, implemented using the
+   * copy on write functionality of the MerklePatriciaTreeBase
+   * @returns a copy of the MerklePatriciaTree
+   */
+  copy: () => MerklePatriciaTree<K, V>;
+
+  /**
+   * Executes operations on a copy of the MerklePatriciaTree
+   * and returns the updated MerklePatriciaTree
+   */
+  batchCOW:
+      (putOps: Array<BatchPut<K, V>>, delOps: K[]) => MerklePatriciaTree<K, V>;
 }
 
 /** Configuration for a merkle tree. */
@@ -694,8 +726,7 @@ export interface MerklePatriciaTreeOptions<K, V> {
 }
 
 /** A Merkle Patricia Tree, as defined in the Ethereum Yellow Paper. */
-export class MerklePatriciaTree<K = Buffer, V = Buffer> implements
-    MerkleTree<K, V> {
+export class MerklePatriciaTreeBase<K, V> implements MerkleTreeBase<K, V> {
   /** The root node of the tree. */
   rootNode: MerklePatriciaTreeNode<V>;
 
@@ -782,7 +813,9 @@ export class MerklePatriciaTree<K = Buffer, V = Buffer> implements
       for (let i = 0; i < node.branches.length; i++) {
         copyNode.branches[i] = node.branches[i];
       }
-      copyNode.value = node.value.slice(0);
+      if (node.value) {
+        copyNode.value = node.value.slice(0);
+      }
       return copyNode;
     } else if (node instanceof ExtensionNode) {
       const copyNode = new ExtensionNode<V>(node.nibbles, node.nextNode);
@@ -795,57 +828,46 @@ export class MerklePatriciaTree<K = Buffer, V = Buffer> implements
   }
 
   /**
-   * Copy on write batch puts to MerklePatriciaTree
+   * CopyPath copies the path that gets modified when
+   * a key is inserted or deleted
+   * @param key The key this is updated
+   * @param newTree The tree which needs to be cow-updated
+   * @returns newTree with a unique copied path
+   */
+  private copyPath(key: K, newTree: MerklePatriciaTreeBase<K, V>) {
+    let keyNibbles: number[] =
+        MerklePatriciaTreeNode.bufferToNibbles(this.options.keyConverter!(key));
+    let currNode: MerklePatriciaTreeNode<V>|null = newTree.rootNode;
+    let nextNode: MerklePatriciaTreeNode<V>|null;
+    const result: SearchResult<V> = this.search(key);
+    for (let i = 1; i < result.stack.length; i++) {
+      nextNode = this.getNodeCopy(result.stack[i]);
+      if (currNode instanceof BranchNode) {
+        currNode.branches[keyNibbles[0]] = nextNode;
+        keyNibbles.shift();
+      } else if (currNode instanceof ExtensionNode) {
+        currNode.nextNode = nextNode;
+        keyNibbles = keyNibbles.slice(currNode.nibbles.length);
+      }
+      currNode = nextNode;
+    }
+  }
+
+  /**
+   * Copy on write batch puts to MerklePatriciaTreeBase
    * @param putOps List of PutOps
-   * @returns A copy of the MerklePatriciaTree with the inserts
+   * @returns A copy of the MerklePatriciaTreeBase with the inserts
    */
   private cowPutDel(putOps: Array<BatchPut<K, V>>, delOps: K[]):
-      MerklePatriciaTree<K, V> {
-    const newTree = new MerklePatriciaTree<K, V>(this.options);
+      MerklePatriciaTreeBase<K, V> {
+    const newTree = new MerklePatriciaTreeBase<K, V>(this.options);
     newTree.rootNode = this.getNodeCopy(this.rootNode);
     for (const put of putOps) {
-      if (newTree.rootNode instanceof NullNode) {
-        newTree.rootNode = new LeafNode(
-            MerklePatriciaTreeNode.bufferToNibbles(this.options.keyConverter!
-                                                   (put.key)),
-            put.val);
-      } else {
-        let keyNibbles: number[] = MerklePatriciaTreeNode.bufferToNibbles(
-            this.options.keyConverter!(put.key));
-        let currNode: MerklePatriciaTreeNode<V>|null = newTree.rootNode;
-        let nextNode: MerklePatriciaTreeNode<V>|null;
-        const result: SearchResult<V> = this.search(put.key);
-        for (let i = 1; i < result.stack.length; i++) {
-          nextNode = this.getNodeCopy(result.stack[i]);
-          if (currNode instanceof BranchNode) {
-            currNode.branches[keyNibbles[0]] = nextNode;
-            keyNibbles.shift();
-          } else if (currNode instanceof ExtensionNode) {
-            currNode.nextNode = nextNode;
-            keyNibbles = keyNibbles.slice(currNode.nibbles.length);
-          }
-          currNode = nextNode;
-        }
-        newTree.put(put.key, put.val);
-      }
+      this.copyPath(put.key, newTree);
+      newTree.put(put.key, put.val);
     }
     for (const key of delOps) {
-      let keyNibbles: number[] = MerklePatriciaTreeNode.bufferToNibbles(
-          this.options.keyConverter!(key));
-      let currNode: MerklePatriciaTreeNode<V>|null = newTree.rootNode;
-      let nextNode: MerklePatriciaTreeNode<V>|null;
-      const result: SearchResult<V> = this.search(key);
-      for (let i = 1; i < result.stack.length; i++) {
-        nextNode = this.getNodeCopy(result.stack[i]);
-        if (currNode instanceof BranchNode) {
-          currNode.branches[keyNibbles[0]] = nextNode;
-          keyNibbles.shift();
-        } else if (currNode instanceof ExtensionNode) {
-          currNode.nextNode = nextNode;
-          keyNibbles = keyNibbles.slice(currNode.nibbles.length);
-        }
-        currNode = nextNode;
-      }
+      this.copyPath(key, newTree);
       newTree.del(key);
     }
     return newTree;
@@ -1246,6 +1268,8 @@ export class MerklePatriciaTree<K = Buffer, V = Buffer> implements
                       // Update the leaf node with the extension's nibbles
                       connectNode.nextNode.nibbles = connectNode.nibbles.concat(
                           connectNode.nextNode.nibbles);
+                      branchParent.branches[idx].clearMemoizedHash();
+                      branchParent.branches[idx].clearRlpNodeEncoding();
                     } else {
                       // Otherwise, attach the extension
                       branchParent.branches[idx] = connectNode;
@@ -1320,10 +1344,10 @@ export class MerklePatriciaTree<K = Buffer, V = Buffer> implements
    * [[BatchPut]].
    * @param delOps  An optional array of keys to delete from the tree.
    *
-   * @returns       A new MerklePatriciaTree updated in a cow manner.
+   * @returns       A new MerklePatriciaTreeBase updated in a cow manner.
    */
   batchCOW(putOps: Array<BatchPut<K, V>>, delOps: K[] = []):
-      MerklePatriciaTree<K, V> {
+      MerklePatriciaTreeBase<K, V> {
     const newTree = this.cowPutDel(putOps, delOps);
     return newTree;
   }
@@ -1571,7 +1595,8 @@ export function verifyStaleWitness(
   throw new VerificationError('stale witness verification failed');
 }
 
-export class CachedMerklePatriciaTree<K, V> extends MerklePatriciaTree<K, V> {
+export class CachedMerklePatriciaTree<K, V> extends
+    MerklePatriciaTreeBase<K, V> {
   // Maximum depth of the cached MerklePatriciaTree with rootNode is at a
   // depth 1.
   private maxCacheDepth: number;
@@ -1675,6 +1700,118 @@ export class CachedMerklePatriciaTree<K, V> extends MerklePatriciaTree<K, V> {
       for (const node of result.stack) {
         node.clearMemoizedHash();
       }
+    }
+  }
+}
+
+export class ReadStream extends Readable {
+  constructor() {
+    super({objectMode: true});
+    this._started = false;
+    this.next = null;
+  }
+
+  _read() {
+    if (!this._started) {
+      this._started = true;
+      this.trie.findValueNodes(this, this.trie.rootNode, []);
+      this.push(null);
+    }
+  }
+}
+
+export class MerklePatriciaTree<K = Buffer, V = Buffer> extends
+    MerklePatriciaTreeBase<K, V> {
+  needsCOW = false;
+  rawdb = new Map();
+
+  copy() {
+    const copyTrie = new MerklePatriciaTree(this.options);
+    copyTrie.rootNode = this.getNodeCopy(this.rootNode);
+    copyTrie.needsCOW = true;
+    this.needsCOW = true;
+    copyTrie.rawdb = new Map(this.rawdb);
+    return copyTrie;
+  }
+
+  put(key: K, value: V) {
+    if (this.needsCOW === true) {
+      const op: BatchPut<K, V> = {key, val: value};
+      this.rootNode = super.batchCOW([op], []).rootNode;
+    } else {
+      super.put(key, value);
+    }
+  }
+
+  del(key: K) {
+    if (this.needsCOW === true) {
+      this.rootNode = super.batchCOW([], [key]).rootNode;
+    } else {
+      super.del(key);
+    }
+  }
+
+  batch(putOps: Array<BatchPut<K, V>>, delOps?: K[]): Buffer {
+    if (this.needsCOW === true) {
+      this.rootNode = super.batchCOW(putOps, delOps).rootNode;
+      return this.root;
+    } else {
+      return super.batch(putOps, delOps);
+    }
+  }
+
+  putRaw(key: K, value: V) {
+    const keyBuffer = this.options.keyConverter!(key);
+    this.rawdb.set(keyBuffer.toString('hex'), value);
+  }
+
+  getRaw(key: K, value: V) {
+    const keyBuffer = this.options.keyConverter!(key);
+    this.rawdb.get(keyBuffer.toString('hex'));
+  }
+
+  checkRoot(root: Buffer): boolean {
+    return this.rawdb.has(root.toString('hex'));
+  }
+
+  createReadStream(): ReadStream {
+    const stream = new ReadStream();
+    stream.trie = this;
+    return stream;
+  }
+
+  batchCOW(putOps: Array<BatchPut<K, V>>, delOps: K[] = []):
+      MerklePatriciaTree<K, V> {
+    const copyTrie = new MerklePatriciaTree(this.options);
+    copyTrie.rootNode = super.batchCOW(putOps, delOps).rootNode;
+    return copyTrie;
+  }
+
+  findValueNodes(
+      stream: ReadStream, node: MerklePatriciaTreeNode<V>, key: number[]) {
+    if (node instanceof NullNode) {
+      return;
+    } else if (node instanceof LeafNode) {
+      stream.push(
+          {key: nibblesToBuffer(key.concat(node.nibbles)), value: node.value});
+      return;
+    } else if (node instanceof BranchNode) {
+      if (node.value) {
+        stream.push({
+          key: nibblesToBuffer(key.concat(node.nibbles)),
+          value: node.value
+        });
+      }
+      for (let i = 0; i < node.branches.length; i++) {
+        if (node.branches[i] === undefined) continue;
+        this.findValueNodes(stream, node.branches[i], key.concat(i));
+      }
+      return;
+    } else if (node instanceof ExtensionNode) {
+      this.findValueNodes(stream, node.nextNode, key.concat(node.nibbles));
+      return;
+    } else {
+      throw new Error('node of unknown type');
     }
   }
 }

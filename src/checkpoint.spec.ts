@@ -3,7 +3,8 @@ import 'mocha';
 import * as chai from 'chai';
 import {RlpEncode, RlpList} from 'rlp-stream';
 
-import {MerklePatriciaTree, verifyWitness} from './index';
+import {CheckpointTrie} from './checkpointTrie';
+import {verifyWitness} from './index';
 
 
 
@@ -14,8 +15,8 @@ chai.should();
 const should = chai.should();
 
 describe('Try original simple-save-retrieve', () => {
-  const tree: MerklePatriciaTree<string, string> =
-      new MerklePatriciaTree<string, string>({
+  const tree: CheckpointTrie<string, string> =
+      new CheckpointTrie<string, string>({
         keyConverter: (k) => Buffer.from(k),
         valueConverter: (v) => Buffer.from(v),
         putCanDelete: false
@@ -109,7 +110,7 @@ describe('Try original simple-save-retrieve', () => {
 
 
 describe('Try original storing larger values', () => {
-  const tree: MerklePatriciaTree = new MerklePatriciaTree();
+  const tree: CheckpointTrie = new CheckpointTrie();
 
   const longString = 'this will be a really really really long value';
   const longStringRoot =
@@ -154,7 +155,7 @@ describe('Try original storing larger values', () => {
 });
 
 describe('Try simple 3 node test', () => {
-  const tree: MerklePatriciaTree = new MerklePatriciaTree();
+  const tree: CheckpointTrie = new CheckpointTrie();
 
   it('should work in forward mode', async () => {
     tree.put(Buffer.from('12345'), Buffer.from('1'));
@@ -212,7 +213,7 @@ describe('Try simple 3 node test', () => {
 });
 
 describe('Try original extensions and branches', () => {
-  const tree: MerklePatriciaTree = new MerklePatriciaTree();
+  const tree: CheckpointTrie = new CheckpointTrie();
 
   it('should store a value', async () => {
     tree.put(Buffer.from('doge'), Buffer.from('coin'));
@@ -232,7 +233,7 @@ describe('Try original extensions and branches', () => {
 });
 
 describe('Try original extensions and branches - reverse', () => {
-  const tree: MerklePatriciaTree = new MerklePatriciaTree();
+  const tree: CheckpointTrie = new CheckpointTrie();
 
   it('should create an extension', async () => {
     tree.put(Buffer.from('do'), Buffer.from('verb'));
@@ -252,10 +253,10 @@ describe('Try original extensions and branches - reverse', () => {
 });
 
 describe('Try original deletions tests', () => {
-  let tree: MerklePatriciaTree;
+  let tree: CheckpointTrie;
 
   before(async () => {
-    tree = new MerklePatriciaTree();
+    tree = new CheckpointTrie();
   });
 
   it('should delete from a branch->branch-branch', async () => {
@@ -327,7 +328,7 @@ describe('Creating the ethereum genesis block', () => {
   const genesisStateRoot =
       '2f4399b08efe68945c1cf90ffe85bbe3ce978959da753f9e649f034015b8817d';
 
-  const tree: MerklePatriciaTree = new MerklePatriciaTree();
+  const tree: CheckpointTrie = new CheckpointTrie();
 
   it('should match the original genesis root', async () => {
     tree.put(g, rlpAccount);
@@ -337,7 +338,7 @@ describe('Creating the ethereum genesis block', () => {
     tree.root.toString('hex').should.equal(genesisStateRoot);
   });
 
-  const treeBatch: MerklePatriciaTree = new MerklePatriciaTree();
+  const treeBatch: CheckpointTrie = new CheckpointTrie();
 
   it('should match the original genesis root in batch mode', async () => {
     const root = treeBatch.batch([
@@ -352,7 +353,7 @@ describe('Creating the ethereum genesis block', () => {
 
 describe('Try batch operations', () => {
   it('put a simple batch', async () => {
-    const tree = new MerklePatriciaTree();
+    const tree = new CheckpointTrie();
     const root = tree.batch([
       {key: Buffer.from('a'), val: Buffer.from('a')},
       {key: Buffer.from('b'), val: Buffer.from('b')},
@@ -369,7 +370,7 @@ describe('Try batch operations', () => {
   });
 
   it('put simple batch verifying with batch get', async () => {
-    const tree = new MerklePatriciaTree();
+    const tree = new CheckpointTrie();
     const root = tree.batch([
       {key: Buffer.from('a'), val: Buffer.from('a')},
       {key: Buffer.from('b'), val: Buffer.from('b')},
@@ -384,7 +385,7 @@ describe('Try batch operations', () => {
   });
 
   it('put and del a simple batch', async () => {
-    const tree = new MerklePatriciaTree();
+    const tree = new CheckpointTrie();
     tree.put(Buffer.from('d'), Buffer.from('d'));
 
     const root = tree.batch(
@@ -408,7 +409,7 @@ describe('Try batch operations', () => {
   });
 
   it('put and del a simple batch verifying with batch get', async () => {
-    const tree = new MerklePatriciaTree();
+    const tree = new CheckpointTrie();
     tree.put(Buffer.from('d'), Buffer.from('d'));
 
     const root = tree.batch(
@@ -427,7 +428,7 @@ describe('Try batch operations', () => {
   });
 
   it('put and del a simple batch with overlap', async () => {
-    const tree = new MerklePatriciaTree();
+    const tree = new CheckpointTrie();
     const root = tree.batch(
         [
           {key: Buffer.from('a'), val: Buffer.from('a')},
@@ -447,7 +448,7 @@ describe('Try batch operations', () => {
 
   it('put and del a simple batch with overlap, verifying with batch get',
      async () => {
-       const tree = new MerklePatriciaTree();
+       const tree = new CheckpointTrie();
        const root = tree.batch(
            [
              {key: Buffer.from('a'), val: Buffer.from('a')},
@@ -460,4 +461,98 @@ describe('Try batch operations', () => {
        verifyWitness(root, Buffer.from('a'), tree.rlpSerializeWitness(w[0]));
        verifyWitness(root, Buffer.from('b'), tree.rlpSerializeWitness(w[1]));
      });
+});
+
+describe('testing checkpoints', () => {
+  let tree: CheckpointTrie<string, string>, preRoot: string, postRoot: string,
+      treeCopy: CheckpointTrie<string, string>;
+
+  it('setup', async () => {
+    tree = new CheckpointTrie<string, string>({
+      keyConverter: (k) => Buffer.from(k),
+      valueConverter: (v) => Buffer.from(v),
+      putCanDelete: false
+    });
+    tree.put('do', 'verb');
+    tree.put('doge', 'coin');
+    preRoot = tree.root.toString('hex');
+  });
+
+  it('should copy trie and get value before checkpoint', async () => {
+    treeCopy = tree.copy();
+    treeCopy.root.toString('hex').should.equal(preRoot);
+    const val = treeCopy.get('do').value;
+    val!.should.equal('verb');
+  });
+
+  it('should create a checkpoint', async () => {
+    tree.checkpoint();
+  });
+
+  it('should save to the cache', async () => {
+    tree.put('test', 'something');
+    tree.put('love', 'emotion');
+    postRoot = tree.root.toString('hex');
+  });
+
+  it('should get values from before checkpoint', async () => {
+    const res = tree.get('doge');
+    res.value!.should.equal('coin');
+  });
+
+  it('should get values from cache', async () => {
+    const res = tree.get('love');
+    res.value!.should.equal('emotion');
+  });
+
+  it('should copy trie and get upstream and cache values after checkpoint',
+     async () => {
+       treeCopy = tree.copy();
+       treeCopy.root.toString('hex').should.equal(postRoot);
+       treeCopy._checkpoints.length.should.equal(1);
+       treeCopy.isCheckpoint().should.equal(true);
+       let res = treeCopy.get('do');
+       res.value!.should.equal('verb');
+       res = treeCopy.get('love');
+       res.value!.should.equal('emotion');
+     });
+
+  it('should revert to the original root', async () => {
+    tree.isCheckpoint().should.equal(true);
+    tree.revert();
+    tree.root.toString('hex').should.equal(preRoot);
+    tree.isCheckpoint().should.equal(false);
+  });
+
+  it('should not get values from cache after revert', async () => {
+    const res = tree.get('love');
+    should.not.exist(res.value);
+  });
+
+  it('should commit a checkpoint', async () => {
+    tree.checkpoint();
+    tree.put('test', 'something');
+    tree.put('love', 'emotion');
+    tree.commit();
+    tree.isCheckpoint().should.equal(false);
+    tree.root.toString('hex').should.equal(postRoot);
+  });
+
+  it('should get new values after commit', async () => {
+    const res = tree.get('love');
+    res.value!.should.equal('emotion');
+  });
+
+  it('should commit a nested checkpoint', async () => {
+    tree.checkpoint();
+    let root: Buffer;
+    tree.put('test', 'something else');
+    root = tree.root;
+    tree.checkpoint();
+    tree.put('the feels', 'emotion');
+    tree.revert();
+    tree.commit();
+    tree.isCheckpoint().should.equal(false);
+    tree.root.toString('hex').should.equal(root.toString('hex'));
+  });
 });
