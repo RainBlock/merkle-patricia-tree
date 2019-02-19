@@ -1054,24 +1054,6 @@ export class MerklePatriciaTree<K = Buffer, V = Buffer> implements
   }
 
   /**
-   * Checks if two nibble arrays are equal or not
-   * @param arr1 : First nibble array
-   * @param arr2 : Second nibble array
-   * @returns bool : True if nibble arrays are equal and false otherwise
-   */
-  areNibbleArraysEqual(arr1: number[], arr2: number[]): boolean {
-    if (arr1.length !== arr2.length) {
-      return false;
-    }
-    for (let i = 0; i < arr1.length; i++) {
-      if (arr1[i] !== arr2[i]) {
-        return false;
-      }
-    }
-    return true;
-  }
-
-  /**
    * Given a key, delete any mapping that exists for that key.
    *
    * @param key   The key to unmap.
