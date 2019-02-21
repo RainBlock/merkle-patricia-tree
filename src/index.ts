@@ -816,8 +816,10 @@ export class MerklePatriciaTree<K = Buffer, V = Buffer> implements
       if (node1 instanceof BranchNode && node2 instanceof BranchNode) {
         for (let branchIdx = 0; branchIdx < node1.branches.length;
              branchIdx += 1) {
-          this.copyTreePaths(
+          if (node1.branches[branchIdx]) {
+            this.copyTreePaths(
               node1.branches[branchIdx], node2.branches[branchIdx]);
+          }
         }
       } else if (
           node1 instanceof ExtensionNode && node2 instanceof ExtensionNode) {
