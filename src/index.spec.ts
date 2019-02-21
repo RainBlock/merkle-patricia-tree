@@ -5,7 +5,7 @@ import * as path from 'path';
 import {RlpEncode, RlpList} from 'rlp-stream';
 
 import {MerklePatriciaTree, verifyWitness} from './index';
-
+const utils = require('ethereumjs-util');
 
 
 // Needed for should.not.be.undefined.
@@ -458,6 +458,144 @@ describe('Try batch operations', () => {
            [Buffer.from('c')]);
 
        const w = tree.batchGet([Buffer.from('a'), Buffer.from('b')]);
+       verifyWitness(root, Buffer.from('a'), tree.rlpSerializeWitness(w[0]));
+       verifyWitness(root, Buffer.from('b'), tree.rlpSerializeWitness(w[1]));
+     });
+});
+
+describe('Try batchCOW operations', () => {
+  it('put a simple batchCOW', async () => {
+    const tree = new MerklePatriciaTree();
+    const copyTree = tree.batchCOW([
+      {key: Buffer.from('a'), val: Buffer.from('a')},
+      {key: Buffer.from('b'), val: Buffer.from('b')},
+      {key: Buffer.from('c'), val: Buffer.from('c')}
+    ]);
+    const copyRoot = copyTree.root;
+    const root = tree.batch([
+      {key: Buffer.from('a'), val: Buffer.from('a')},
+      {key: Buffer.from('b'), val: Buffer.from('b')},
+      {key: Buffer.from('c'), val: Buffer.from('c')}
+    ]);
+    root.should.deep.equal(copyRoot);
+
+    const cw1 = copyTree.get(Buffer.from('a'));
+    const cw2 = copyTree.get(Buffer.from('b'));
+    const cw3 = copyTree.get(Buffer.from('c'));
+
+    verifyWitness(
+        copyRoot, Buffer.from('a'), copyTree.rlpSerializeWitness(cw1));
+    verifyWitness(
+        copyRoot, Buffer.from('b'), copyTree.rlpSerializeWitness(cw2));
+    verifyWitness(
+        copyRoot, Buffer.from('c'), copyTree.rlpSerializeWitness(cw3));
+  });
+
+  it('put simple batchCOW verifying with batch get', async () => {
+    const tree = new MerklePatriciaTree();
+    const copyTree = tree.batchCOW([
+      {key: Buffer.from('a'), val: Buffer.from('x')},
+      {key: Buffer.from('b'), val: Buffer.from('x')},
+      {key: Buffer.from('c'), val: Buffer.from('x')}
+    ]);
+    const root = copyTree.batch([
+      {key: Buffer.from('a'), val: Buffer.from('a')},
+      {key: Buffer.from('b'), val: Buffer.from('b')},
+      {key: Buffer.from('c'), val: Buffer.from('c')}
+    ]);
+
+    const w = copyTree.batchGet(
+        [Buffer.from('a'), Buffer.from('b'), Buffer.from('c')]);
+    verifyWitness(root, Buffer.from('a'), tree.rlpSerializeWitness(w[0]));
+    verifyWitness(root, Buffer.from('b'), tree.rlpSerializeWitness(w[1]));
+    verifyWitness(root, Buffer.from('c'), tree.rlpSerializeWitness(w[2]));
+    const genesisStateRoot = utils.KECCAK256_RLP_S;
+    tree.root.toString('hex').should.equal(genesisStateRoot);
+  });
+
+  it('put and del a simple batchCOW', async () => {
+    const tree = new MerklePatriciaTree();
+    tree.put(Buffer.from('d'), Buffer.from('d'));
+    const initRoot = tree.root;
+
+    const copyTree = tree.batchCOW(
+        [
+          {key: Buffer.from('a'), val: Buffer.from('a')},
+          {key: Buffer.from('b'), val: Buffer.from('b')},
+          {key: Buffer.from('c'), val: Buffer.from('c')}
+        ],
+        [Buffer.from('d')]);
+
+    const w1 = copyTree.get(Buffer.from('a'));
+    const w2 = copyTree.get(Buffer.from('b'));
+    const w3 = copyTree.get(Buffer.from('c'));
+    const root = copyTree.root;
+
+    verifyWitness(root, Buffer.from('a'), copyTree.rlpSerializeWitness(w1));
+    verifyWitness(root, Buffer.from('b'), copyTree.rlpSerializeWitness(w2));
+    verifyWitness(root, Buffer.from('c'), copyTree.rlpSerializeWitness(w3));
+
+    const w4 = copyTree.get(Buffer.from('d'));
+    should.not.exist(w4.value);
+
+    const w5 = tree.get(Buffer.from('d'));
+    should.exist(w5.value);
+    tree.root.should.deep.equal(initRoot);
+  });
+
+  it('put and del a simple batchCOW verifying with batch get', async () => {
+    const tree = new MerklePatriciaTree();
+    tree.put(Buffer.from('d'), Buffer.from('d'));
+
+    const copyTree = tree.batchCOW(
+        [
+          {key: Buffer.from('a'), val: Buffer.from('a')},
+          {key: Buffer.from('b'), val: Buffer.from('b')},
+          {key: Buffer.from('c'), val: Buffer.from('c')}
+        ],
+        [Buffer.from('d')]);
+    const root = copyTree.root;
+
+    const w = copyTree.batchGet(
+        [Buffer.from('a'), Buffer.from('b'), Buffer.from('c')]);
+    verifyWitness(root, Buffer.from('a'), copyTree.rlpSerializeWitness(w[0]));
+    verifyWitness(root, Buffer.from('b'), copyTree.rlpSerializeWitness(w[1]));
+    verifyWitness(root, Buffer.from('c'), copyTree.rlpSerializeWitness(w[2]));
+  });
+
+  it('put and del a simple batchCOW with overlap', async () => {
+    const tree = new MerklePatriciaTree();
+    const copyTree = tree.batchCOW(
+        [
+          {key: Buffer.from('a'), val: Buffer.from('a')},
+          {key: Buffer.from('b'), val: Buffer.from('b')},
+          {key: Buffer.from('c'), val: Buffer.from('c')}
+        ],
+        [Buffer.from('c')]);
+
+    const w1 = copyTree.get(Buffer.from('a'));
+    const w2 = copyTree.get(Buffer.from('b'));
+    const w3 = copyTree.get(Buffer.from('c'));
+    const root = copyTree.root;
+
+    verifyWitness(root, Buffer.from('a'), copyTree.rlpSerializeWitness(w1));
+    verifyWitness(root, Buffer.from('b'), copyTree.rlpSerializeWitness(w2));
+    should.not.exist(w3.value);
+  });
+
+  it('put and del a simple batchCOW with overlap, verifying with batch get',
+     async () => {
+       const tree = new MerklePatriciaTree();
+       const copyTree = tree.batchCOW(
+           [
+             {key: Buffer.from('a'), val: Buffer.from('a')},
+             {key: Buffer.from('b'), val: Buffer.from('b')},
+             {key: Buffer.from('c'), val: Buffer.from('c')}
+           ],
+           [Buffer.from('c')]);
+
+       const w = copyTree.batchGet([Buffer.from('a'), Buffer.from('b')]);
+       const root = copyTree.root;
        verifyWitness(root, Buffer.from('a'), tree.rlpSerializeWitness(w[0]));
        verifyWitness(root, Buffer.from('b'), tree.rlpSerializeWitness(w[1]));
      });

@@ -105,6 +105,11 @@ export abstract class MerklePatriciaTreeNode<V> {
   rlpNodeEncoding: Buffer|null = null;
 
   /**
+   * Only used for batchCOW to mark nodes to be copied
+   */
+  markForCopy = false;
+
+  /**
    * Serializes and computed the RLP encoding of the node
    * Also stores it for future references.
    */
@@ -773,6 +778,10 @@ export class MerklePatriciaTree<K = Buffer, V = Buffer> implements
     }
   }
 
+  /**
+   * Copies only the node; leaving its successors the same
+   * @param node : Node for copy
+   */
   getNodeCopy(node: MerklePatriciaTreeNode<V>): MerklePatriciaTreeNode<V> {
     if (node instanceof BranchNode) {
       const copyNode = new BranchNode<V>();
@@ -782,7 +791,9 @@ export class MerklePatriciaTree<K = Buffer, V = Buffer> implements
       for (let i = 0; i < node.branches.length; i++) {
         copyNode.branches[i] = node.branches[i];
       }
-      copyNode.value = node.value.slice(0);
+      if (node.value) {
+        copyNode.value = node.value.slice(0);
+      }
       return copyNode;
     } else if (node instanceof ExtensionNode) {
       const copyNode = new ExtensionNode<V>(node.nibbles, node.nextNode);
@@ -795,60 +806,46 @@ export class MerklePatriciaTree<K = Buffer, V = Buffer> implements
   }
 
   /**
-   * Copy on write batch puts to MerklePatriciaTree
-   * @param putOps List of PutOps
-   * @returns A copy of the MerklePatriciaTree with the inserts
+   * CopyTreePaths
+   * Copies paths that are marked for copy
    */
-  private cowPutDel(putOps: Array<BatchPut<K, V>>, delOps: K[]):
-      MerklePatriciaTree<K, V> {
-    const newTree = new MerklePatriciaTree<K, V>(this.options);
-    newTree.rootNode = this.getNodeCopy(this.rootNode);
-    for (const put of putOps) {
-      if (newTree.rootNode instanceof NullNode) {
-        newTree.rootNode = new LeafNode(
-            MerklePatriciaTreeNode.bufferToNibbles(this.options.keyConverter!
-                                                   (put.key)),
-            put.val);
-      } else {
-        let keyNibbles: number[] = MerklePatriciaTreeNode.bufferToNibbles(
-            this.options.keyConverter!(put.key));
-        let currNode: MerklePatriciaTreeNode<V>|null = newTree.rootNode;
-        let nextNode: MerklePatriciaTreeNode<V>|null;
-        const result: SearchResult<V> = this.search(put.key);
-        for (let i = 1; i < result.stack.length; i++) {
-          nextNode = this.getNodeCopy(result.stack[i]);
-          if (currNode instanceof BranchNode) {
-            currNode.branches[keyNibbles[0]] = nextNode;
-            keyNibbles.shift();
-          } else if (currNode instanceof ExtensionNode) {
-            currNode.nextNode = nextNode;
-            keyNibbles = keyNibbles.slice(currNode.nibbles.length);
-          }
-          currNode = nextNode;
+  private copyTreePaths(
+      node1: MerklePatriciaTreeNode<V>, node2: MerklePatriciaTreeNode<V>) {
+    if (node1.markForCopy) {
+      node2 = this.getNodeCopy(node1);
+      if (node1 instanceof BranchNode && node2 instanceof BranchNode) {
+        for (let branchIdx = 0; branchIdx < node1.branches.length;
+             branchIdx += 1) {
+          this.copyTreePaths(
+              node1.branches[branchIdx], node2.branches[branchIdx]);
         }
-        newTree.put(put.key, put.val);
+      } else if (
+          node1 instanceof ExtensionNode && node2 instanceof ExtensionNode) {
+        this.copyTreePaths(node1.nextNode, node2.nextNode);
+      } else if (
+          node1 instanceof LeafNode && node2 instanceof LeafNode ||
+          node1 instanceof NullNode && node2 instanceof NullNode) {
+        return;
+      } else {
+        throw new Error('Unexpected node type while copying nodes');
       }
+    }
+    return;
+  }
+
+  /**
+   * multiSearch searches the tree for all keys and marks nodes for copy
+   * @param putOps : List of key, value pairs
+   * @param delOps : List of keys
+   * @param flag   : True if we want to mark the nodes for copy
+   */
+  multiSearch(putOps: Array<BatchPut<K, V>>, delOps: K[], flag: boolean) {
+    for (const put of putOps) {
+      this.search(put.key, flag);
     }
     for (const key of delOps) {
-      let keyNibbles: number[] = MerklePatriciaTreeNode.bufferToNibbles(
-          this.options.keyConverter!(key));
-      let currNode: MerklePatriciaTreeNode<V>|null = newTree.rootNode;
-      let nextNode: MerklePatriciaTreeNode<V>|null;
-      const result: SearchResult<V> = this.search(key);
-      for (let i = 1; i < result.stack.length; i++) {
-        nextNode = this.getNodeCopy(result.stack[i]);
-        if (currNode instanceof BranchNode) {
-          currNode.branches[keyNibbles[0]] = nextNode;
-          keyNibbles.shift();
-        } else if (currNode instanceof ExtensionNode) {
-          currNode.nextNode = nextNode;
-          keyNibbles = keyNibbles.slice(currNode.nibbles.length);
-        }
-        currNode = nextNode;
-      }
-      newTree.del(key);
+      this.search(key, flag);
     }
-    return newTree;
   }
 
   /**
@@ -1324,7 +1321,16 @@ export class MerklePatriciaTree<K = Buffer, V = Buffer> implements
    */
   batchCOW(putOps: Array<BatchPut<K, V>>, delOps: K[] = []):
       MerklePatriciaTree<K, V> {
-    const newTree = this.cowPutDel(putOps, delOps);
+    // Search the tree and mark the nodes for copy
+    this.multiSearch(putOps, delOps, true);
+    const newTree = new MerklePatriciaTree<K, V>(this.options);
+    // copy all the nodes marked for copy into the newTree
+    this.copyTreePaths(this.rootNode, newTree.rootNode);
+    // Modify the new Tree
+    newTree.batch(putOps, delOps);
+    // reset the nodes marked for copy in the original tree
+    this.multiSearch(putOps, delOps, false);
+    // return the new tree;
     return newTree;
   }
 
@@ -1336,7 +1342,7 @@ export class MerklePatriciaTree<K = Buffer, V = Buffer> implements
    * @returns      A [[SearchResult]] containing the path to the key, and the
    * value if it was present.
    */
-  search(key: K): SearchResult<V> {
+  search(key: K, markForCopy = false): SearchResult<V> {
     let remainder =
         MerklePatriciaTreeNode.bufferToNibbles(this.options.keyConverter!(key));
     let node: MerklePatriciaTreeNode<V>|null = this.rootNode;
@@ -1345,6 +1351,7 @@ export class MerklePatriciaTree<K = Buffer, V = Buffer> implements
 
     // Traverse the tree, starting at the root.
     do {
+      node.markForCopy = markForCopy;
       stack.push(node);
       next = node.next(remainder);
       remainder = next.remainingNibbles;
@@ -1352,6 +1359,7 @@ export class MerklePatriciaTree<K = Buffer, V = Buffer> implements
         node = next.next;
       } else if (next.next !== null) {
         // Deal with leaf values when remainder is 0
+        next.next.markForCopy = markForCopy;
         stack.push(next.next);
         node = next.next;
       }
