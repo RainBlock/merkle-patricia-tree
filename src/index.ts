@@ -805,6 +805,25 @@ export class MerklePatriciaTree<K = Buffer, V = Buffer> implements
     return new NullNode<V>();
   }
 
+  private copyPath(key: K, newTree: MerklePatriciaTree<K, V>, flag?: boolean) {
+    let keyNibbles: number[] =
+        MerklePatriciaTreeNode.bufferToNibbles(this.options.keyConverter!(key));
+    let currNode: MerklePatriciaTreeNode<V>|null = newTree.rootNode;
+    let nextNode: MerklePatriciaTreeNode<V>|null;
+    const result: SearchResult<V> = this.search(key);
+    for (let i = 1; i < result.stack.length; i++) {
+      nextNode = this.getNodeCopy(result.stack[i]);
+      if (currNode instanceof BranchNode) {
+        currNode.branches[keyNibbles[0]] = nextNode;
+        keyNibbles.shift();
+      } else if (currNode instanceof ExtensionNode) {
+        currNode.nextNode = nextNode;
+        keyNibbles = keyNibbles.slice(currNode.nibbles.length);
+      }
+      currNode = nextNode;
+    }
+  }
+
   /**
    * CopyTreePaths
    * Copies paths that are marked for copy
@@ -818,7 +837,7 @@ export class MerklePatriciaTree<K = Buffer, V = Buffer> implements
              branchIdx += 1) {
           if (node1.branches[branchIdx]) {
             this.copyTreePaths(
-              node1.branches[branchIdx], node2.branches[branchIdx]);
+                node1.branches[branchIdx], node2.branches[branchIdx]);
           }
         }
       } else if (
@@ -1114,6 +1133,8 @@ export class MerklePatriciaTree<K = Buffer, V = Buffer> implements
                       // Update the leaf node with the extension's nibbles
                       connectNode.nextNode.nibbles = connectNode.nibbles.concat(
                           connectNode.nextNode.nibbles);
+                      branchParent.branches[idx].clearMemoizedHash();
+                      branchParent.branches[idx].clearRlpNodeEncoding();
                     } else {
                       // Otherwise, attach the extension
                       branchParent.branches[idx] = connectNode;
