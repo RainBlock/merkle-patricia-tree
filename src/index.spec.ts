@@ -33,7 +33,7 @@ describe('Try original simple-save-retrieve', () => {
   });
 
   it('should batch get a value', async () => {
-    const val1 = tree.batchGet([Buffer.from('test')]);
+    const val1 = tree.batchGet(['test']);
     const val = tree.get('test');
     val.value!.should.deep.equal(val1[0].value);
     for (let i = 0; i < val.proof.length; i++) {
@@ -49,7 +49,7 @@ describe('Try original simple-save-retrieve', () => {
   });
 
   it('should batch get an updated value', async () => {
-    const val1 = tree.batchGet([Buffer.from('test')]);
+    const val1 = tree.batchGet(['test']);
     const val = tree.get('test');
     val.value!.should.deep.equal(val1[0].value);
     for (let i = 0; i < val.proof.length; i++) {
@@ -73,7 +73,7 @@ describe('Try original simple-save-retrieve', () => {
   });
 
   it('should batch get an updated value', async () => {
-    const val1 = tree.batchGet([Buffer.from('test')]);
+    const val1 = tree.batchGet(['test']);
     const val = tree.get('test');
     val.value!.should.deep.equal(val1[0].value);
     for (let i = 0; i < val.proof.length; i++) {
@@ -94,7 +94,7 @@ describe('Try original simple-save-retrieve', () => {
   });
 
   it('should batch get value from branch', async () => {
-    const val1 = tree.batchGet([Buffer.from('doge')]);
+    const val1 = tree.batchGet(['doge']);
     const val = tree.get('doge');
     val.value!.should.deep.equal(val1[0].value);
     for (let i = 0; i < val.proof.length; i++) {
