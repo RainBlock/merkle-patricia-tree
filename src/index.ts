@@ -829,29 +829,30 @@ export class MerklePatriciaTree<K = Buffer, V = Buffer> implements
    * Copies paths that are marked for copy
    */
   private copyTreePaths(
-      node1: MerklePatriciaTreeNode<V>, node2: MerklePatriciaTreeNode<V>) {
+      node1: MerklePatriciaTreeNode<V>,
+      node2: MerklePatriciaTreeNode<V>): MerklePatriciaTreeNode<V> {
     if (node1.markForCopy) {
       node2 = this.getNodeCopy(node1);
       if (node1 instanceof BranchNode && node2 instanceof BranchNode) {
         for (let branchIdx = 0; branchIdx < node1.branches.length;
              branchIdx += 1) {
           if (node1.branches[branchIdx]) {
-            this.copyTreePaths(
+            node2.branches[branchIdx] = this.copyTreePaths(
                 node1.branches[branchIdx], node2.branches[branchIdx]);
           }
         }
       } else if (
           node1 instanceof ExtensionNode && node2 instanceof ExtensionNode) {
-        this.copyTreePaths(node1.nextNode, node2.nextNode);
+        node2.nextNode = this.copyTreePaths(node1.nextNode, node2.nextNode);
       } else if (
           node1 instanceof LeafNode && node2 instanceof LeafNode ||
           node1 instanceof NullNode && node2 instanceof NullNode) {
-        return;
+        return node2;
       } else {
         throw new Error('Unexpected node type while copying nodes');
       }
     }
-    return;
+    return node2;
   }
 
   /**
@@ -1217,7 +1218,7 @@ export class MerklePatriciaTree<K = Buffer, V = Buffer> implements
     this.multiSearch(putOps, delOps, true);
     const newTree = new MerklePatriciaTree<K, V>(this.options);
     // copy all the nodes marked for copy into the newTree
-    this.copyTreePaths(this.rootNode, newTree.rootNode);
+    newTree.rootNode = this.copyTreePaths(this.rootNode, newTree.rootNode);
     // Modify the new Tree
     newTree.batch(putOps, delOps);
     // reset the nodes marked for copy in the original tree
