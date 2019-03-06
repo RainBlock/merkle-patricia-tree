@@ -1308,14 +1308,20 @@ export function verifyWitness(
   let targetHash: Buffer = root;
   let currentKey: number[] = originalNode.stringToNibbles(key);
   let cld;
-
   for (const [idx, serializedNode] of witness.proof.entries()) {
     const hash = hashAsBuffer(HashType.KECCAK256, serializedNode);
     if (Buffer.compare(hash, targetHash)) {
       throw new VerificationError(`Hash mismatch: expected ${
           targetHash.toString('hex')} got ${hash.toString('hex')}`);
     }
-    const node: OriginalTreeNode = new originalNode(RlpDecode(serializedNode));
+    const decodedNode = RlpDecode(serializedNode);
+    if (decodedNode.length === 0) {
+      if (!exist && !witness.value) {
+        return;
+      }
+      throw new VerificationError(`Proof: Found an empty node in the witness`);
+    }
+    const node: OriginalTreeNode = new originalNode(decodedNode);
     if (node.type === 'branch') {
       if (currentKey.length === 0) {
         if (idx !== witness.proof.length - 1) {
