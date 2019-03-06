@@ -1294,6 +1294,8 @@ export class VerificationError extends Error {}
  * check
  * @param key                   A [[Buffer]] containing the key to check
  * @param witness               The [[Witness]] to verify
+ * @param exist                 For existence proofs exist has to be true
+ * and false for nonexistence proofs. By default exist assumes to be true.
  *
  * @throws [[VerificationError]]  If there was an error verifying the witness
  * using the given key and root.
@@ -1301,7 +1303,8 @@ export class VerificationError extends Error {}
  * valid. Otherwise, the promise is completed exceptionally with the failure
  * reason.
  */
-export function verifyWitness(root: Buffer, key: Buffer, witness: RlpWitness) {
+export function verifyWitness(
+    root: Buffer, key: Buffer, witness: RlpWitness, exist = true) {
   let targetHash: Buffer = root;
   let currentKey: number[] = originalNode.stringToNibbles(key);
   let cld;
@@ -1324,7 +1327,9 @@ export function verifyWitness(root: Buffer, key: Buffer, witness: RlpWitness) {
           throw new VerificationError(`Value mismatch: expected ${
               witness.value} but got ${node.value}`);
         }
-        return;
+        if (exist) {
+          return;
+        }
       }
       cld = node.raw[currentKey[0]];
       currentKey = currentKey.slice(1);
@@ -1337,6 +1342,9 @@ export function verifyWitness(root: Buffer, key: Buffer, witness: RlpWitness) {
         }
         if (matchingNibbleLength(embeddedNode.key, currentKey) !==
             embeddedNode.key.length) {
+          if (!witness.value && !exist) {
+            return;
+          }
           throw new VerificationError(
               `Key length mismatch (embeddedNode): expected ${
                   matchingNibbleLength(
@@ -1348,6 +1356,9 @@ export function verifyWitness(root: Buffer, key: Buffer, witness: RlpWitness) {
         // still have portions of key remaining, and embedded node is not a
         // branch
         if (currentKey.length !== 0 && !Array.isArray(embeddedNode.value)) {
+          if (!witness.value && !exist) {
+            return;
+          }
           throw new VerificationError(
               `Key does not match the proof (embeddedNode)`);
         }
@@ -1359,6 +1370,9 @@ export function verifyWitness(root: Buffer, key: Buffer, witness: RlpWitness) {
                 new originalNode(embeddedNode.raw[1][lastNibble]);
             currentKey = currentKey.slice(embeddedBranchLeaf.key.length + 1);
             if (currentKey.length !== 0) {
+              if (!witness.value && !exist) {
+                return;
+              }
               throw new VerificationError(
                   `Key does not match the proof (branch-embedded node)`);
             }
@@ -1376,12 +1390,17 @@ export function verifyWitness(root: Buffer, key: Buffer, witness: RlpWitness) {
           throw new VerificationError(`Value mismatch: expected ${
               witness.value} but got ${embeddedNode.value}`);
         }
-        return;
+        if (exist) {
+          return;
+        }
       } else {
         targetHash = cld as Buffer;
       }
     } else if ((node.type === 'extention') || (node.type === 'leaf')) {
       if (matchingNibbleLength(node.key, currentKey) !== node.key.length) {
+        if (!witness.value && !exist) {
+          return;
+        }
         throw new VerificationError(`Key does not match the proof ${
             node.type}: expected ${node.key}, but got ${currentKey}`);
       }
@@ -1403,7 +1422,9 @@ export function verifyWitness(root: Buffer, key: Buffer, witness: RlpWitness) {
           throw new VerificationError(
               `Value mismatch: expected ${witness.value} but got ${cld}`);
         }
-        return;
+        if (exist) {
+          return;
+        }
       } else {
         targetHash = cld as Buffer;
       }
