@@ -1332,6 +1332,9 @@ export function verifyWitness(
         }
       }
       cld = node.raw[currentKey[0]];
+      if (cld.length === 0 && !witness.value && !exist) {
+        return;
+      }
       currentKey = currentKey.slice(1);
       if (cld.length === 2) {
         const embeddedNode = new originalNode(cld);
