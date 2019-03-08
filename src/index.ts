@@ -1294,8 +1294,6 @@ export class VerificationError extends Error {}
  * check
  * @param key                   A [[Buffer]] containing the key to check
  * @param witness               The [[Witness]] to verify
- * @param exist                 For existence proofs exist has to be true
- * and false for nonexistence proofs. By default exist assumes to be true.
  *
  * @throws [[VerificationError]]  If there was an error verifying the witness
  * using the given key and root.
