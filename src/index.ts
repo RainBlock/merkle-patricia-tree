@@ -1303,11 +1303,11 @@ export class VerificationError extends Error {}
  * valid. Otherwise, the promise is completed exceptionally with the failure
  * reason.
  */
-export function verifyWitness(
-    root: Buffer, key: Buffer, witness: RlpWitness, exist = true) {
+export function verifyWitness(root: Buffer, key: Buffer, witness: RlpWitness) {
   let targetHash: Buffer = root;
   let currentKey: number[] = originalNode.stringToNibbles(key);
   let cld;
+  const exist = (witness.value === null) ? false : true;
   for (const [idx, serializedNode] of witness.proof.entries()) {
     const hash = hashAsBuffer(HashType.KECCAK256, serializedNode);
     if (Buffer.compare(hash, targetHash)) {
