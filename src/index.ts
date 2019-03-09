@@ -1327,6 +1327,9 @@ export function verifyWitness(root: Buffer, key: Buffer, witness: RlpWitness) {
               `Proof length mismatch (branch): expected ${idx + 1} but got ${
                   witness.proof.length}`);
         }
+        if (!exist && !node.value) {
+          return;
+        }
         if (!node.value.equals(witness.value!)) {
           throw new VerificationError(`Value mismatch: expected ${
               witness.value} but got ${node.value}`);
@@ -1383,16 +1386,23 @@ export function verifyWitness(root: Buffer, key: Buffer, witness: RlpWitness) {
               throw new VerificationError(
                   `Key does not match the proof (branch-embedded node)`);
             }
+            if (!exist && !embeddedBranchLeaf.value) {
+              return;
+            }
             if (!embeddedBranchLeaf.value.equals(witness.value)) {
               throw new VerificationError(`Value mismatch: expected ${
                   witness.value} but got ${embeddedBranchLeaf.value}`);
             }
           }
           // value is in branch value
-          else if (!embeddedNode.value[16].equals(witness.value)) {
+          else if (!exist && !embeddedNode.value[16]) {
+            return;
+          } else if (!embeddedNode.value[16].equals(witness.value)) {
             throw new VerificationError(`Value mismatch: expected ${
                 witness.value} but got ${embeddedNode.value[17]}`);
           }
+        } else if (!exist && !embeddedNode.value) {
+          return;
         } else if (!embeddedNode.value.equals(witness.value!)) {
           throw new VerificationError(`Value mismatch: expected ${
               witness.value} but got ${embeddedNode.value}`);
@@ -1424,6 +1434,9 @@ export function verifyWitness(root: Buffer, key: Buffer, witness: RlpWitness) {
         if (cld.length === 17) {
           cld = (cld[currentKey[0]] as Buffer[])[1];
           currentKey = currentKey.slice(1);
+        }
+        if (!exist && !cld) {
+          return;
         }
         if (!(cld as Buffer).equals(witness.value!)) {
           throw new VerificationError(

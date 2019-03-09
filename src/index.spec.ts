@@ -59,7 +59,9 @@ describe('Try original simple-save-retrieve', () => {
 
   it('should delete value', async () => {
     tree.del('test');
-    should.not.exist((tree.get('test')).value);
+    const witness = tree.rlpSerializeWitness(tree.get('test'));
+    should.not.exist(witness.value);
+    verifyWitness(tree.root, Buffer.from('test'), witness);
   });
 
   it('should recreate value', async () => {
@@ -104,7 +106,9 @@ describe('Try original simple-save-retrieve', () => {
 
   it('should delete from a branch', async () => {
     tree.del('doge');
+    const witnessNE = tree.rlpSerializeWitness(tree.get('doge'));
     should.not.exist((tree.get('doge')).value);
+    verifyWitness(tree.root, Buffer.from('doge'), witnessNE);
   });
 });
 
@@ -266,8 +270,9 @@ describe('Try original deletions tests', () => {
     const a3 = tree.put(
         Buffer.from([12, 33, 44]), Buffer.from('create the last branch'));
     tree.del(Buffer.from([12, 22, 22]));
-    const val = tree.get(Buffer.from([12, 22, 22]));
+    const val = tree.rlpSerializeWitness(tree.get(Buffer.from([12, 22, 22])));
     should.not.exist(val.value);
+    verifyWitness(tree.root, Buffer.from([12, 22, 22]), val);
   });
 
   it('should delete from a branch->branch-extension', async () => {
@@ -280,8 +285,9 @@ describe('Try original deletions tests', () => {
         Buffer.from([12, 33, 44]), Buffer.from('create the last branch'));
 
     tree.del(Buffer.from([12, 22, 22]));
-    const val = tree.get(Buffer.from([12, 22, 22]));
+    const val = tree.rlpSerializeWitness(tree.get(Buffer.from([12, 22, 22])));
     should.not.exist(val.value);
+    verifyWitness(tree.root, Buffer.from([12, 22, 22]), val);
   });
 
   it('should delete from a extension->branch-extension', async () => {
@@ -291,8 +297,9 @@ describe('Try original deletions tests', () => {
         Buffer.from([12, 33, 33]), Buffer.from('create the middle branch'));
     tree.put(Buffer.from([12, 33, 44]), Buffer.from('create the last branch'));
     tree.del(Buffer.from([11, 11, 11]));
-    const val = tree.get(Buffer.from([11, 11, 11]));
+    const val = tree.rlpSerializeWitness(tree.get(Buffer.from([11, 11, 11])));
     should.not.exist(val.value);
+    verifyWitness(tree.root, Buffer.from([11, 11, 11]), val);
   });
 
   it('should delete from a extension->branch-branch', async () => {
@@ -302,8 +309,9 @@ describe('Try original deletions tests', () => {
         Buffer.from([12, 33, 33]), Buffer.from('create the middle branch'));
     tree.put(Buffer.from([12, 34, 44]), Buffer.from('create the last branch'));
     tree.del(Buffer.from([11, 11, 11]));
-    const val = tree.get(Buffer.from([11, 11, 11]));
+    const val = tree.rlpSerializeWitness(tree.get(Buffer.from([11, 11, 11])));
     should.not.exist(val.value);
+    verifyWitness(tree.root, Buffer.from([11, 11, 11]), val);
   });
 });
 
@@ -404,8 +412,9 @@ describe('Try batch operations', () => {
     verifyWitness(root, Buffer.from('b'), tree.rlpSerializeWitness(w2));
     verifyWitness(root, Buffer.from('c'), tree.rlpSerializeWitness(w3));
 
-    const w4 = tree.get(Buffer.from('d'));
+    const w4 = tree.rlpSerializeWitness(tree.get(Buffer.from('d')));
     should.not.exist(w4.value);
+    verifyWitness(root, Buffer.from('d'), w4);
   });
 
   it('put and del a simple batch verifying with batch get', async () => {
@@ -439,11 +448,12 @@ describe('Try batch operations', () => {
 
     const w1 = tree.get(Buffer.from('a'));
     const w2 = tree.get(Buffer.from('b'));
-    const w3 = tree.get(Buffer.from('c'));
+    const w3 = tree.rlpSerializeWitness(tree.get(Buffer.from('c')));
 
     verifyWitness(root, Buffer.from('a'), tree.rlpSerializeWitness(w1));
     verifyWitness(root, Buffer.from('b'), tree.rlpSerializeWitness(w2));
     should.not.exist(w3.value);
+    verifyWitness(root, Buffer.from('c'), w3);
   });
 
   it('put and del a simple batch with overlap, verifying with batch get',
@@ -535,8 +545,9 @@ describe('Try batchCOW operations', () => {
     verifyWitness(root, Buffer.from('b'), copyTree.rlpSerializeWitness(w2));
     verifyWitness(root, Buffer.from('c'), copyTree.rlpSerializeWitness(w3));
 
-    const w4 = copyTree.get(Buffer.from('d'));
+    const w4 = copyTree.rlpSerializeWitness(copyTree.get(Buffer.from('d')));
     should.not.exist(w4.value);
+    verifyWitness(copyTree.root, Buffer.from('d'), w4);
 
     const w5 = tree.get(Buffer.from('d'));
     should.exist(w5.value);
@@ -575,12 +586,13 @@ describe('Try batchCOW operations', () => {
 
     const w1 = copyTree.get(Buffer.from('a'));
     const w2 = copyTree.get(Buffer.from('b'));
-    const w3 = copyTree.get(Buffer.from('c'));
+    const w3 = copyTree.rlpSerializeWitness(copyTree.get(Buffer.from('c')));
     const root = copyTree.root;
 
     verifyWitness(root, Buffer.from('a'), copyTree.rlpSerializeWitness(w1));
     verifyWitness(root, Buffer.from('b'), copyTree.rlpSerializeWitness(w2));
     should.not.exist(w3.value);
+    verifyWitness(root, Buffer.from('c'), w3);
   });
 
   it('put and del a simple batchCOW with overlap, verifying with batch get',
