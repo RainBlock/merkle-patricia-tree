@@ -473,6 +473,82 @@ describe('Try batch operations', () => {
      });
 });
 
+describe('verify proofs existence and non-existence', () => {
+  // Keys to create branch, extension and leaf nodes
+  const k1 = Buffer.from('8a40bfaa73256b60764c1bf40675a99083efb075', 'hex');
+  const k2 = Buffer.from('e6716f9544a56c530d868e4bfbacb172315bdead', 'hex');
+  const k3 = Buffer.from('1e12515ce3e0f817a4ddef9ca55788a1d66bd2df', 'hex');
+  const k4 = Buffer.from('1a26338f0d905e295fccb71fa9ea849ffa12aaf4', 'hex');
+
+  it('should be able to verify proofs', async () => {
+    const tree = new MerklePatriciaTree();
+    // Insert k1 -> verify existence of k1 and non-existence of k2, k3, k4
+    tree.put(k1, k1);
+    let w1 = tree.rlpSerializeWitness(tree.get(k1));
+    let w2 = tree.rlpSerializeWitness(tree.get(k2));
+    let w3 = tree.rlpSerializeWitness(tree.get(k3));
+    let w4 = tree.rlpSerializeWitness(tree.get(k4));
+    let root = tree.root;
+    verifyWitness(root, k1, w1);
+    verifyWitness(root, k2, w2);
+    verifyWitness(root, k3, w3);
+    verifyWitness(root, k4, w4);
+    should.exist(w1.value);
+    should.not.exist(w2.value);
+    should.not.exist(w3.value);
+    should.not.exist(w4.value);
+
+
+    // Insert k2 -> verify existence of k1, k2 and non-existence of k3, k4
+    tree.put(k2, k2);
+    w1 = tree.rlpSerializeWitness(tree.get(k1));
+    w2 = tree.rlpSerializeWitness(tree.get(k2));
+    w3 = tree.rlpSerializeWitness(tree.get(k3));
+    w4 = tree.rlpSerializeWitness(tree.get(k4));
+    root = tree.root;
+    verifyWitness(root, k1, w1);
+    verifyWitness(root, k2, w2);
+    verifyWitness(root, k3, w3);
+    verifyWitness(root, k4, w4);
+    should.exist(w1.value);
+    should.exist(w2.value);
+    should.not.exist(w3.value);
+    should.not.exist(w4.value);
+
+    // Insert k3 -> verify existence of k1, k2, k3 and non-existence of k4
+    tree.put(k3, k3);
+    w1 = tree.rlpSerializeWitness(tree.get(k1));
+    w2 = tree.rlpSerializeWitness(tree.get(k2));
+    w3 = tree.rlpSerializeWitness(tree.get(k3));
+    w4 = tree.rlpSerializeWitness(tree.get(k4));
+    root = tree.root;
+    verifyWitness(root, k1, w1);
+    verifyWitness(root, k2, w2);
+    verifyWitness(root, k3, w3);
+    verifyWitness(root, k4, w4);
+    should.exist(w1.value);
+    should.exist(w2.value);
+    should.exist(w3.value);
+    should.not.exist(w4.value);
+
+    // Insert k4 -> verify existence of k1, k2, k3 and k4
+    tree.put(k4, k4);
+    w1 = tree.rlpSerializeWitness(tree.get(k1));
+    w2 = tree.rlpSerializeWitness(tree.get(k2));
+    w3 = tree.rlpSerializeWitness(tree.get(k3));
+    w4 = tree.rlpSerializeWitness(tree.get(k4));
+    root = tree.root;
+    verifyWitness(root, k1, w1);
+    verifyWitness(root, k2, w2);
+    verifyWitness(root, k3, w3);
+    verifyWitness(root, k4, w4);
+    should.exist(w1.value);
+    should.exist(w2.value);
+    should.exist(w3.value);
+    should.exist(w4.value);
+  });
+});
+
 describe('Try batchCOW operations', () => {
   it('put a simple batchCOW', async () => {
     const tree = new MerklePatriciaTree();
