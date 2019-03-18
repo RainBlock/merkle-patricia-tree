@@ -270,9 +270,9 @@ describe('Try original deletions tests', () => {
     const a3 = tree.put(
         Buffer.from([12, 33, 44]), Buffer.from('create the last branch'));
     tree.del(Buffer.from([12, 22, 22]));
-    const val = tree.rlpSerializeWitness(tree.get(Buffer.from([12, 22, 22])));
+    const val = tree.get(Buffer.from([12, 22, 22]));
     should.not.exist(val.value);
-    verifyWitness(tree.root, Buffer.from([12, 22, 22]), val);
+    verifyWitness(tree.root, Buffer.from([12, 22, 22]), tree.rlpSerializeWitness(val));
   });
 
   it('should delete from a branch->branch-extension', async () => {
@@ -283,9 +283,7 @@ describe('Try original deletions tests', () => {
         Buffer.from([12, 33, 33]), Buffer.from('create the middle branch'));
     const a4 = tree.put(
         Buffer.from([12, 33, 44]), Buffer.from('create the last branch'));
-
     tree.del(Buffer.from([12, 22, 22]));
-
     const val = tree.get(Buffer.from([12, 22, 22]));
     should.not.exist(val.value);
     verifyWitness(
@@ -298,9 +296,7 @@ describe('Try original deletions tests', () => {
     tree.put(
         Buffer.from([12, 33, 33]), Buffer.from('create the middle branch'));
     tree.put(Buffer.from([12, 33, 44]), Buffer.from('create the last branch'));
-
     tree.del(Buffer.from([11, 11, 11]));
-
     const val = tree.get(Buffer.from([11, 11, 11]));
     should.not.exist(val.value);
     verifyWitness(
