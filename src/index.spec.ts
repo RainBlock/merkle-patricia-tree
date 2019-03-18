@@ -272,7 +272,8 @@ describe('Try original deletions tests', () => {
     tree.del(Buffer.from([12, 22, 22]));
     const val = tree.get(Buffer.from([12, 22, 22]));
     should.not.exist(val.value);
-    verifyWitness(tree.root, Buffer.from([12, 22, 22]), tree.rlpSerializeWitness(val));
+    verifyWitness(
+        tree.root, Buffer.from([12, 22, 22]), tree.rlpSerializeWitness(val));
   });
 
   it('should delete from a branch->branch-extension', async () => {
