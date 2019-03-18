@@ -59,9 +59,9 @@ describe('Try original simple-save-retrieve', () => {
 
   it('should delete value', async () => {
     tree.del('test');
-    const witness = tree.rlpSerializeWitness(tree.get('test'));
-    should.not.exist(witness.value);
-    verifyWitness(tree.root, Buffer.from('test'), witness);
+    const w1 = tree.get('test');
+    should.not.exist(w1.value);
+    verifyWitness(tree.root, Buffer.from('test'), tree.rlpSerializeWitness(w1));
   });
 
   it('should recreate value', async () => {
@@ -106,9 +106,9 @@ describe('Try original simple-save-retrieve', () => {
 
   it('should delete from a branch', async () => {
     tree.del('doge');
-    const witnessNE = tree.rlpSerializeWitness(tree.get('doge'));
-    should.not.exist((tree.get('doge')).value);
-    verifyWitness(tree.root, Buffer.from('doge'), witnessNE);
+    const w1 = tree.get('doge');
+    should.not.exist(w1.value);
+    verifyWitness(tree.root, Buffer.from('doge'), tree.rlpSerializeWitness(w1));
   });
 });
 
