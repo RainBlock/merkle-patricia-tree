@@ -1306,14 +1306,21 @@ export function verifyWitness(root: Buffer, key: Buffer, witness: RlpWitness) {
   let targetHash: Buffer = root;
   let currentKey: number[] = originalNode.stringToNibbles(key);
   let cld;
-
+  const exist = (witness.value === null) ? false : true;
   for (const [idx, serializedNode] of witness.proof.entries()) {
     const hash = hashAsBuffer(HashType.KECCAK256, serializedNode);
     if (Buffer.compare(hash, targetHash)) {
       throw new VerificationError(`Hash mismatch: expected ${
           targetHash.toString('hex')} got ${hash.toString('hex')}`);
     }
-    const node: OriginalTreeNode = new originalNode(RlpDecode(serializedNode));
+    const decodedNode = RlpDecode(serializedNode);
+    if (decodedNode.length === 0) {
+      if (!exist && !witness.value) {
+        return;
+      }
+      throw new VerificationError(`Proof: Found an empty node in the witness`);
+    }
+    const node: OriginalTreeNode = new originalNode(decodedNode);
     if (node.type === 'branch') {
       if (currentKey.length === 0) {
         if (idx !== witness.proof.length - 1) {
@@ -1321,13 +1328,21 @@ export function verifyWitness(root: Buffer, key: Buffer, witness: RlpWitness) {
               `Proof length mismatch (branch): expected ${idx + 1} but got ${
                   witness.proof.length}`);
         }
+        if (!exist && !node.value) {
+          return;
+        }
         if (!node.value.equals(witness.value!)) {
           throw new VerificationError(`Value mismatch: expected ${
               witness.value} but got ${node.value}`);
         }
-        return;
+        if (exist) {
+          return;
+        }
       }
       cld = node.raw[currentKey[0]];
+      if (cld.length === 0 && !witness.value && !exist) {
+        return;
+      }
       currentKey = currentKey.slice(1);
       if (cld.length === 2) {
         const embeddedNode = new originalNode(cld);
@@ -1338,6 +1353,9 @@ export function verifyWitness(root: Buffer, key: Buffer, witness: RlpWitness) {
         }
         if (matchingNibbleLength(embeddedNode.key, currentKey) !==
             embeddedNode.key.length) {
+          if (!witness.value && !exist) {
+            return;
+          }
           throw new VerificationError(
               `Key length mismatch (embeddedNode): expected ${
                   matchingNibbleLength(
@@ -1349,6 +1367,9 @@ export function verifyWitness(root: Buffer, key: Buffer, witness: RlpWitness) {
         // still have portions of key remaining, and embedded node is not a
         // branch
         if (currentKey.length !== 0 && !Array.isArray(embeddedNode.value)) {
+          if (!witness.value && !exist) {
+            return;
+          }
           throw new VerificationError(
               `Key does not match the proof (embeddedNode)`);
         }
@@ -1360,8 +1381,14 @@ export function verifyWitness(root: Buffer, key: Buffer, witness: RlpWitness) {
                 new originalNode(embeddedNode.raw[1][lastNibble]);
             currentKey = currentKey.slice(embeddedBranchLeaf.key.length + 1);
             if (currentKey.length !== 0) {
+              if (!witness.value && !exist) {
+                return;
+              }
               throw new VerificationError(
                   `Key does not match the proof (branch-embedded node)`);
+            }
+            if (!exist && !embeddedBranchLeaf.value) {
+              return;
             }
             if (!embeddedBranchLeaf.value.equals(witness.value)) {
               throw new VerificationError(`Value mismatch: expected ${
@@ -1369,20 +1396,29 @@ export function verifyWitness(root: Buffer, key: Buffer, witness: RlpWitness) {
             }
           }
           // value is in branch value
-          else if (!embeddedNode.value[16].equals(witness.value)) {
+          else if (!exist && !embeddedNode.value[16]) {
+            return;
+          } else if (!embeddedNode.value[16].equals(witness.value)) {
             throw new VerificationError(`Value mismatch: expected ${
                 witness.value} but got ${embeddedNode.value[17]}`);
           }
+        } else if (!exist && !embeddedNode.value) {
+          return;
         } else if (!embeddedNode.value.equals(witness.value!)) {
           throw new VerificationError(`Value mismatch: expected ${
               witness.value} but got ${embeddedNode.value}`);
         }
-        return;
+        if (exist) {
+          return;
+        }
       } else {
         targetHash = cld as Buffer;
       }
     } else if ((node.type === 'extention') || (node.type === 'leaf')) {
       if (matchingNibbleLength(node.key, currentKey) !== node.key.length) {
+        if (!witness.value && !exist) {
+          return;
+        }
         throw new VerificationError(`Key does not match the proof ${
             node.type}: expected ${node.key}, but got ${currentKey}`);
       }
@@ -1400,11 +1436,16 @@ export function verifyWitness(root: Buffer, key: Buffer, witness: RlpWitness) {
           cld = (cld[currentKey[0]] as Buffer[])[1];
           currentKey = currentKey.slice(1);
         }
+        if (!exist && !cld) {
+          return;
+        }
         if (!(cld as Buffer).equals(witness.value!)) {
           throw new VerificationError(
               `Value mismatch: expected ${witness.value} but got ${cld}`);
         }
-        return;
+        if (exist) {
+          return;
+        }
       } else {
         targetHash = cld as Buffer;
       }

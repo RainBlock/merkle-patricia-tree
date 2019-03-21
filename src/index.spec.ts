@@ -59,7 +59,9 @@ describe('Try original simple-save-retrieve', () => {
 
   it('should delete value', async () => {
     tree.del('test');
-    should.not.exist((tree.get('test')).value);
+    const w1 = tree.get('test');
+    should.not.exist(w1.value);
+    verifyWitness(tree.root, Buffer.from('test'), tree.rlpSerializeWitness(w1));
   });
 
   it('should recreate value', async () => {
@@ -104,7 +106,9 @@ describe('Try original simple-save-retrieve', () => {
 
   it('should delete from a branch', async () => {
     tree.del('doge');
-    should.not.exist((tree.get('doge')).value);
+    const w1 = tree.get('doge');
+    should.not.exist(w1.value);
+    verifyWitness(tree.root, Buffer.from('doge'), tree.rlpSerializeWitness(w1));
   });
 });
 
@@ -268,6 +272,8 @@ describe('Try original deletions tests', () => {
     tree.del(Buffer.from([12, 22, 22]));
     const val = tree.get(Buffer.from([12, 22, 22]));
     should.not.exist(val.value);
+    verifyWitness(
+        tree.root, Buffer.from([12, 22, 22]), tree.rlpSerializeWitness(val));
   });
 
   it('should delete from a branch->branch-extension', async () => {
@@ -278,10 +284,11 @@ describe('Try original deletions tests', () => {
         Buffer.from([12, 33, 33]), Buffer.from('create the middle branch'));
     const a4 = tree.put(
         Buffer.from([12, 33, 44]), Buffer.from('create the last branch'));
-
     tree.del(Buffer.from([12, 22, 22]));
     const val = tree.get(Buffer.from([12, 22, 22]));
     should.not.exist(val.value);
+    verifyWitness(
+        tree.root, Buffer.from([12, 22, 22]), tree.rlpSerializeWitness(val));
   });
 
   it('should delete from a extension->branch-extension', async () => {
@@ -293,6 +300,8 @@ describe('Try original deletions tests', () => {
     tree.del(Buffer.from([11, 11, 11]));
     const val = tree.get(Buffer.from([11, 11, 11]));
     should.not.exist(val.value);
+    verifyWitness(
+        tree.root, Buffer.from([11, 11, 11]), tree.rlpSerializeWitness(val));
   });
 
   it('should delete from a extension->branch-branch', async () => {
@@ -301,9 +310,13 @@ describe('Try original deletions tests', () => {
     tree.put(
         Buffer.from([12, 33, 33]), Buffer.from('create the middle branch'));
     tree.put(Buffer.from([12, 34, 44]), Buffer.from('create the last branch'));
+
     tree.del(Buffer.from([11, 11, 11]));
+
     const val = tree.get(Buffer.from([11, 11, 11]));
     should.not.exist(val.value);
+    verifyWitness(
+        tree.root, Buffer.from([11, 11, 11]), tree.rlpSerializeWitness(val));
   });
 });
 
@@ -399,12 +412,12 @@ describe('Try batch operations', () => {
     const w1 = tree.get(Buffer.from('a'));
     const w2 = tree.get(Buffer.from('b'));
     const w3 = tree.get(Buffer.from('c'));
+    const w4 = tree.get(Buffer.from('d'));
 
     verifyWitness(root, Buffer.from('a'), tree.rlpSerializeWitness(w1));
     verifyWitness(root, Buffer.from('b'), tree.rlpSerializeWitness(w2));
     verifyWitness(root, Buffer.from('c'), tree.rlpSerializeWitness(w3));
-
-    const w4 = tree.get(Buffer.from('d'));
+    verifyWitness(root, Buffer.from('d'), tree.rlpSerializeWitness(w4));
     should.not.exist(w4.value);
   });
 
@@ -443,6 +456,7 @@ describe('Try batch operations', () => {
 
     verifyWitness(root, Buffer.from('a'), tree.rlpSerializeWitness(w1));
     verifyWitness(root, Buffer.from('b'), tree.rlpSerializeWitness(w2));
+    verifyWitness(root, Buffer.from('c'), tree.rlpSerializeWitness(w3));
     should.not.exist(w3.value);
   });
 
@@ -461,6 +475,116 @@ describe('Try batch operations', () => {
        verifyWitness(root, Buffer.from('a'), tree.rlpSerializeWitness(w[0]));
        verifyWitness(root, Buffer.from('b'), tree.rlpSerializeWitness(w[1]));
      });
+});
+
+describe('verify proofs existence and non-existence', () => {
+  // Keys to create branch, extension and leaf nodes
+  const k1 = Buffer.from('1e12515ce3e0f817a4ddef9ca55788a1d66bd2df', 'hex');
+  const k2 = Buffer.from('1a26338f0d905e295fccb71fa9ea849ffa12aaf4', 'hex');
+  const k3 = Buffer.from('8a40bfaa73256b60764c1bf40675a99083efb075', 'hex');
+  const k4 = Buffer.from('e6716f9544a56c530d868e4bfbacb172315bdead', 'hex');
+  const tree = new MerklePatriciaTree();
+
+  it('Insert LeafNode and verify proofs', async () => {
+    // Insert k1 -> verify existence of k1 and non-existence of k2, k3, k4
+    tree.put(k1, k1);
+    const w1 = tree.get(k1);
+    const w2 = tree.get(k2);
+    const w3 = tree.get(k3);
+    const w4 = tree.get(k4);
+    const root = tree.root;
+    verifyWitness(root, k1, tree.rlpSerializeWitness(w1));
+    verifyWitness(root, k2, tree.rlpSerializeWitness(w2));
+    verifyWitness(root, k3, tree.rlpSerializeWitness(w3));
+    verifyWitness(root, k4, tree.rlpSerializeWitness(w4));
+    should.exist(w1.value);
+    should.not.exist(w2.value);
+    should.not.exist(w3.value);
+    should.not.exist(w4.value);
+  });
+
+  it('Create ExtensionNode and verifyProofs', async () => {
+    // Insert k2 -> verify existence of k1, k2 and non-existence of k3, k4
+    tree.put(k2, k2);
+    const w1 = tree.get(k1);
+    const w2 = tree.get(k2);
+    const w3 = tree.get(k3);
+    const w4 = tree.get(k4);
+    const root = tree.root;
+    verifyWitness(root, k1, tree.rlpSerializeWitness(w1));
+    verifyWitness(root, k2, tree.rlpSerializeWitness(w2));
+    verifyWitness(root, k3, tree.rlpSerializeWitness(w3));
+    verifyWitness(root, k4, tree.rlpSerializeWitness(w4));
+    should.exist(w1.value);
+    should.exist(w2.value);
+    should.not.exist(w3.value);
+    should.not.exist(w4.value);
+  });
+
+  it('Create BranchNode and verify proofs', async () => {
+    // Insert k3 -> verify existence of k1, k2, k3 and non-existence of k4
+    tree.put(k3, k3);
+    const w1 = tree.get(k1);
+    const w2 = tree.get(k2);
+    const w3 = tree.get(k3);
+    const w4 = tree.get(k4);
+    const root = tree.root;
+    verifyWitness(root, k1, tree.rlpSerializeWitness(w1));
+    verifyWitness(root, k2, tree.rlpSerializeWitness(w2));
+    verifyWitness(root, k3, tree.rlpSerializeWitness(w3));
+    verifyWitness(root, k4, tree.rlpSerializeWitness(w4));
+    should.exist(w1.value);
+    should.exist(w2.value);
+    should.exist(w3.value);
+    should.not.exist(w4.value);
+  });
+
+  it('Create LeafNode at Branch and verify proofs', async () => {
+    // Insert k4 -> verify existence of k1, k2, k3 and k4
+    tree.put(k4, k4);
+    const w1 = tree.get(k1);
+    const w2 = tree.get(k2);
+    const w3 = tree.get(k3);
+    const w4 = tree.get(k4);
+    const root = tree.root;
+    verifyWitness(root, k1, tree.rlpSerializeWitness(w1));
+    verifyWitness(root, k2, tree.rlpSerializeWitness(w2));
+    verifyWitness(root, k3, tree.rlpSerializeWitness(w3));
+    verifyWitness(root, k4, tree.rlpSerializeWitness(w4));
+    should.exist(w1.value);
+    should.exist(w2.value);
+    should.exist(w3.value);
+    should.exist(w4.value);
+  });
+
+  it('Throw error if verifying non-existence of existing values', async () => {
+    const w1 = tree.get(k1);
+    const root = tree.root;
+    verifyWitness(root, k1, tree.rlpSerializeWitness(w1));
+    w1.value = null;
+    try {
+      verifyWitness(root, k1, tree.rlpSerializeWitness(w1));
+    } catch (e) {
+      should.exist(e);
+      return;
+    }
+    throw new Error('Should have thrown an error');
+  });
+
+  it('Throw error if verifying existence of non-existing values', async () => {
+    tree.del(k1);
+    const w1 = tree.get(k1);
+    const root = tree.root;
+    verifyWitness(root, k1, tree.rlpSerializeWitness(w1));
+    w1.value = k1;
+    try {
+      verifyWitness(root, k1, tree.rlpSerializeWitness(w1));
+    } catch (e) {
+      should.exist(e);
+      return;
+    }
+    throw new Error('Should have thrown an error');
+  });
 });
 
 describe('Try batchCOW operations', () => {
@@ -529,16 +653,16 @@ describe('Try batchCOW operations', () => {
     const w1 = copyTree.get(Buffer.from('a'));
     const w2 = copyTree.get(Buffer.from('b'));
     const w3 = copyTree.get(Buffer.from('c'));
+    const w4 = copyTree.get(Buffer.from('d'));
+    const w5 = tree.get(Buffer.from('d'));
     const root = copyTree.root;
 
     verifyWitness(root, Buffer.from('a'), copyTree.rlpSerializeWitness(w1));
     verifyWitness(root, Buffer.from('b'), copyTree.rlpSerializeWitness(w2));
     verifyWitness(root, Buffer.from('c'), copyTree.rlpSerializeWitness(w3));
-
-    const w4 = copyTree.get(Buffer.from('d'));
+    verifyWitness(root, Buffer.from('d'), copyTree.rlpSerializeWitness(w4));
+    verifyWitness(tree.root, Buffer.from('d'), tree.rlpSerializeWitness(w5));
     should.not.exist(w4.value);
-
-    const w5 = tree.get(Buffer.from('d'));
     should.exist(w5.value);
     tree.root.should.deep.equal(initRoot);
   });
@@ -580,6 +704,7 @@ describe('Try batchCOW operations', () => {
 
     verifyWitness(root, Buffer.from('a'), copyTree.rlpSerializeWitness(w1));
     verifyWitness(root, Buffer.from('b'), copyTree.rlpSerializeWitness(w2));
+    verifyWitness(root, Buffer.from('c'), copyTree.rlpSerializeWitness(w3));
     should.not.exist(w3.value);
   });
 
