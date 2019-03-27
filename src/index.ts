@@ -300,8 +300,16 @@ export abstract class MerklePatriciaTreeNode<V> {
     return out;
   }
 
+  /**
+   * Converts a buffer to the nibbles and prefix representation.
+   * @param Buffer representation of nibbles and prefix
+   * @returns nibbles The nibbles to convert.
+   * @returns prefix  The prefix for the nibbles to convert.
+   */
   static fromBuffer(out: Buffer): {nibbles: number[], prefix: number} {
+    // Convert buffer into nibbles
     const nibbles = this.bufferToNibbles(out);
+    // Get prefix and nibbles based on the first nibble
     const first = nibbles[0];
     if (first % 2) {
       nibbles.splice(0, 1);
@@ -1601,41 +1609,58 @@ export class CachedMerklePatriciaTree<K, V> extends MerklePatriciaTree<K, V> {
    * @param nodeMap : A Bag of nodes, with each node indexed with the nodeHash
    * @param node : node from the Tree or the nodeMap to start the search from
    *
-   * @returns value: value corresponding to the code
+   * @returns value: value corresponding to the code;
+   * throws an exception if key is not found in the cache and nodeMap
    */
   private _getRecursive(
       key: number[], nodeMap: Map<bigint, MerklePatriciaTreeNode<V>>,
       node: MerklePatriciaTreeNode<V>): V|null {
     if (node instanceof BranchNode) {
+      // If key ends at a BranchNode; return the BranchNode value
       const nib = key.shift();
       if (!nib) {
         return node.value;
       }
+      // Search down the appropriate branch of the BranchNode
       const ret = this._getRecursive(key, nodeMap, node.branches[nib]);
       return ret;
+
     } else if (node instanceof ExtensionNode) {
+      // Key nibbles should match the nibbles at ExtensionNode
       if (matchingNibbleLength(node.nibbles, key) !== node.nibbles.length) {
         throw new Error('Key Mismatch at ExtensionNode');
       }
+      // Remove the matchingNibbles from the key
       key.splice(0, node.nibbles.length);
+      // Search down the nextNode of the ExtensionNode
       const ret = this._getRecursive(key, nodeMap, node.nextNode);
       return ret;
+
     } else if (node instanceof LeafNode) {
+      // Key Nibbles should match at the LeafNode
       if (matchingNibbleLength(node.nibbles, key) !== node.nibbles.length) {
         throw new Error('Key Mismatch at LeafNode');
       }
+      // Return the value at LeafNode
       return node.value;
+
     } else if (node instanceof HashNode) {
+      // Read the nodeHash of the HashNode
       const hash = node.nodeHash;
+      // Get the MerkleNode corresponding to nodeHash from nodeMap
       const mappedNode = nodeMap.get(hash);
       if (!mappedNode) {
         throw new Error('nodeMap too stale');
       }
+      // Search down the mappedNode
       const ret = this._getRecursive(key, nodeMap, mappedNode);
       return ret;
+
     } else if (NullNode) {
-      return null;
+      // Error if we hit a nullNode
+      throw new Error('Unexpected NullNode');
     } else {
+      // Error if unknown node type
       throw new Error('Unexpected node type');
     }
   }
@@ -1644,12 +1669,21 @@ export class CachedMerklePatriciaTree<K, V> extends MerklePatriciaTree<K, V> {
    * getFromCache returns the value corresponding to the key using nodeMap
    * @param key : key to get from the CachedMerklePatriciaTree
    * @param nodeMap : Bag of recent MerklePatriciaTree nodes from the client
+   *
+   * @returns value corresponding to the key if present; null if otherwise
    */
   getFromCache(key: K, nodeMap: Map<bigint, MerklePatriciaTreeNode<V>>): V
       |null {
     const convKey = this.options.keyConverter!(key);
     const keyNibbles = MerklePatriciaTreeNode.bufferToNibbles(convKey);
-    const ret = this._getRecursive(keyNibbles, nodeMap, this.rootNode);
+    let ret;
+    try {
+      // getRecursiveKey throws an exception if key is not searchable
+      // in the cache and the nodeBag
+      ret = this._getRecursive(keyNibbles, nodeMap, this.rootNode);
+    } catch (e) {
+      return null;
+    }
     return ret;
   }
 
@@ -1668,7 +1702,6 @@ export class CachedMerklePatriciaTree<K, V> extends MerklePatriciaTree<K, V> {
       // NullNode
       const ret = new NullNode<V>();
       return ret;
-
     } else if (hash.length === 2) {
       // LeafNode or ExtensionNode
       const decodeHash = MerklePatriciaTreeNode.fromBuffer(hash[0] as Buffer);
@@ -1681,11 +1714,12 @@ export class CachedMerklePatriciaTree<K, V> extends MerklePatriciaTree<K, V> {
       } else if (decodeHash.prefix === 0 || decodeHash.prefix === 1) {
         // ExtensionNode
         if (hash[1] instanceof Buffer && hash[1].length === 32) {
+          // Hash is serialized; create HashNode
           const next = new HashNode<V>(toBigIntBE(hash[1] as Buffer));
           const ret = new ExtensionNode<V>(decodeHash.nibbles, next);
           return ret;
-
         } else {
+          // Node is serialized; recursively decode the node
           const rlp = RlpEncode(hash[1]);
           const next = this.rlpToMerkleNode(rlp, valueConverter);
           const ret = new ExtensionNode<V>(decodeHash.nibbles, next);
@@ -1694,7 +1728,6 @@ export class CachedMerklePatriciaTree<K, V> extends MerklePatriciaTree<K, V> {
       } else {
         throw new Error('Invalid prefix: ' + decodeHash.prefix.toString);
       }
-
     } else if (hash.length === 17) {
       // BranchNode
       const ret = new BranchNode<V>();
@@ -1708,14 +1741,15 @@ export class CachedMerklePatriciaTree<K, V> extends MerklePatriciaTree<K, V> {
           continue;
         }
         if (branch instanceof Buffer && branch.length === 32) {
+          // Hash is serialized; create HashNode
           ret.branches[bIndex] = new HashNode<V>(toBigIntBE(branch));
         } else {
+          // Node is serialized; recursively decode the node
           ret.branches[bIndex] =
               this.rlpToMerkleNode(RlpEncode(branch), valueConverter);
         }
       }
       return ret;
-
     } else {
       throw new Error('Unable to decode node from rlp');
     }
