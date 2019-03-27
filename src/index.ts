@@ -1594,6 +1594,15 @@ export class CachedMerklePatriciaTree<K, V> extends MerklePatriciaTree<K, V> {
     return;
   }
 
+  /**
+   * _getRecursive searches the nodeBag and the CachedMerklePatriciaTree
+   * recursively for the value corresponding to the key
+   * @param key : key to be searched for
+   * @param nodeMap : A Bag of nodes, with each node indexed with the nodeHash
+   * @param node : node from the Tree or the nodeMap to start the search from
+   *
+   * @returns value: value corresponding to the code
+   */
   private _getRecursive(
       key: number[], nodeMap: Map<bigint, MerklePatriciaTreeNode<V>>,
       node: MerklePatriciaTreeNode<V>): V|null {
@@ -1631,6 +1640,11 @@ export class CachedMerklePatriciaTree<K, V> extends MerklePatriciaTree<K, V> {
     }
   }
 
+  /**
+   * getFromCache returns the value corresponding to the key using nodeMap
+   * @param key : key to get from the CachedMerklePatriciaTree
+   * @param nodeMap : Bag of recent MerklePatriciaTree nodes from the client
+   */
   getFromCache(key: K, nodeMap: Map<bigint, MerklePatriciaTreeNode<V>>): V
       |null {
     const convKey = this.options.keyConverter!(key);
@@ -1639,6 +1653,14 @@ export class CachedMerklePatriciaTree<K, V> extends MerklePatriciaTree<K, V> {
     return ret;
   }
 
+  /**
+   * Given the rlpEncoded serialization of the node and a valueConverter
+   * function, rlpToMerkleNode returns the decoded MerklePatriciaTreeNode<V>
+   * @param raw : rlpEncoded serialized MerklePatriciaNode<V>
+   * @param valueConverter : Converts a Buffer value into type V
+   *
+   * @returns MerkleNode : Decoded MerklePatriciaNode<V>
+   */
   rlpToMerkleNode(raw: Buffer, valueConverter: (val: Buffer) => V):
       MerklePatriciaTreeNode<V> {
     const hash = RlpDecode(raw) as RlpList;
