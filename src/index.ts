@@ -1699,6 +1699,9 @@ export class CachedMerklePatriciaTree<K, V> extends MerklePatriciaTree<K, V> {
       // BranchNode
       const ret = new BranchNode<V>();
       ret.value = valueConverter(hash[16] as Buffer);
+      if (hash[16].length === 0) {
+        ret.value = null;
+      }
       for (let bIndex = 0; bIndex < 16; bIndex++) {
         const branch = hash[bIndex];
         if (!branch.length) {

@@ -4,7 +4,8 @@ import * as chai from 'chai';
 import * as path from 'path';
 import {RlpEncode, RlpList} from 'rlp-stream';
 
-import {MerklePatriciaTree, verifyWitness} from './index';
+import {BranchNode, CachedMerklePatriciaTree, ExtensionNode, HashNode, LeafNode, MerklePatriciaTree, MerklePatriciaTreeOptions, NullNode, verifyWitness} from './index';
+
 const utils = require('ethereumjs-util');
 
 
@@ -724,4 +725,75 @@ describe('Try batchCOW operations', () => {
        verifyWitness(root, Buffer.from('a'), tree.rlpSerializeWitness(w[0]));
        verifyWitness(root, Buffer.from('b'), tree.rlpSerializeWitness(w[1]));
      });
+});
+
+describe('Test getFromCache and rlpToMerkleNode', async () => {
+  const cache = new CachedMerklePatriciaTree<Buffer, Buffer>();
+
+  it('test rlpToMerkleNode of NullNode', async () => {
+    const nRaw = cache.rootNode.getRlpNodeEncoding(
+        cache.options as {} as MerklePatriciaTreeOptions<{}, Buffer>);
+    const nNode = cache.rlpToMerkleNode(nRaw, (val) => val);
+    should.equal(nNode instanceof NullNode, true);
+  });
+
+  it('test rlpToMerkleNode of LeafNode', async () => {
+    cache.put(Buffer.from('abcd'), Buffer.from('abcd'));
+    const lRaw = cache.rootNode.getRlpNodeEncoding(
+        cache.options as {} as MerklePatriciaTreeOptions<{}, Buffer>);
+    const lNode = cache.rlpToMerkleNode(lRaw, (val) => val);
+    should.equal(lNode instanceof LeafNode, true);
+    should.exist(lNode.value);
+    (lNode.value!).should.deep.equal(cache.rootNode.value);
+  });
+
+  it('test rlpToMerkleNode of ExtensionNode and BranchNode', async () => {
+    cache.put(Buffer.from('abcx'), Buffer.from('abcx'));
+    const eRaw = cache.rootNode.getRlpNodeEncoding(
+        cache.options as {} as MerklePatriciaTreeOptions<{}, Buffer>);
+    const eNode = cache.rlpToMerkleNode(eRaw, (val) => val);
+    should.equal(eNode instanceof ExtensionNode, true);
+    if (eNode instanceof ExtensionNode) {
+      should.equal(eNode.nextNode instanceof BranchNode, true);
+    }
+  });
+
+  it('test rlpToMerkleNode HashNode creation', async () => {
+    cache.put(Buffer.from('xxxx'), Buffer.from('xxxx'));
+    const bRaw = cache.rootNode.getRlpNodeEncoding(
+        cache.options as {} as MerklePatriciaTreeOptions<{}, Buffer>);
+    const bNode = cache.rlpToMerkleNode(bRaw, (val) => val);
+    should.equal(bNode instanceof BranchNode, true);
+    if (bNode instanceof BranchNode && cache.rootNode instanceof BranchNode) {
+      should.not.exist(bNode.value);
+      should.not.exist(cache.rootNode.value);
+      for (let branchIdx = 0; branchIdx < 16; branchIdx += 1) {
+        if (cache.rootNode.branches[branchIdx]) {
+          if (bNode.branches[branchIdx] instanceof HashNode) {
+            const bHash = bNode.branches[branchIdx].hash(
+                cache.options as {} as MerklePatriciaTreeOptions<{}, Buffer>);
+            const rHash = cache.rootNode.branches[branchIdx].hash(
+                cache.options as {} as MerklePatriciaTreeOptions<{}, Buffer>);
+            should.equal(bHash.toString(16), rHash.toString(16));
+          } else {
+            (bNode.branches[branchIdx].nibbles)
+                .should.deep.equal(cache.rootNode.branches[branchIdx].nibbles);
+          }
+        } else {
+          should.not.exist(cache.rootNode.branches[branchIdx]);
+          should.not.exist(bNode.branches[branchIdx]);
+        }
+      }
+    }
+  });
+
+  it('Test getFromCache with empty nodeMap', async () => {
+    const nodeMap = new Map();
+    const v1 = cache.getFromCache(Buffer.from('abcd'), nodeMap);
+    const v2 = cache.getFromCache(Buffer.from('abcx'), nodeMap);
+    const v3 = cache.getFromCache(Buffer.from('xxxx'), nodeMap);
+    v1!.should.deep.equal(Buffer.from('abcd'));
+    v2!.should.deep.equal(Buffer.from('abcx'));
+    v3!.should.deep.equal(Buffer.from('xxxx'));
+  });
 });
