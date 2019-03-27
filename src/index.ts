@@ -1594,7 +1594,7 @@ export class CachedMerklePatriciaTree<K, V> extends MerklePatriciaTree<K, V> {
     return;
   }
 
-  _getRecursive(
+  private _getRecursive(
       key: number[], nodeMap: Map<bigint, MerklePatriciaTreeNode<V>>,
       node: MerklePatriciaTreeNode<V>): V|null {
     if (node instanceof BranchNode) {
