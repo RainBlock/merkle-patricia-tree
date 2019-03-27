@@ -1,7 +1,7 @@
 import {options} from 'benchmark';
-import {toBufferBE} from 'bigint-buffer';
+import {toBigIntBE, toBufferBE} from 'bigint-buffer';
 import {hashAsBigInt, hashAsBuffer, HashType} from 'bigint-hash';
-import {RlpDecode, RlpEncode, RlpItem} from 'rlp-stream';
+import {RlpDecode, RlpEncode, RlpItem, RlpList} from 'rlp-stream';
 
 const originalNode = require('./trieNode');
 const matchingNibbleLength = require('./util').matchingNibbleLength;
@@ -298,6 +298,17 @@ export abstract class MerklePatriciaTreeNode<V> {
       }
     }
     return out;
+  }
+
+  static fromBuffer(out: Buffer): {nibbles: number[], prefix: number} {
+    const nibbles = this.bufferToNibbles(out);
+    const first = nibbles[0];
+    if (first % 2) {
+      nibbles.splice(0, 1);
+    } else {
+      nibbles.splice(0, 2);
+    }
+    return {nibbles, prefix: first};
   }
 }
 
@@ -1581,6 +1592,108 @@ export class CachedMerklePatriciaTree<K, V> extends MerklePatriciaTree<K, V> {
               this.options as {} as MerklePatriciaTreeOptions<{}, Buffer>));
     }
     return;
+  }
+
+  _getRecursive(
+      key: number[], nodeMap: Map<bigint, MerklePatriciaTreeNode<V>>,
+      node: MerklePatriciaTreeNode<V>): V|null {
+    if (node instanceof BranchNode) {
+      const nib = key.shift();
+      if (!nib) {
+        return node.value;
+      }
+      const ret = this._getRecursive(key, nodeMap, node.branches[nib]);
+      return ret;
+    } else if (node instanceof ExtensionNode) {
+      if (matchingNibbleLength(node.nibbles, key) !== node.nibbles.length) {
+        throw new Error('Key Mismatch at ExtensionNode');
+      }
+      key.splice(0, node.nibbles.length);
+      const ret = this._getRecursive(key, nodeMap, node.nextNode);
+      return ret;
+    } else if (node instanceof LeafNode) {
+      if (matchingNibbleLength(node.nibbles, key) !== node.nibbles.length) {
+        throw new Error('Key Mismatch at LeafNode');
+      }
+      return node.value;
+    } else if (node instanceof HashNode) {
+      const hash = node.nodeHash;
+      const mappedNode = nodeMap.get(hash);
+      if (!mappedNode) {
+        throw new Error('nodeMap too stale');
+      }
+      const ret = this._getRecursive(key, nodeMap, mappedNode);
+      return ret;
+    } else if (NullNode) {
+      return null;
+    } else {
+      throw new Error('Unexpected node type');
+    }
+  }
+
+  getFromCache(key: K, nodeMap: Map<bigint, MerklePatriciaTreeNode<V>>): V
+      |null {
+    const convKey = this.options.keyConverter!(key);
+    const keyNibbles = MerklePatriciaTreeNode.bufferToNibbles(convKey);
+    const ret = this._getRecursive(keyNibbles, nodeMap, this.rootNode);
+    return ret;
+  }
+
+  rlpToMerkleNode(raw: Buffer, valueConverter: (val: Buffer) => V):
+      MerklePatriciaTreeNode<V> {
+    const hash = RlpDecode(raw) as RlpList;
+    if (hash.length === 0) {
+      // NullNode
+      const ret = new NullNode<V>();
+      return ret;
+
+    } else if (hash.length === 2) {
+      // LeafNode or ExtensionNode
+      const decodeHash = MerklePatriciaTreeNode.fromBuffer(hash[0] as Buffer);
+      if (decodeHash.prefix === 2 || decodeHash.prefix === 3) {
+        // LeafNode
+        const val = hash[1];
+        const ret = new LeafNode<V>(
+            decodeHash.nibbles, valueConverter(hash[1] as Buffer));
+        return ret;
+      } else if (decodeHash.prefix === 0 || decodeHash.prefix === 1) {
+        // ExtensionNode
+        if (hash[1] instanceof Buffer && hash[1].length === 32) {
+          const next = new HashNode<V>(toBigIntBE(hash[1] as Buffer));
+          const ret = new ExtensionNode<V>(decodeHash.nibbles, next);
+          return ret;
+
+        } else {
+          const rlp = RlpEncode(hash[1]);
+          const next = this.rlpToMerkleNode(rlp, valueConverter);
+          const ret = new ExtensionNode<V>(decodeHash.nibbles, next);
+          return ret;
+        }
+      } else {
+        throw new Error('Invalid prefix: ' + decodeHash.prefix.toString);
+      }
+
+    } else if (hash.length === 17) {
+      // BranchNode
+      const ret = new BranchNode<V>();
+      ret.value = valueConverter(hash[16] as Buffer);
+      for (let bIndex = 0; bIndex < 16; bIndex++) {
+        const branch = hash[bIndex];
+        if (!branch.length) {
+          continue;
+        }
+        if (branch instanceof Buffer && branch.length === 32) {
+          ret.branches[bIndex] = new HashNode<V>(toBigIntBE(branch));
+        } else {
+          ret.branches[bIndex] =
+              this.rlpToMerkleNode(RlpEncode(branch), valueConverter);
+        }
+      }
+      return ret;
+
+    } else {
+      throw new Error('Unable to decode node from rlp');
+    }
   }
 
   verifyAndAddWitness(root: Buffer, key: K, witness: Witness<V>) {
