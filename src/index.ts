@@ -1535,8 +1535,9 @@ export class CachedMerklePatriciaTree<K, V> extends MerklePatriciaTree<K, V> {
   // depth 1.
   private maxCacheDepth: number;
 
-  constructor(depth = 6) {
-    super();
+  constructor(depth = 6,
+      options: MerklePatriciaTreeOptions<K, V> = {putCanDelete: true}) {
+    super(options);
     // Set the default maxCacheDepth to 6
     this.maxCacheDepth = depth;
   }
