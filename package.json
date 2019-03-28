@@ -46,7 +46,8 @@
     "readable-stream": "^2.0.0",
     "rlp": "^2.0.0",
     "rlp-stream": "^0.1.0",
-    "semaphore": ">=1.0.1"
+    "semaphore": ">=1.0.1",
+    "ethereumjs-util": "^5.2.0"
   },
   "devDependencies": {
     "@types/benchmark": "^1.0.31",
@@ -56,7 +57,6 @@
     "benchmark": "^2.1.4",
     "chai": "^4.1.2",
     "coveralls": "^3.0.2",
-    "ethereumjs-util": "^5.2.0",
     "gts": "^0.5.4",
     "istanbul": "^0.4.1",
     "karma": "^3.0.0",
