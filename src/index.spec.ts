@@ -728,15 +728,18 @@ describe('Try batchCOW operations', () => {
 });
 
 describe('Test getFromCache and rlpToMerkleNode', async () => {
-  const cache = new CachedMerklePatriciaTree<Buffer, Buffer>(1);
+  const cache =
+      new CachedMerklePatriciaTree<Buffer, Buffer>({putCanDelete: false}, 1);
 
   it('test cache with MerklePatriciaTreeOptions', async () => {
     const tree: CachedMerklePatriciaTree<string, string> =
-        new CachedMerklePatriciaTree<string, string>(1, {
-          keyConverter: (k) => Buffer.from(k),
-          valueConverter: (v) => Buffer.from(v),
-          putCanDelete: false
-        });
+        new CachedMerklePatriciaTree<string, string>(
+            {
+              keyConverter: (k) => Buffer.from(k),
+              valueConverter: (v) => Buffer.from(v),
+              putCanDelete: false
+            },
+            1);
     tree.put('abcd', 'abcd');
     tree.rootNode.nibbles.should.deep.equal([6, 1, 6, 2, 6, 3, 6, 4]);
     should.exist(tree.get('abcd').value);
