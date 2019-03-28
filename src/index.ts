@@ -1,4 +1,3 @@
-import {options} from 'benchmark';
 import {toBigIntBE, toBufferBE} from 'bigint-buffer';
 import {hashAsBigInt, hashAsBuffer, HashType} from 'bigint-hash';
 import {RlpDecode, RlpEncode, RlpItem, RlpList} from 'rlp-stream';
@@ -1516,8 +1515,7 @@ export function verifyStaleWitness(
   for (const [idx, witNode] of result.stack.entries()) {
     let recentHash: bigint;
     recentWitness.proof.push(witNode);
-    recentHash =
-        witNode.hash(options as {} as MerklePatriciaTreeOptions<{}, Buffer>);
+    recentHash = witNode.hash({} as MerklePatriciaTreeOptions<{}, Buffer>);
     for (let j = 0; j < oldNodeHashes.length; j++) {
       if (recentHash === oldNodeHashes[j]) {
         const curWit = recentState.rlpSerializeWitness(recentWitness);
