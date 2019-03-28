@@ -728,7 +728,7 @@ describe('Try batchCOW operations', () => {
 });
 
 describe('Test getFromCache and rlpToMerkleNode', async () => {
-  const cache = new CachedMerklePatriciaTree<Buffer, Buffer>();
+  const cache = new CachedMerklePatriciaTree<Buffer, Buffer>(1);
 
   it('test rlpToMerkleNode of NullNode', async () => {
     const nRaw = cache.rootNode.getRlpNodeEncoding(
@@ -789,6 +789,38 @@ describe('Test getFromCache and rlpToMerkleNode', async () => {
 
   it('Test getFromCache with empty nodeMap', async () => {
     const nodeMap = new Map();
+    const v1 = cache.getFromCache(Buffer.from('abcd'), nodeMap);
+    const v2 = cache.getFromCache(Buffer.from('abcx'), nodeMap);
+    const v3 = cache.getFromCache(Buffer.from('xxxx'), nodeMap);
+    v1!.should.deep.equal(Buffer.from('abcd'));
+    v2!.should.deep.equal(Buffer.from('abcx'));
+    v3!.should.deep.equal(Buffer.from('xxxx'));
+  });
+
+  it('Test getFromCache with non-empty nodeMap', async () => {
+    const nodeMap = new Map();
+    if (cache.rootNode instanceof BranchNode) {
+      for (const branch of (cache.rootNode).branches) {
+        if (branch) {
+          const node = branch.getRlpNodeEncoding(
+              cache.options as {} as MerklePatriciaTreeOptions<{}, Buffer>);
+          const hash = branch.hash(
+              cache.options as {} as MerklePatriciaTreeOptions<{}, Buffer>);
+          const mappedNode = cache.rlpToMerkleNode(node, (val) => val);
+          nodeMap.set(hash, mappedNode);
+        }
+      }
+      const branch6 = cache.rootNode.branches[6];
+      if (branch6 instanceof ExtensionNode) {
+        const node2 = branch6.nextNode.getRlpNodeEncoding(
+            cache.options as {} as MerklePatriciaTreeOptions<{}, Buffer>);
+        const hash2 = branch6.nextNode.hash(
+            cache.options as {} as MerklePatriciaTreeOptions<{}, Buffer>);
+        const mapNode2 = cache.rlpToMerkleNode(node2, (val) => val);
+        nodeMap.set(hash2, mapNode2);
+      }
+    }
+    cache.pruneStateCache();
     const v1 = cache.getFromCache(Buffer.from('abcd'), nodeMap);
     const v2 = cache.getFromCache(Buffer.from('abcx'), nodeMap);
     const v3 = cache.getFromCache(Buffer.from('xxxx'), nodeMap);
