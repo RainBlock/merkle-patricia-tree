@@ -727,6 +727,29 @@ describe('Try batchCOW operations', () => {
      });
 });
 
+describe('test cached merkle tree', async () => {
+  it('should be able to deal with ethereum accounts', async () => {
+    const tree = new CachedMerklePatriciaTree();
+    const data = require('../test/initial_accounts.json') as string[];
+    const value = Buffer.from('value');
+
+    // Create a tree with a reasonable depth
+    data.forEach(s => {
+      tree.put(Buffer.from(s, 'hex'), value);
+    });
+
+    // This account cannot be inserted and re-read
+    tree.put(
+        Buffer.from('2910543af39aba0cd09dbb2d50200b3e800a63d2', 'hex'), value);
+
+    const result = tree.getFromCache(
+        Buffer.from('2910543af39aba0cd09dbb2d50200b3e800a63d2', 'hex'),
+        new Map());
+    should.not.equal(null, result);
+    result!.should.deep.equal(value);
+  });
+});
+
 describe('Test getFromCache and rlpToMerkleNode', async () => {
   const cache = new CachedMerklePatriciaTree<Buffer, Buffer>(1);
 
