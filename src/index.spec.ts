@@ -738,10 +738,16 @@ describe('test cached merkle tree', async () => {
       tree.put(Buffer.from(s, 'hex'), value);
     });
 
-    // This account cannot be inserted and re-read
+    // This account cannot be inserted and re-read using getFromCache
     tree.put(
         Buffer.from('2910543af39aba0cd09dbb2d50200b3e800a63d2', 'hex'), value);
 
+    // This seems to return the correct witness
+    const witness = tree.get(
+        Buffer.from('2910543af39aba0cd09dbb2d50200b3e800a63d2', 'hex'));
+    should.not.equal(null, witness.value);
+
+    // But this does not, even though all nodes are present
     const result = tree.getFromCache(
         Buffer.from('2910543af39aba0cd09dbb2d50200b3e800a63d2', 'hex'),
         new Map());
