@@ -1618,7 +1618,7 @@ export class CachedMerklePatriciaTree<K, V> extends MerklePatriciaTree<K, V> {
     if (node instanceof BranchNode) {
       // If key ends at a BranchNode; return the BranchNode value
       const nib = key.shift();
-      if (!nib) {
+      if (nib === undefined) {
         return node.value;
       }
       // Search down the appropriate branch of the BranchNode
