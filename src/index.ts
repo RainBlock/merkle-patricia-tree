@@ -1533,14 +1533,12 @@ export function verifyStaleWitness(
 export class CachedMerklePatriciaTree<K, V> extends MerklePatriciaTree<K, V> {
   // Maximum depth of the cached MerklePatriciaTree with rootNode is at a
   // depth 1.
-  private maxCacheDepth: number;
 
   constructor(
       options: MerklePatriciaTreeOptions<K, V> = {putCanDelete: true},
-      depth = 6) {
+      public maxCacheDepth = 6) {
     super(options);
     // Set the default maxCacheDepth to 6
-    this.maxCacheDepth = depth;
   }
 
   /** Returns the maxCacheDepth */
