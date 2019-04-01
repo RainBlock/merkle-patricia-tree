@@ -104,9 +104,10 @@
 								<li class="tsd-kind-constructor tsd-parent-kind-class tsd-is-overwrite"><a href="cachedmerklepatriciatree.html#constructor" class="tsd-kind-icon">constructor</a></li>
 							</ul>
 						</section>
-						<section class="tsd-index-section tsd-is-inherited">
+						<section class="tsd-index-section ">
 							<h3>Properties</h3>
 							<ul class="tsd-index-list">
+								<li class="tsd-kind-property tsd-parent-kind-class"><a href="cachedmerklepatriciatree.html#maxcachedepth" class="tsd-kind-icon">max<wbr>Cache<wbr>Depth</a></li>
 								<li class="tsd-kind-property tsd-parent-kind-class tsd-is-inherited"><a href="cachedmerklepatriciatree.html#options" class="tsd-kind-icon">options</a></li>
 								<li class="tsd-kind-property tsd-parent-kind-class tsd-is-inherited"><a href="cachedmerklepatriciatree.html#rootnode" class="tsd-kind-icon">root<wbr>Node</a></li>
 							</ul>
@@ -148,20 +149,23 @@
 					<a name="constructor" class="tsd-anchor"></a>
 					<h3>constructor</h3>
 					<ul class="tsd-signatures tsd-kind-constructor tsd-parent-kind-class tsd-is-overwrite">
-						<li class="tsd-signature tsd-kind-icon">new <wbr>Cached<wbr>Merkle<wbr>Patricia<wbr>Tree<span class="tsd-signature-symbol">(</span>depth<span class="tsd-signature-symbol">?: </span><span class="tsd-signature-type">number</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><a href="cachedmerklepatriciatree.html" class="tsd-signature-type">CachedMerklePatriciaTree</a></li>
+						<li class="tsd-signature tsd-kind-icon">new <wbr>Cached<wbr>Merkle<wbr>Patricia<wbr>Tree<span class="tsd-signature-symbol">(</span>options<span class="tsd-signature-symbol">?: </span><a href="../interfaces/merklepatriciatreeoptions.html" class="tsd-signature-type">MerklePatriciaTreeOptions</a><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">K</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">V</span><span class="tsd-signature-symbol">&gt;</span>, maxCacheDepth<span class="tsd-signature-symbol">?: </span><span class="tsd-signature-type">number</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><a href="cachedmerklepatriciatree.html" class="tsd-signature-type">CachedMerklePatriciaTree</a></li>
 					</ul>
 					<ul class="tsd-descriptions">
 						<li class="tsd-description">
 							<aside class="tsd-sources">
 								<p>Overrides <a href="merklepatriciatree.html">MerklePatriciaTree</a>.<a href="merklepatriciatree.html#constructor">constructor</a></p>
 								<ul>
-									<li>Defined in <a href="https://github.com/RainBlock/merkle-patricia-tree/blob/6216394/src/index.ts#L1536">index.ts:1536</a></li>
+									<li>Defined in <a href="https://github.com/RainBlock/merkle-patricia-tree/blob/0903369/src/index.ts#L1533">index.ts:1533</a></li>
 								</ul>
 							</aside>
 							<h4 class="tsd-parameters-title">Parameters</h4>
 							<ul class="tsd-parameters">
 								<li>
-									<h5><span class="tsd-flag ts-flagDefault value">Default value</span> depth: <span class="tsd-signature-type">number</span><span class="tsd-signature-symbol"> =&nbsp;6</span></h5>
+									<h5><span class="tsd-flag ts-flagDefault value">Default value</span> options: <a href="../interfaces/merklepatriciatreeoptions.html" class="tsd-signature-type">MerklePatriciaTreeOptions</a><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">K</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">V</span><span class="tsd-signature-symbol">&gt;</span><span class="tsd-signature-symbol"> =&nbsp;{putCanDelete: true}</span></h5>
+								</li>
+								<li>
+									<h5><span class="tsd-flag ts-flagDefault value">Default value</span> maxCacheDepth: <span class="tsd-signature-type">number</span><span class="tsd-signature-symbol"> =&nbsp;6</span></h5>
 								</li>
 							</ul>
 							<h4 class="tsd-returns-title">Returns <a href="cachedmerklepatriciatree.html" class="tsd-signature-type">CachedMerklePatriciaTree</a></h4>
@@ -169,8 +173,18 @@
 					</ul>
 				</section>
 			</section>
-			<section class="tsd-panel-group tsd-member-group tsd-is-inherited">
+			<section class="tsd-panel-group tsd-member-group ">
 				<h2>Properties</h2>
+				<section class="tsd-panel tsd-member tsd-kind-property tsd-parent-kind-class">
+					<a name="maxcachedepth" class="tsd-anchor"></a>
+					<h3>max<wbr>Cache<wbr>Depth</h3>
+					<div class="tsd-signature tsd-kind-icon">max<wbr>Cache<wbr>Depth<span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">number</span></div>
+					<aside class="tsd-sources">
+						<ul>
+							<li>Defined in <a href="https://github.com/RainBlock/merkle-patricia-tree/blob/0903369/src/index.ts#L1539">index.ts:1539</a></li>
+						</ul>
+					</aside>
+				</section>
 				<section class="tsd-panel tsd-member tsd-kind-property tsd-parent-kind-class tsd-is-inherited">
 					<a name="options" class="tsd-anchor"></a>
 					<h3>options</h3>
@@ -178,7 +192,7 @@
 					<aside class="tsd-sources">
 						<p>Inherited from <a href="merklepatriciatree.html">MerklePatriciaTree</a>.<a href="merklepatriciatree.html#options">options</a></p>
 						<ul>
-							<li>Defined in <a href="https://github.com/RainBlock/merkle-patricia-tree/blob/6216394/src/index.ts#L746">index.ts:746</a></li>
+							<li>Defined in <a href="https://github.com/RainBlock/merkle-patricia-tree/blob/0903369/src/index.ts#L746">index.ts:746</a></li>
 						</ul>
 					</aside>
 				</section>
@@ -189,7 +203,7 @@
 					<aside class="tsd-sources">
 						<p>Inherited from <a href="merklepatriciatree.html">MerklePatriciaTree</a>.<a href="merklepatriciatree.html#rootnode">rootNode</a></p>
 						<ul>
-							<li>Defined in <a href="https://github.com/RainBlock/merkle-patricia-tree/blob/6216394/src/index.ts#L723">index.ts:723</a></li>
+							<li>Defined in <a href="https://github.com/RainBlock/merkle-patricia-tree/blob/0903369/src/index.ts#L723">index.ts:723</a></li>
 						</ul>
 					</aside>
 					<div class="tsd-comment tsd-typography">
@@ -212,7 +226,7 @@
 							<aside class="tsd-sources">
 								<p>Inherited from <a href="merklepatriciatree.html">MerklePatriciaTree</a>.<a href="merklepatriciatree.html#root">root</a></p>
 								<ul>
-									<li>Defined in <a href="https://github.com/RainBlock/merkle-patricia-tree/blob/6216394/src/index.ts#L729">index.ts:729</a></li>
+									<li>Defined in <a href="https://github.com/RainBlock/merkle-patricia-tree/blob/0903369/src/index.ts#L729">index.ts:729</a></li>
 								</ul>
 							</aside>
 							<div class="tsd-comment tsd-typography">
@@ -236,7 +250,7 @@
 							<aside class="tsd-sources">
 								<p>Inherited from <a href="merklepatriciatree.html">MerklePatriciaTree</a>.<a href="merklepatriciatree.html#roothash">rootHash</a></p>
 								<ul>
-									<li>Defined in <a href="https://github.com/RainBlock/merkle-patricia-tree/blob/6216394/src/index.ts#L740">index.ts:740</a></li>
+									<li>Defined in <a href="https://github.com/RainBlock/merkle-patricia-tree/blob/0903369/src/index.ts#L740">index.ts:740</a></li>
 								</ul>
 							</aside>
 							<div class="tsd-comment tsd-typography">
@@ -263,7 +277,7 @@
 							<aside class="tsd-sources">
 								<p>Inherited from <a href="merklepatriciatree.html">MerklePatriciaTree</a>.<a href="merklepatriciatree.html#batch">batch</a></p>
 								<ul>
-									<li>Defined in <a href="https://github.com/RainBlock/merkle-patricia-tree/blob/6216394/src/index.ts#L1213">index.ts:1213</a></li>
+									<li>Defined in <a href="https://github.com/RainBlock/merkle-patricia-tree/blob/0903369/src/index.ts#L1213">index.ts:1213</a></li>
 								</ul>
 							</aside>
 							<div class="tsd-comment tsd-typography">
@@ -306,7 +320,7 @@
 							<aside class="tsd-sources">
 								<p>Inherited from <a href="merklepatriciatree.html">MerklePatriciaTree</a>.<a href="merklepatriciatree.html#batchcow">batchCOW</a></p>
 								<ul>
-									<li>Defined in <a href="https://github.com/RainBlock/merkle-patricia-tree/blob/6216394/src/index.ts#L1233">index.ts:1233</a></li>
+									<li>Defined in <a href="https://github.com/RainBlock/merkle-patricia-tree/blob/0903369/src/index.ts#L1233">index.ts:1233</a></li>
 								</ul>
 							</aside>
 							<div class="tsd-comment tsd-typography">
@@ -347,7 +361,7 @@
 							<aside class="tsd-sources">
 								<p>Inherited from <a href="merklepatriciatree.html">MerklePatriciaTree</a>.<a href="merklepatriciatree.html#batchget">batchGet</a></p>
 								<ul>
-									<li>Defined in <a href="https://github.com/RainBlock/merkle-patricia-tree/blob/6216394/src/index.ts#L1085">index.ts:1085</a></li>
+									<li>Defined in <a href="https://github.com/RainBlock/merkle-patricia-tree/blob/0903369/src/index.ts#L1085">index.ts:1085</a></li>
 								</ul>
 							</aside>
 							<div class="tsd-comment tsd-typography">
@@ -380,7 +394,7 @@
 							<aside class="tsd-sources">
 								<p>Inherited from <a href="merklepatriciatree.html">MerklePatriciaTree</a>.<a href="merklepatriciatree.html#del">del</a></p>
 								<ul>
-									<li>Defined in <a href="https://github.com/RainBlock/merkle-patricia-tree/blob/6216394/src/index.ts#L1099">index.ts:1099</a></li>
+									<li>Defined in <a href="https://github.com/RainBlock/merkle-patricia-tree/blob/0903369/src/index.ts#L1099">index.ts:1099</a></li>
 								</ul>
 							</aside>
 							<div class="tsd-comment tsd-typography">
@@ -412,7 +426,7 @@
 							<aside class="tsd-sources">
 								<p>Inherited from <a href="merklepatriciatree.html">MerklePatriciaTree</a>.<a href="merklepatriciatree.html#get">get</a></p>
 								<ul>
-									<li>Defined in <a href="https://github.com/RainBlock/merkle-patricia-tree/blob/6216394/src/index.ts#L1072">index.ts:1072</a></li>
+									<li>Defined in <a href="https://github.com/RainBlock/merkle-patricia-tree/blob/0903369/src/index.ts#L1072">index.ts:1072</a></li>
 								</ul>
 							</aside>
 							<div class="tsd-comment tsd-typography">
@@ -445,7 +459,7 @@
 						<li class="tsd-description">
 							<aside class="tsd-sources">
 								<ul>
-									<li>Defined in <a href="https://github.com/RainBlock/merkle-patricia-tree/blob/6216394/src/index.ts#L1673">index.ts:1673</a></li>
+									<li>Defined in <a href="https://github.com/RainBlock/merkle-patricia-tree/blob/0903369/src/index.ts#L1673">index.ts:1673</a></li>
 								</ul>
 							</aside>
 							<div class="tsd-comment tsd-typography">
@@ -487,7 +501,7 @@
 							<aside class="tsd-sources">
 								<p>Inherited from <a href="merklepatriciatree.html">MerklePatriciaTree</a>.<a href="merklepatriciatree.html#getnodecopy">getNodeCopy</a></p>
 								<ul>
-									<li>Defined in <a href="https://github.com/RainBlock/merkle-patricia-tree/blob/6216394/src/index.ts#L803">index.ts:803</a></li>
+									<li>Defined in <a href="https://github.com/RainBlock/merkle-patricia-tree/blob/0903369/src/index.ts#L803">index.ts:803</a></li>
 								</ul>
 							</aside>
 							<div class="tsd-comment tsd-typography">
@@ -518,7 +532,7 @@
 						<li class="tsd-description">
 							<aside class="tsd-sources">
 								<ul>
-									<li>Defined in <a href="https://github.com/RainBlock/merkle-patricia-tree/blob/6216394/src/index.ts#L1545">index.ts:1545</a></li>
+									<li>Defined in <a href="https://github.com/RainBlock/merkle-patricia-tree/blob/0903369/src/index.ts#L1545">index.ts:1545</a></li>
 								</ul>
 							</aside>
 							<div class="tsd-comment tsd-typography">
@@ -541,7 +555,7 @@
 							<aside class="tsd-sources">
 								<p>Inherited from <a href="merklepatriciatree.html">MerklePatriciaTree</a>.<a href="merklepatriciatree.html#insert">insert</a></p>
 								<ul>
-									<li>Defined in <a href="https://github.com/RainBlock/merkle-patricia-tree/blob/6216394/src/index.ts#L897">index.ts:897</a></li>
+									<li>Defined in <a href="https://github.com/RainBlock/merkle-patricia-tree/blob/0903369/src/index.ts#L897">index.ts:897</a></li>
 								</ul>
 							</aside>
 							<div class="tsd-comment tsd-typography">
@@ -585,7 +599,7 @@
 							<aside class="tsd-sources">
 								<p>Inherited from <a href="merklepatriciatree.html">MerklePatriciaTree</a>.<a href="merklepatriciatree.html#multisearch">multiSearch</a></p>
 								<ul>
-									<li>Defined in <a href="https://github.com/RainBlock/merkle-patricia-tree/blob/6216394/src/index.ts#L882">index.ts:882</a></li>
+									<li>Defined in <a href="https://github.com/RainBlock/merkle-patricia-tree/blob/0903369/src/index.ts#L882">index.ts:882</a></li>
 								</ul>
 							</aside>
 							<div class="tsd-comment tsd-typography">
@@ -628,7 +642,7 @@
 						<li class="tsd-description">
 							<aside class="tsd-sources">
 								<ul>
-									<li>Defined in <a href="https://github.com/RainBlock/merkle-patricia-tree/blob/6216394/src/index.ts#L1555">index.ts:1555</a></li>
+									<li>Defined in <a href="https://github.com/RainBlock/merkle-patricia-tree/blob/0903369/src/index.ts#L1555">index.ts:1555</a></li>
 								</ul>
 							</aside>
 							<div class="tsd-comment tsd-typography">
@@ -667,7 +681,7 @@
 							<aside class="tsd-sources">
 								<p>Inherited from <a href="merklepatriciatree.html">MerklePatriciaTree</a>.<a href="merklepatriciatree.html#put">put</a></p>
 								<ul>
-									<li>Defined in <a href="https://github.com/RainBlock/merkle-patricia-tree/blob/6216394/src/index.ts#L766">index.ts:766</a></li>
+									<li>Defined in <a href="https://github.com/RainBlock/merkle-patricia-tree/blob/0903369/src/index.ts#L766">index.ts:766</a></li>
 								</ul>
 							</aside>
 							<div class="tsd-comment tsd-typography">
@@ -706,7 +720,7 @@
 							<aside class="tsd-sources">
 								<p>Inherited from <a href="merklepatriciatree.html">MerklePatriciaTree</a>.<a href="merklepatriciatree.html#rlpserializewitness">rlpSerializeWitness</a></p>
 								<ul>
-									<li>Defined in <a href="https://github.com/RainBlock/merkle-patricia-tree/blob/6216394/src/index.ts#L1290">index.ts:1290</a></li>
+									<li>Defined in <a href="https://github.com/RainBlock/merkle-patricia-tree/blob/0903369/src/index.ts#L1290">index.ts:1290</a></li>
 								</ul>
 							</aside>
 							<div class="tsd-comment tsd-typography">
@@ -739,7 +753,7 @@
 						<li class="tsd-description">
 							<aside class="tsd-sources">
 								<ul>
-									<li>Defined in <a href="https://github.com/RainBlock/merkle-patricia-tree/blob/6216394/src/index.ts#L1696">index.ts:1696</a></li>
+									<li>Defined in <a href="https://github.com/RainBlock/merkle-patricia-tree/blob/0903369/src/index.ts#L1696">index.ts:1696</a></li>
 								</ul>
 							</aside>
 							<div class="tsd-comment tsd-typography">
@@ -797,7 +811,7 @@
 							<aside class="tsd-sources">
 								<p>Inherited from <a href="merklepatriciatree.html">MerklePatriciaTree</a>.<a href="merklepatriciatree.html#search">search</a></p>
 								<ul>
-									<li>Defined in <a href="https://github.com/RainBlock/merkle-patricia-tree/blob/6216394/src/index.ts#L1256">index.ts:1256</a></li>
+									<li>Defined in <a href="https://github.com/RainBlock/merkle-patricia-tree/blob/0903369/src/index.ts#L1256">index.ts:1256</a></li>
 								</ul>
 							</aside>
 							<div class="tsd-comment tsd-typography">
@@ -834,7 +848,7 @@
 						<li class="tsd-description">
 							<aside class="tsd-sources">
 								<ul>
-									<li>Defined in <a href="https://github.com/RainBlock/merkle-patricia-tree/blob/6216394/src/index.ts#L1756">index.ts:1756</a></li>
+									<li>Defined in <a href="https://github.com/RainBlock/merkle-patricia-tree/blob/0903369/src/index.ts#L1756">index.ts:1756</a></li>
 								</ul>
 							</aside>
 							<h4 class="tsd-parameters-title">Parameters</h4>
@@ -875,6 +889,9 @@
 						<ul>
 							<li class=" tsd-kind-constructor tsd-parent-kind-class tsd-is-overwrite">
 								<a href="cachedmerklepatriciatree.html#constructor" class="tsd-kind-icon">constructor</a>
+							</li>
+							<li class=" tsd-kind-property tsd-parent-kind-class">
+								<a href="cachedmerklepatriciatree.html#maxcachedepth" class="tsd-kind-icon">max<wbr>Cache<wbr>Depth</a>
 							</li>
 							<li class=" tsd-kind-property tsd-parent-kind-class tsd-is-inherited">
 								<a href="cachedmerklepatriciatree.html#options" class="tsd-kind-icon">options</a>
