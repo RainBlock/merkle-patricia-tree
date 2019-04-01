@@ -727,6 +727,36 @@ describe('Try batchCOW operations', () => {
      });
 });
 
+describe('test cached merkle tree', async () => {
+  it('should be able to deal with ethereum accounts', async () => {
+    const tree = new CachedMerklePatriciaTree();
+    const data = require('../test/initial_accounts.json') as string[];
+    const errorAccount =
+        Buffer.from('2910543af39aba0cd09dbb2d50200b3e800a63d2', 'hex');
+    const value = Buffer.from('value');
+
+    // Create a tree with a reasonable depth
+    data.forEach(s => {
+      if (s.length !== 64) {
+        s = s.padStart(64, '0');
+      }
+      tree.put(Buffer.from(s, 'hex'), value);
+    });
+
+    // This account should be inserted and re-read using getFromCache
+    tree.put(errorAccount, value);
+
+    // This should return the correct witness
+    const witness = tree.get(errorAccount);
+    should.not.equal(null, witness.value);
+
+    // And getting from cache should as well
+    const result = tree.getFromCache(errorAccount, new Map());
+    should.not.equal(null, result);
+    result!.should.deep.equal(value);
+  });
+});
+
 describe('Test getFromCache and rlpToMerkleNode', async () => {
   const cache =
       new CachedMerklePatriciaTree<Buffer, Buffer>({putCanDelete: false}, 1);
