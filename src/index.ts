@@ -1533,12 +1533,12 @@ export function verifyStaleWitness(
 export class CachedMerklePatriciaTree<K, V> extends MerklePatriciaTree<K, V> {
   // Maximum depth of the cached MerklePatriciaTree with rootNode is at a
   // depth 1.
-  private maxCacheDepth: number;
 
-  constructor(depth = 6) {
-    super();
+  constructor(
+      options: MerklePatriciaTreeOptions<K, V> = {putCanDelete: true},
+      public maxCacheDepth = 6) {
+    super(options);
     // Set the default maxCacheDepth to 6
-    this.maxCacheDepth = depth;
   }
 
   /** Returns the maxCacheDepth */
@@ -1616,7 +1616,7 @@ export class CachedMerklePatriciaTree<K, V> extends MerklePatriciaTree<K, V> {
     if (node instanceof BranchNode) {
       // If key ends at a BranchNode; return the BranchNode value
       const nib = key.shift();
-      if (!nib) {
+      if (nib === undefined) {
         return node.value;
       }
       // Search down the appropriate branch of the BranchNode

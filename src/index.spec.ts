@@ -728,12 +728,28 @@ describe('Try batchCOW operations', () => {
 });
 
 describe('Test getFromCache and rlpToMerkleNode', async () => {
-  const cache = new CachedMerklePatriciaTree<Buffer, Buffer>(1);
+  const cache =
+      new CachedMerklePatriciaTree<Buffer, Buffer>({putCanDelete: false}, 1);
+
+  it('test cache with MerklePatriciaTreeOptions', async () => {
+    const tree: CachedMerklePatriciaTree<string, string> =
+        new CachedMerklePatriciaTree<string, string>(
+            {
+              keyConverter: (k) => Buffer.from(k),
+              valueConverter: (v) => Buffer.from(v),
+              putCanDelete: false
+            },
+            1);
+    tree.put('abcd', 'abcd');
+    tree.rootNode.nibbles.should.deep.equal([6, 1, 6, 2, 6, 3, 6, 4]);
+    should.exist(tree.get('abcd').value);
+    tree.get('abcd').value!.should.deep.equal('abcd');
+  });
 
   it('test rlpToMerkleNode of NullNode', async () => {
     const nRaw = cache.rootNode.getRlpNodeEncoding(
         cache.options as {} as MerklePatriciaTreeOptions<{}, Buffer>);
-    const nNode = cache.rlpToMerkleNode(nRaw, (val) => val);
+    const nNode = cache.rlpToMerkleNode(nRaw, (val: Buffer) => val);
     should.equal(nNode instanceof NullNode, true);
   });
 
@@ -741,7 +757,7 @@ describe('Test getFromCache and rlpToMerkleNode', async () => {
     cache.put(Buffer.from('abcd'), Buffer.from('abcd'));
     const lRaw = cache.rootNode.getRlpNodeEncoding(
         cache.options as {} as MerklePatriciaTreeOptions<{}, Buffer>);
-    const lNode = cache.rlpToMerkleNode(lRaw, (val) => val);
+    const lNode = cache.rlpToMerkleNode(lRaw, (val: Buffer) => val);
     should.equal(lNode instanceof LeafNode, true);
     should.exist(lNode.value);
     (lNode.value!).should.deep.equal(cache.rootNode.value);
@@ -751,7 +767,7 @@ describe('Test getFromCache and rlpToMerkleNode', async () => {
     cache.put(Buffer.from('abcx'), Buffer.from('abcx'));
     const eRaw = cache.rootNode.getRlpNodeEncoding(
         cache.options as {} as MerklePatriciaTreeOptions<{}, Buffer>);
-    const eNode = cache.rlpToMerkleNode(eRaw, (val) => val);
+    const eNode = cache.rlpToMerkleNode(eRaw, (val: Buffer) => val);
     should.equal(eNode instanceof ExtensionNode, true);
     if (eNode instanceof ExtensionNode) {
       should.equal(eNode.nextNode instanceof BranchNode, true);
@@ -762,7 +778,7 @@ describe('Test getFromCache and rlpToMerkleNode', async () => {
     cache.put(Buffer.from('xxxx'), Buffer.from('xxxx'));
     const bRaw = cache.rootNode.getRlpNodeEncoding(
         cache.options as {} as MerklePatriciaTreeOptions<{}, Buffer>);
-    const bNode = cache.rlpToMerkleNode(bRaw, (val) => val);
+    const bNode = cache.rlpToMerkleNode(bRaw, (val: Buffer) => val);
     should.equal(bNode instanceof BranchNode, true);
     if (bNode instanceof BranchNode && cache.rootNode instanceof BranchNode) {
       should.not.exist(bNode.value);
@@ -787,7 +803,7 @@ describe('Test getFromCache and rlpToMerkleNode', async () => {
     }
   });
 
-  it('Test getFromCache with empty nodeMap', async () => {
+  it('test getFromCache with empty nodeMap', async () => {
     const nodeMap = new Map();
     const v1 = cache.getFromCache(Buffer.from('abcd'), nodeMap);
     const v2 = cache.getFromCache(Buffer.from('abcx'), nodeMap);
@@ -797,7 +813,7 @@ describe('Test getFromCache and rlpToMerkleNode', async () => {
     v3!.should.deep.equal(Buffer.from('xxxx'));
   });
 
-  it('Test getFromCache with non-empty nodeMap', async () => {
+  it('test getFromCache with non-empty nodeMap', async () => {
     const nodeMap = new Map();
     if (cache.rootNode instanceof BranchNode) {
       for (const branch of (cache.rootNode).branches) {
@@ -806,7 +822,7 @@ describe('Test getFromCache and rlpToMerkleNode', async () => {
               cache.options as {} as MerklePatriciaTreeOptions<{}, Buffer>);
           const hash = branch.hash(
               cache.options as {} as MerklePatriciaTreeOptions<{}, Buffer>);
-          const mappedNode = cache.rlpToMerkleNode(node, (val) => val);
+          const mappedNode = cache.rlpToMerkleNode(node, (val: Buffer) => val);
           nodeMap.set(hash, mappedNode);
         }
       }
@@ -816,7 +832,7 @@ describe('Test getFromCache and rlpToMerkleNode', async () => {
             cache.options as {} as MerklePatriciaTreeOptions<{}, Buffer>);
         const hash2 = branch6.nextNode.hash(
             cache.options as {} as MerklePatriciaTreeOptions<{}, Buffer>);
-        const mapNode2 = cache.rlpToMerkleNode(node2, (val) => val);
+        const mapNode2 = cache.rlpToMerkleNode(node2, (val: Buffer) => val);
         nodeMap.set(hash2, mapNode2);
       }
     }
