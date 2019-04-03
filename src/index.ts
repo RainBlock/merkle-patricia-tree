@@ -1232,6 +1232,11 @@ export class MerklePatriciaTree<K = Buffer, V = Buffer> implements
    */
   batchCOW(putOps: Array<BatchPut<K, V>>, delOps: K[] = []):
       MerklePatriciaTree<K, V> {
+    if (putOps.length === 0 && delOps.length === 0) {
+      // If there are no updates to be done in copy on write manner we
+      // return the same tree
+      return this;
+    }
     // Search the tree and mark the nodes for copy
     this.multiSearch(putOps, delOps, true);
     const newTree = new MerklePatriciaTree<K, V>(this.options);
