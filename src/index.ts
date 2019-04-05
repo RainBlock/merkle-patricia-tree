@@ -1546,6 +1546,11 @@ export class CachedMerklePatriciaTree<K, V> extends MerklePatriciaTree<K, V> {
     return this.maxCacheDepth;
   }
 
+  errors = {
+    ERR_KEY_NOT_FOUND: new Error('Get Failed: Key Mismatch'),
+    ERR_STALE_NODE: new Error('Get Failed: Cache Pruned; Stale Node Map')
+  };
+
   /**
    * Recursively prunes the cachedStateTree to maxCacheDepth by adding HashNodes
    * @param currNode current node at a depth, starting from rootNode at depth =
@@ -1612,7 +1617,7 @@ export class CachedMerklePatriciaTree<K, V> extends MerklePatriciaTree<K, V> {
    */
   private _getRecursive(
       key: number[], nodeMap: Map<bigint, MerklePatriciaTreeNode<V>>,
-      node: MerklePatriciaTreeNode<V>): V|null {
+      node: MerklePatriciaTreeNode<V>): V {
     if (node instanceof BranchNode) {
       // If key ends at a BranchNode; return the BranchNode value
       const nib = key.shift();
@@ -1626,7 +1631,7 @@ export class CachedMerklePatriciaTree<K, V> extends MerklePatriciaTree<K, V> {
     } else if (node instanceof ExtensionNode) {
       // Key nibbles should match the nibbles at ExtensionNode
       if (matchingNibbleLength(node.nibbles, key) !== node.nibbles.length) {
-        throw new Error('Key Mismatch at ExtensionNode');
+        throw this.errors.ERR_KEY_NOT_FOUND;
       }
       // Remove the matchingNibbles from the key
       key.splice(0, node.nibbles.length);
@@ -1637,7 +1642,7 @@ export class CachedMerklePatriciaTree<K, V> extends MerklePatriciaTree<K, V> {
     } else if (node instanceof LeafNode) {
       // Key Nibbles should match at the LeafNode
       if (matchingNibbleLength(node.nibbles, key) !== node.nibbles.length) {
-        throw new Error('Key Mismatch at LeafNode');
+        throw this.errors.ERR_KEY_NOT_FOUND;
       }
       // Return the value at LeafNode
       return node.value;
@@ -1648,7 +1653,7 @@ export class CachedMerklePatriciaTree<K, V> extends MerklePatriciaTree<K, V> {
       // Get the MerkleNode corresponding to nodeHash from nodeMap
       const mappedNode = nodeMap.get(hash);
       if (!mappedNode) {
-        throw new Error('nodeMap too stale');
+        throw this.errors.ERR_STALE_NODE;
       }
       // Search down the mappedNode
       const ret = this._getRecursive(key, nodeMap, mappedNode);
@@ -1656,10 +1661,10 @@ export class CachedMerklePatriciaTree<K, V> extends MerklePatriciaTree<K, V> {
 
     } else if (NullNode) {
       // Error if we hit a nullNode
-      throw new Error('Unexpected NullNode');
+      throw this.errors.ERR_KEY_NOT_FOUND;
     } else {
       // Error if unknown node type
-      throw new Error('Unexpected node type');
+      throw this.errors.ERR_KEY_NOT_FOUND;
     }
   }
 
@@ -1670,18 +1675,12 @@ export class CachedMerklePatriciaTree<K, V> extends MerklePatriciaTree<K, V> {
    *
    * @returns value corresponding to the key if present; null if otherwise
    */
-  getFromCache(key: K, nodeMap: Map<bigint, MerklePatriciaTreeNode<V>>): V
-      |null {
+  getFromCache(key: K, nodeMap: Map<bigint, MerklePatriciaTreeNode<V>>): V {
     const convKey = this.options.keyConverter!(key);
     const keyNibbles = MerklePatriciaTreeNode.bufferToNibbles(convKey);
-    let ret;
-    try {
-      // getRecursiveKey throws an exception if key is not searchable
-      // in the cache and the nodeBag
-      ret = this._getRecursive(keyNibbles, nodeMap, this.rootNode);
-    } catch (e) {
-      return null;
-    }
+    // getRecursiveKey throws an exception if key is not searchable
+    // in the cache and the nodeBag or if key is not present
+    const ret = this._getRecursive(keyNibbles, nodeMap, this.rootNode);
     return ret;
   }
 
