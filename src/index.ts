@@ -1530,13 +1530,15 @@ export function verifyStaleWitness(
   throw new VerificationError('stale witness verification failed');
 }
 
+/** Thrown if we can't find a path for the key (it was probably pruned). */
 export class MerklePrunedError extends Error {
   constructor() {
     super('Failed: path pruned in tree and no matching nodes in node map');
   }
 }
 
-export class KeyNotFoundError extends Error {
+/** Thrown if key in not present in the tree */
+export class MerkleKeyNotFoundError extends Error {
   constructor() {
     super('Failed: Key not found in tree');
   }
@@ -1638,7 +1640,7 @@ export class CachedMerklePatriciaTree<K, V> extends MerklePatriciaTree<K, V> {
     } else if (node instanceof ExtensionNode) {
       // Key nibbles should match the nibbles at ExtensionNode
       if (matchingNibbleLength(node.nibbles, key) !== node.nibbles.length) {
-        throw KeyNotFoundError;
+        throw new MerkleKeyNotFoundError();
       }
       // Remove the matchingNibbles from the key
       key.splice(0, node.nibbles.length);
@@ -1649,7 +1651,7 @@ export class CachedMerklePatriciaTree<K, V> extends MerklePatriciaTree<K, V> {
     } else if (node instanceof LeafNode) {
       // Key Nibbles should match at the LeafNode
       if (matchingNibbleLength(node.nibbles, key) !== node.nibbles.length) {
-        throw KeyNotFoundError;
+        throw new MerkleKeyNotFoundError();
       }
       // Return the value at LeafNode
       return node.value;
@@ -1660,7 +1662,7 @@ export class CachedMerklePatriciaTree<K, V> extends MerklePatriciaTree<K, V> {
       // Get the MerkleNode corresponding to nodeHash from nodeMap
       const mappedNode = nodeMap.get(hash);
       if (!mappedNode) {
-        throw MerklePrunedError;
+        throw new MerklePrunedError();
       }
       // Search down the mappedNode
       const ret = this._getRecursive(key, nodeMap, mappedNode);
