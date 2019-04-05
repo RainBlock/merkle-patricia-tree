@@ -757,6 +757,29 @@ describe('test cached merkle tree', async () => {
   });
 });
 
+describe('test cached merkle tree', async () => {
+  it('should not be able to read pruned account', async () => {
+    const tree = new CachedMerklePatriciaTree({putCanDelete: false}, 2);
+    const data = require('../test/initial_accounts.json') as string[];
+    const errorAccount =
+        Buffer.from('2910543af39aba0cd09dbb2d50200b3e800a63d2', 'hex');
+    const value = Buffer.from('value');
+
+    // Create a tree with a reasonable depth
+    data.forEach(s => {
+      if (s.length !== 64) {
+        s = s.padStart(64, '0');
+      }
+      tree.put(Buffer.from(s, 'hex'), value);
+    });
+
+    tree.pruneStateCache();
+
+    // This should return an error
+    should.throw(() => tree.getFromCache(errorAccount, new Map()));
+  });
+});
+
 describe('Test getFromCache and rlpToMerkleNode', async () => {
   const cache =
       new CachedMerklePatriciaTree<Buffer, Buffer>({putCanDelete: false}, 1);
