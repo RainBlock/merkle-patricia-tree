@@ -1530,6 +1530,18 @@ export function verifyStaleWitness(
   throw new VerificationError('stale witness verification failed');
 }
 
+export class MerklePrunedError extends Error {
+  constructor() {
+    super('Failed: path pruned in tree and no matching nodes in node map');
+  }
+}
+
+export class KeyNotFoundError extends Error {
+  constructor() {
+    super('Failed: Key not found in tree');
+  }
+}
+
 export class CachedMerklePatriciaTree<K, V> extends MerklePatriciaTree<K, V> {
   // Maximum depth of the cached MerklePatriciaTree with rootNode is at a
   // depth 1.
@@ -1545,11 +1557,6 @@ export class CachedMerklePatriciaTree<K, V> extends MerklePatriciaTree<K, V> {
   getmaxCacheDepth(): number {
     return this.maxCacheDepth;
   }
-
-  errors = {
-    ERR_KEY_NOT_FOUND: new Error('Get Failed: Key Mismatch'),
-    ERR_STALE_NODE: new Error('Get Failed: Cache Pruned; Stale Node Map')
-  };
 
   /**
    * Recursively prunes the cachedStateTree to maxCacheDepth by adding HashNodes
@@ -1631,7 +1638,7 @@ export class CachedMerklePatriciaTree<K, V> extends MerklePatriciaTree<K, V> {
     } else if (node instanceof ExtensionNode) {
       // Key nibbles should match the nibbles at ExtensionNode
       if (matchingNibbleLength(node.nibbles, key) !== node.nibbles.length) {
-        throw this.errors.ERR_KEY_NOT_FOUND;
+        throw KeyNotFoundError;
       }
       // Remove the matchingNibbles from the key
       key.splice(0, node.nibbles.length);
@@ -1642,7 +1649,7 @@ export class CachedMerklePatriciaTree<K, V> extends MerklePatriciaTree<K, V> {
     } else if (node instanceof LeafNode) {
       // Key Nibbles should match at the LeafNode
       if (matchingNibbleLength(node.nibbles, key) !== node.nibbles.length) {
-        throw this.errors.ERR_KEY_NOT_FOUND;
+        throw KeyNotFoundError;
       }
       // Return the value at LeafNode
       return node.value;
@@ -1653,7 +1660,7 @@ export class CachedMerklePatriciaTree<K, V> extends MerklePatriciaTree<K, V> {
       // Get the MerkleNode corresponding to nodeHash from nodeMap
       const mappedNode = nodeMap.get(hash);
       if (!mappedNode) {
-        throw this.errors.ERR_STALE_NODE;
+        throw MerklePrunedError;
       }
       // Search down the mappedNode
       const ret = this._getRecursive(key, nodeMap, mappedNode);
@@ -1661,10 +1668,10 @@ export class CachedMerklePatriciaTree<K, V> extends MerklePatriciaTree<K, V> {
 
     } else if (NullNode) {
       // Error if we hit a nullNode
-      throw this.errors.ERR_KEY_NOT_FOUND;
+      throw new Error('Unexpected NullNode');
     } else {
       // Error if unknown node type
-      throw this.errors.ERR_KEY_NOT_FOUND;
+      throw new Error('Unknown node type');
     }
   }
 
