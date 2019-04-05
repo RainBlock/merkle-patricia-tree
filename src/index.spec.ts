@@ -725,6 +725,21 @@ describe('Try batchCOW operations', () => {
        verifyWitness(root, Buffer.from('a'), tree.rlpSerializeWitness(w[0]));
        verifyWitness(root, Buffer.from('b'), tree.rlpSerializeWitness(w[1]));
      });
+
+  it('test batchCOW with no updates operations', async () => {
+    const tree = new MerklePatriciaTree();
+    tree.batch(
+        [
+          {key: Buffer.from('a'), val: Buffer.from('a')},
+          {key: Buffer.from('b'), val: Buffer.from('b')},
+          {key: Buffer.from('c'), val: Buffer.from('c')}
+        ],
+        []);
+    const root = tree.root;
+    const copyTree = tree.batchCOW([], []);
+    const copyRoot = copyTree.root;
+    root.should.deep.equal(copyRoot);
+  });
 });
 
 describe('test cached merkle tree', async () => {
