@@ -589,6 +589,11 @@ export class LeafNode<V> extends MerklePatriciaTreeNode<V> {
   }
 }
 
+export interface CachedTraversal<V> {
+  value: V;
+  bagNodesUsed: Set<bigint>;
+}
+
 /**
  * Represents a hash node, which is -only- used for pruning the
  * CachedMerklePatriciaTreeNode to maxCacheDepth.
@@ -1629,7 +1634,7 @@ export class CachedMerklePatriciaTree<K, V> extends MerklePatriciaTree<K, V> {
    * throws an exception if key is not found in the cache and nodeMap
    */
   private _getRecursive(
-      node: MerklePatriciaTreeNode<V>, key: number[],
+      node: MerklePatriciaTreeNode<V>, key: number[], bagNodesUsed: Set<bigint>,
       ...nodeMap: Array<Map<bigint, MerklePatriciaTreeNode<V>>>): V {
     if (node instanceof BranchNode) {
       // If key ends at a BranchNode; return the BranchNode value
@@ -1638,7 +1643,8 @@ export class CachedMerklePatriciaTree<K, V> extends MerklePatriciaTree<K, V> {
         return node.value;
       }
       // Search down the appropriate branch of the BranchNode
-      const ret = this._getRecursive(node.branches[nib], key, ...nodeMap);
+      const ret =
+          this._getRecursive(node.branches[nib], key, bagNodesUsed, ...nodeMap);
       return ret;
 
     } else if (node instanceof ExtensionNode) {
@@ -1649,7 +1655,8 @@ export class CachedMerklePatriciaTree<K, V> extends MerklePatriciaTree<K, V> {
       // Remove the matchingNibbles from the key
       key.splice(0, node.nibbles.length);
       // Search down the nextNode of the ExtensionNode
-      const ret = this._getRecursive(node.nextNode, key, ...nodeMap);
+      const ret =
+          this._getRecursive(node.nextNode, key, bagNodesUsed, ...nodeMap);
       return ret;
 
     } else if (node instanceof LeafNode) {
@@ -1668,6 +1675,7 @@ export class CachedMerklePatriciaTree<K, V> extends MerklePatriciaTree<K, V> {
       for (const map of nodeMap) {
         mappedNode = map.get(hash);
         if (mappedNode) {
+          bagNodesUsed.add(hash);
           break;
         }
       }
@@ -1675,7 +1683,7 @@ export class CachedMerklePatriciaTree<K, V> extends MerklePatriciaTree<K, V> {
         throw new MerklePrunedError();
       }
       // Search down the mappedNode
-      const ret = this._getRecursive(mappedNode, key, ...nodeMap);
+      const ret = this._getRecursive(mappedNode, key, bagNodesUsed, ...nodeMap);
       return ret;
 
     } else if (NullNode) {
@@ -1695,13 +1703,16 @@ export class CachedMerklePatriciaTree<K, V> extends MerklePatriciaTree<K, V> {
    * @returns value corresponding to the key if present; null if otherwise
    */
   getFromCache(
-      key: K, ...nodeMap: Array<Map<bigint, MerklePatriciaTreeNode<V>>>): V {
+      key: K, ...nodeMap: Array<Map<bigint, MerklePatriciaTreeNode<V>>>):
+      CachedTraversal<V> {
     const convKey = this.options.keyConverter!(key);
     const keyNibbles = MerklePatriciaTreeNode.bufferToNibbles(convKey);
     // getRecursiveKey throws an exception if key is not searchable
     // in the cache and the nodeBag or if key is not present
-    const ret = this._getRecursive(this.rootNode, keyNibbles, ...nodeMap);
-    return ret;
+    const bagNodesUsed = new Set<bigint>();
+    const value =
+        this._getRecursive(this.rootNode, keyNibbles, bagNodesUsed, ...nodeMap);
+    return {value, bagNodesUsed};
   }
 
   /**
