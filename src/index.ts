@@ -1694,12 +1694,13 @@ export class CachedMerklePatriciaTree<K, V> extends MerklePatriciaTree<K, V> {
    *
    * @returns value corresponding to the key if present; null if otherwise
    */
-  getFromCache(key: K, nodeMap: Map<bigint, MerklePatriciaTreeNode<V>>): V {
+  getFromCache(
+      key: K, ...nodeMap: Array<Map<bigint, MerklePatriciaTreeNode<V>>>): V {
     const convKey = this.options.keyConverter!(key);
     const keyNibbles = MerklePatriciaTreeNode.bufferToNibbles(convKey);
     // getRecursiveKey throws an exception if key is not searchable
     // in the cache and the nodeBag or if key is not present
-    const ret = this._getRecursive(this.rootNode, keyNibbles, nodeMap);
+    const ret = this._getRecursive(this.rootNode, keyNibbles, ...nodeMap);
     return ret;
   }
 
