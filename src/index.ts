@@ -1629,8 +1629,9 @@ export class CachedMerklePatriciaTree<K, V> extends MerklePatriciaTree<K, V> {
    * throws an exception if key is not found in the cache and nodeMap
    */
   private _getRecursive(
-      key: number[], nodeMap: Map<bigint, MerklePatriciaTreeNode<V>>,
-      node: MerklePatriciaTreeNode<V>): V {
+      node: MerklePatriciaTreeNode<V>, key: number[],
+      bagNodesUsed: Set<bigint>|undefined,
+      ...nodeMap: Array<Map<bigint, MerklePatriciaTreeNode<V>>>): V {
     if (node instanceof BranchNode) {
       // If key ends at a BranchNode; return the BranchNode value
       const nib = key.shift();
@@ -1638,7 +1639,8 @@ export class CachedMerklePatriciaTree<K, V> extends MerklePatriciaTree<K, V> {
         return node.value;
       }
       // Search down the appropriate branch of the BranchNode
-      const ret = this._getRecursive(key, nodeMap, node.branches[nib]);
+      const ret =
+          this._getRecursive(node.branches[nib], key, bagNodesUsed, ...nodeMap);
       return ret;
 
     } else if (node instanceof ExtensionNode) {
@@ -1649,7 +1651,8 @@ export class CachedMerklePatriciaTree<K, V> extends MerklePatriciaTree<K, V> {
       // Remove the matchingNibbles from the key
       key.splice(0, node.nibbles.length);
       // Search down the nextNode of the ExtensionNode
-      const ret = this._getRecursive(key, nodeMap, node.nextNode);
+      const ret =
+          this._getRecursive(node.nextNode, key, bagNodesUsed, ...nodeMap);
       return ret;
 
     } else if (node instanceof LeafNode) {
@@ -1664,12 +1667,21 @@ export class CachedMerklePatriciaTree<K, V> extends MerklePatriciaTree<K, V> {
       // Read the nodeHash of the HashNode
       const hash = node.nodeHash;
       // Get the MerkleNode corresponding to nodeHash from nodeMap
-      const mappedNode = nodeMap.get(hash);
+      let mappedNode = undefined;
+      for (const map of nodeMap) {
+        mappedNode = map.get(hash);
+        if (mappedNode) {
+          if (bagNodesUsed) {
+            bagNodesUsed.add(hash);
+          }
+          break;
+        }
+      }
       if (!mappedNode) {
         throw new MerklePrunedError();
       }
       // Search down the mappedNode
-      const ret = this._getRecursive(key, nodeMap, mappedNode);
+      const ret = this._getRecursive(mappedNode, key, bagNodesUsed, ...nodeMap);
       return ret;
 
     } else if (NullNode) {
@@ -1684,17 +1696,22 @@ export class CachedMerklePatriciaTree<K, V> extends MerklePatriciaTree<K, V> {
   /**
    * getFromCache returns the value corresponding to the key using nodeMap
    * @param key : key to get from the CachedMerklePatriciaTree
+   * @param bagNodesUsed: A list of nodes used from the nodeMap updated by the
+   * Tree
    * @param nodeMap : Bag of recent MerklePatriciaTree nodes from the client
    *
    * @returns value corresponding to the key if present; null if otherwise
    */
-  getFromCache(key: K, nodeMap: Map<bigint, MerklePatriciaTreeNode<V>>): V {
+  getFromCache(
+      key: K, bagNodesUsed: Set<bigint>|undefined,
+      ...nodeMap: Array<Map<bigint, MerklePatriciaTreeNode<V>>>): V {
     const convKey = this.options.keyConverter!(key);
     const keyNibbles = MerklePatriciaTreeNode.bufferToNibbles(convKey);
     // getRecursiveKey throws an exception if key is not searchable
     // in the cache and the nodeBag or if key is not present
-    const ret = this._getRecursive(keyNibbles, nodeMap, this.rootNode);
-    return ret;
+    const value =
+        this._getRecursive(this.rootNode, keyNibbles, bagNodesUsed, ...nodeMap);
+    return value;
   }
 
   /**
