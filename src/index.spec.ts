@@ -766,7 +766,7 @@ describe('test cached merkle tree', async () => {
     should.not.equal(null, witness.value);
 
     // And getting from cache should as well
-    const result = tree.getFromCache(errorAccount, new Map()).value;
+    const result = tree.getFromCache(errorAccount, undefined, new Map());
     should.not.equal(null, result);
     result!.should.deep.equal(value);
   });
@@ -791,7 +791,7 @@ describe('test cached merkle tree', async () => {
     tree.pruneStateCache();
 
     // This should return an error
-    should.throw(() => tree.getFromCache(errorAccount, new Map()));
+    should.throw(() => tree.getFromCache(errorAccount, undefined, new Map()));
   });
 });
 
@@ -873,9 +873,9 @@ describe('Test getFromCache and rlpToMerkleNode', async () => {
 
   it('test getFromCache with empty nodeMap', async () => {
     const nodeMap = new Map();
-    const v1 = cache.getFromCache(Buffer.from('abcd'), nodeMap).value;
-    const v2 = cache.getFromCache(Buffer.from('abcx'), nodeMap).value;
-    const v3 = cache.getFromCache(Buffer.from('xxxx'), nodeMap).value;
+    const v1 = cache.getFromCache(Buffer.from('abcd'), undefined, nodeMap);
+    const v2 = cache.getFromCache(Buffer.from('abcx'), undefined, nodeMap);
+    const v3 = cache.getFromCache(Buffer.from('xxxx'), undefined, nodeMap);
     v1!.should.deep.equal(Buffer.from('abcd'));
     v2!.should.deep.equal(Buffer.from('abcx'));
     v3!.should.deep.equal(Buffer.from('xxxx'));
@@ -883,6 +883,7 @@ describe('Test getFromCache and rlpToMerkleNode', async () => {
 
   it('test getFromCache with non-empty nodeMap', async () => {
     const nodeMap = new Map();
+    const bagNodesUsed = new Set<bigint>();
     let extensionNodeHash: bigint|undefined;
     if (cache.rootNode instanceof BranchNode) {
       for (const branch of (cache.rootNode).branches) {
@@ -909,19 +910,13 @@ describe('Test getFromCache and rlpToMerkleNode', async () => {
       }
     }
     cache.pruneStateCache();
-    const r1 = cache.getFromCache(Buffer.from('abcd'), nodeMap);
-    const r2 = cache.getFromCache(Buffer.from('abcx'), nodeMap);
-    const r3 = cache.getFromCache(Buffer.from('xxxx'), nodeMap);
-    const v1 = r1.value;
-    const v2 = r2.value;
-    const v3 = r3.value;
+    const v1 = cache.getFromCache(Buffer.from('abcd'), bagNodesUsed, nodeMap);
+    const v2 = cache.getFromCache(Buffer.from('abcx'), bagNodesUsed, nodeMap);
+    const v3 = cache.getFromCache(Buffer.from('xxxx'), bagNodesUsed, nodeMap);
     v1!.should.deep.equal(Buffer.from('abcd'));
     v2!.should.deep.equal(Buffer.from('abcx'));
     v3!.should.deep.equal(Buffer.from('xxxx'));
-    r1.bagNodesUsed.size.should.equal(1);
-    r2.bagNodesUsed.size.should.equal(1);
-    r3.bagNodesUsed.size.should.equal(0);
-    r1.bagNodesUsed.has(extensionNodeHash!).should.equal(true);
-    r2.bagNodesUsed.has(extensionNodeHash!).should.equal(true);
+    bagNodesUsed.size.should.equal(1);
+    bagNodesUsed.has(extensionNodeHash!).should.equal(true);
   });
 });

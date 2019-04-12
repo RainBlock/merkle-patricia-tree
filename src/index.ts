@@ -589,11 +589,6 @@ export class LeafNode<V> extends MerklePatriciaTreeNode<V> {
   }
 }
 
-export interface CachedTraversal<V> {
-  value: V;
-  bagNodesUsed: Set<bigint>;
-}
-
 /**
  * Represents a hash node, which is -only- used for pruning the
  * CachedMerklePatriciaTreeNode to maxCacheDepth.
@@ -1634,7 +1629,8 @@ export class CachedMerklePatriciaTree<K, V> extends MerklePatriciaTree<K, V> {
    * throws an exception if key is not found in the cache and nodeMap
    */
   private _getRecursive(
-      node: MerklePatriciaTreeNode<V>, key: number[], bagNodesUsed: Set<bigint>,
+      node: MerklePatriciaTreeNode<V>, key: number[],
+      bagNodesUsed: Set<bigint>|undefined,
       ...nodeMap: Array<Map<bigint, MerklePatriciaTreeNode<V>>>): V {
     if (node instanceof BranchNode) {
       // If key ends at a BranchNode; return the BranchNode value
@@ -1675,7 +1671,9 @@ export class CachedMerklePatriciaTree<K, V> extends MerklePatriciaTree<K, V> {
       for (const map of nodeMap) {
         mappedNode = map.get(hash);
         if (mappedNode) {
-          bagNodesUsed.add(hash);
+          if (bagNodesUsed) {
+            bagNodesUsed.add(hash);
+          }
           break;
         }
       }
@@ -1698,21 +1696,22 @@ export class CachedMerklePatriciaTree<K, V> extends MerklePatriciaTree<K, V> {
   /**
    * getFromCache returns the value corresponding to the key using nodeMap
    * @param key : key to get from the CachedMerklePatriciaTree
+   * @param bagNodesUsed: A list of nodes used from the nodeMap updated by the
+   * Tree
    * @param nodeMap : Bag of recent MerklePatriciaTree nodes from the client
    *
    * @returns value corresponding to the key if present; null if otherwise
    */
   getFromCache(
-      key: K, ...nodeMap: Array<Map<bigint, MerklePatriciaTreeNode<V>>>):
-      CachedTraversal<V> {
+      key: K, bagNodesUsed: Set<bigint>|undefined,
+      ...nodeMap: Array<Map<bigint, MerklePatriciaTreeNode<V>>>): V {
     const convKey = this.options.keyConverter!(key);
     const keyNibbles = MerklePatriciaTreeNode.bufferToNibbles(convKey);
     // getRecursiveKey throws an exception if key is not searchable
     // in the cache and the nodeBag or if key is not present
-    const bagNodesUsed = new Set<bigint>();
     const value =
         this._getRecursive(this.rootNode, keyNibbles, bagNodesUsed, ...nodeMap);
-    return {value, bagNodesUsed};
+    return value;
   }
 
   /**
