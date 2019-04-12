@@ -883,6 +883,7 @@ describe('Test getFromCache and rlpToMerkleNode', async () => {
 
   it('test getFromCache with non-empty nodeMap', async () => {
     const nodeMap = new Map();
+    let extensionNodeHash: bigint|undefined;
     if (cache.rootNode instanceof BranchNode) {
       for (const branch of (cache.rootNode).branches) {
         if (branch) {
@@ -892,6 +893,9 @@ describe('Test getFromCache and rlpToMerkleNode', async () => {
               cache.options as {} as MerklePatriciaTreeOptions<{}, Buffer>);
           const mappedNode = cache.rlpToMerkleNode(node, (val: Buffer) => val);
           nodeMap.set(hash, mappedNode);
+          if (mappedNode instanceof ExtensionNode) {
+            extensionNodeHash = hash;
+          }
         }
       }
       const branch6 = cache.rootNode.branches[6];
@@ -905,11 +909,19 @@ describe('Test getFromCache and rlpToMerkleNode', async () => {
       }
     }
     cache.pruneStateCache();
-    const v1 = cache.getFromCache(Buffer.from('abcd'), nodeMap).value;
-    const v2 = cache.getFromCache(Buffer.from('abcx'), nodeMap).value;
-    const v3 = cache.getFromCache(Buffer.from('xxxx'), nodeMap).value;
+    const r1 = cache.getFromCache(Buffer.from('abcd'), nodeMap);
+    const r2 = cache.getFromCache(Buffer.from('abcx'), nodeMap);
+    const r3 = cache.getFromCache(Buffer.from('xxxx'), nodeMap);
+    const v1 = r1.value;
+    const v2 = r2.value;
+    const v3 = r3.value;
     v1!.should.deep.equal(Buffer.from('abcd'));
     v2!.should.deep.equal(Buffer.from('abcx'));
     v3!.should.deep.equal(Buffer.from('xxxx'));
+    r1.bagNodesUsed.size.should.equal(1);
+    r2.bagNodesUsed.size.should.equal(1);
+    r3.bagNodesUsed.size.should.equal(0);
+    r1.bagNodesUsed.has(extensionNodeHash!).should.equal(true);
+    r2.bagNodesUsed.has(extensionNodeHash!).should.equal(true);
   });
 });
