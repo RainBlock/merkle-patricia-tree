@@ -1674,8 +1674,14 @@ export class CachedMerklePatriciaTree<K, V> extends MerklePatriciaTree<K, V> {
       if (!mappedNode) {
         throw new MerklePrunedError();
       }
-      // Search down the mappedNode
+      // Add the node hash into the cache
+      const index = cache.indexOf(hash);
+      if (index > -1) {
+        // Move the existing node hash to the end in the cache
+        cache.splice(index, 1);
+      }
       cache.push(hash);
+      // Search down the mappedNode
       const ret = this._getRecursive(key, nodeMap, mappedNode, cache);
       return ret;
 
