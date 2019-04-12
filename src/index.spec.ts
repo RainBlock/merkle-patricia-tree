@@ -766,7 +766,7 @@ describe('test cached merkle tree', async () => {
     should.not.equal(null, witness.value);
 
     // And getting from cache should as well
-    const result = tree.getFromCache(errorAccount, new Map()).value;
+    const result = tree.getFromCache(errorAccount, new Map());
     should.not.equal(null, result);
     result!.should.deep.equal(value);
   });
@@ -873,9 +873,9 @@ describe('Test getFromCache and rlpToMerkleNode', async () => {
 
   it('test getFromCache with empty nodeMap', async () => {
     const nodeMap = new Map();
-    const v1 = cache.getFromCache(Buffer.from('abcd'), nodeMap).value;
-    const v2 = cache.getFromCache(Buffer.from('abcx'), nodeMap).value;
-    const v3 = cache.getFromCache(Buffer.from('xxxx'), nodeMap).value;
+    const v1 = cache.getFromCache(Buffer.from('abcd'), nodeMap);
+    const v2 = cache.getFromCache(Buffer.from('abcx'), nodeMap);
+    const v3 = cache.getFromCache(Buffer.from('xxxx'), nodeMap);
     v1!.should.deep.equal(Buffer.from('abcd'));
     v2!.should.deep.equal(Buffer.from('abcx'));
     v3!.should.deep.equal(Buffer.from('xxxx'));
@@ -905,9 +905,9 @@ describe('Test getFromCache and rlpToMerkleNode', async () => {
       }
     }
     cache.pruneStateCache();
-    const v1 = cache.getFromCache(Buffer.from('abcd'), nodeMap).value;
-    const v2 = cache.getFromCache(Buffer.from('abcx'), nodeMap).value;
-    const v3 = cache.getFromCache(Buffer.from('xxxx'), nodeMap).value;
+    const v1 = cache.getFromCache(Buffer.from('abcd'), nodeMap);
+    const v2 = cache.getFromCache(Buffer.from('abcx'), nodeMap);
+    const v3 = cache.getFromCache(Buffer.from('xxxx'), nodeMap);
     v1!.should.deep.equal(Buffer.from('abcd'));
     v2!.should.deep.equal(Buffer.from('abcx'));
     v3!.should.deep.equal(Buffer.from('xxxx'));
