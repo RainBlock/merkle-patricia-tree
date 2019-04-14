@@ -1785,7 +1785,7 @@ export class CachedMerklePatriciaTree<K, V> extends MerklePatriciaTree<K, V> {
   }
 
   putWithNodeBag(
-      key: K, value: V, staleNodes: Set<bigint>|undefined,
+      key: K, value: V, usedNodes: Set<bigint>|undefined,
       ...nodeBag: Array<Map<bigint, MerklePatriciaTreeNode<V>>>) {
     const result = this.search(key);
 
@@ -1815,8 +1815,8 @@ export class CachedMerklePatriciaTree<K, V> extends MerklePatriciaTree<K, V> {
             for (const nodeMap of nodeBag) {
               if (nodeMap.has(replaceHash)) {
                 replaceNode = nodeMap.get(replaceHash);
-                if (staleNodes) {
-                  staleNodes.add(replaceHash);
+                if (usedNodes) {
+                  usedNodes.add(replaceHash);
                 }
                 break;
               }
@@ -1843,8 +1843,8 @@ export class CachedMerklePatriciaTree<K, V> extends MerklePatriciaTree<K, V> {
             for (const nodeMap of nodeBag) {
               if (nodeMap.has(replaceHash)) {
                 replaceNode = nodeMap.get(replaceHash);
-                if (staleNodes) {
-                  staleNodes.add(replaceHash);
+                if (usedNodes) {
+                  usedNodes.add(replaceHash);
                 }
                 break;
               }
