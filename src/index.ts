@@ -1057,6 +1057,8 @@ export class MerklePatriciaTree<K = Buffer, V = Buffer> implements
             throw new Error('Unexpected non-branch node in update');
           }
         }
+      } else {
+        throw new Error('Unexpected node while inserting into tree');
       }
     }
   }
@@ -1782,6 +1784,114 @@ export class CachedMerklePatriciaTree<K, V> extends MerklePatriciaTree<K, V> {
     }
   }
 
+  /**
+   * putWithNodeBag inserts k,v pairs and rebuilds the pruned
+   * CachedMerklePatriciaTree if needed
+   * @param key : key to insert or modify
+   * @param value : value corresponding to the key
+   * @param usedNodes : A list of nodes used from the nodeBag for rebuilding the
+   * cached tree The usedNodes hashes change due to the insertion of the k, v
+   * pair into the tree
+   * @param nodeBag : A Map of nodes indexed by their hashes
+   */
+  putWithNodeBag(
+      key: K, value: V, usedNodes: Set<bigint>|undefined,
+      ...nodeBag: Array<Map<bigint, MerklePatriciaTreeNode<V>>>) {
+    const result = this.search(key);
+
+    if (result.remainder.length === 0 && result.node !== null) {
+      // Search matches; update the value in the path
+      result.node!.value = value;
+
+    } else if (result.stack[result.stack.length - 1] instanceof HashNode) {
+      // Partial path ending with a HashNode; (search stack depth >= pruneDepth)
+      // Rebuild path in the CachedMerklePatriciaTree with the nodes in the
+      // nodeMap
+      let currNode = result.stack[result.stack.length - 2];
+      const convKey = this.options.keyConverter!(key);
+      const keyNibbles = MerklePatriciaTreeNode.bufferToNibbles(convKey);
+      const lastNibbles = (currNode instanceof BranchNode) ?
+          [keyNibbles[(keyNibbles.length - result.remainder.length) - 1]] :
+          currNode.nibbles;
+      const remainder = lastNibbles.concat(result.remainder);
+      while (remainder && remainder.length !== 0) {
+        if (currNode instanceof BranchNode) {
+          const branch = currNode.branches[remainder[0]];
+          if (branch instanceof HashNode) {
+            // Get the hash of the correct branch
+            const replaceHash = branch.nodeHash;
+            // Read the node form the nodeBag
+            let replaceNode: MerklePatriciaTreeNode<V>|undefined = undefined;
+            for (const nodeMap of nodeBag) {
+              if (nodeMap.has(replaceHash)) {
+                replaceNode = nodeMap.get(replaceHash);
+                if (usedNodes) {
+                  usedNodes.add(replaceHash);
+                }
+                break;
+              }
+            }
+            if (!replaceNode) {
+              throw new Error('Couldn\'t service put using nodeBag');
+            }
+            // Replace HashNode with node from nodeBag
+            currNode.branches[remainder[0]] = replaceNode;
+            currNode = replaceNode;
+            remainder.shift();
+          } else {
+            // Traverse down the tree
+            currNode = branch;
+            remainder.shift();
+          }
+        } else if (currNode instanceof ExtensionNode) {
+          const next = currNode.nextNode;
+          if (next instanceof HashNode) {
+            // Get the hash of the correct branch
+            const replaceHash = next.nodeHash;
+            // Read the node from the nodeBag
+            let replaceNode: MerklePatriciaTreeNode<V>|undefined = undefined;
+            for (const nodeMap of nodeBag) {
+              if (nodeMap.has(replaceHash)) {
+                replaceNode = nodeMap.get(replaceHash);
+                if (usedNodes) {
+                  usedNodes.add(replaceHash);
+                }
+                break;
+              }
+            }
+            if (!replaceNode) {
+              throw new Error('Couldn\'t service put using nodeBag');
+            }
+            // Replace HashNode with node from nodeBag
+            currNode.nextNode = replaceNode;
+            remainder.splice(0, currNode.nibbles.length);
+            currNode = replaceNode;
+          } else {
+            // Traverse down the tree
+            remainder.splice(0, currNode.nibbles.length);
+            currNode = next;
+          }
+        } else if (currNode instanceof LeafNode) {
+          // Update the value in the tree
+          currNode.value = value;
+          break;
+        } else {
+          throw new Error('Unknown nodetype');
+        }
+      }
+
+    } else {
+      // Tree path for the key has depth < 6; perform insertion
+      this.insert(result.stack, result.remainder, value!);
+    }
+
+    // Clear all memoized hashes in the path, they will be reset.
+    const updatedResult = this.search(key);
+    for (const node of updatedResult.stack) {
+      node.clearMemoizedHash();
+    }
+  }
+
   verifyAndAddWitness(root: Buffer, key: K, witness: Witness<V>) {
     // Verify witness
     const convKey = this.options.keyConverter!(key);
@@ -1809,7 +1919,7 @@ export class CachedMerklePatriciaTree<K, V> extends MerklePatriciaTree<K, V> {
           currNode.nextNode = witness.proof[result.stack.length];
         }
       } else {
-        // Tree path for the key has depth < 6; perform insertion
+        // Tree path for the key has depth < pruneDepth; perform insertion
         this.insert(result.stack, result.remainder, witness.value!);
       }
       // Clear all memoized hashes in the path, they will be reset.

@@ -795,6 +795,15 @@ describe('test cached merkle tree', async () => {
   });
 });
 
+describe('Test put in pruned CachedMerklePatriciaTree', async () => {
+  const cache = new CachedMerklePatriciaTree({putCanDelete: false}, 1);
+  cache.put(Buffer.from('abcd'), Buffer.from('abcd'));
+  cache.put(Buffer.from('abxx'), Buffer.from('abxx'));
+  cache.put(Buffer.from('xxxx'), Buffer.from('xxxx'));
+  cache.pruneStateCache();
+  should.throw(() => cache.put(Buffer.from('abcd'), Buffer.from('1234')));
+});
+
 describe('Test getFromCache and rlpToMerkleNode', async () => {
   const cache =
       new CachedMerklePatriciaTree<Buffer, Buffer>({putCanDelete: false}, 1);
@@ -881,10 +890,11 @@ describe('Test getFromCache and rlpToMerkleNode', async () => {
     v3!.should.deep.equal(Buffer.from('xxxx'));
   });
 
+  const nodeMap = new Map();
+  let extensionNodeHash: bigint|undefined;
+
   it('test getFromCache with non-empty nodeMap', async () => {
-    const nodeMap = new Map();
     const bagNodesUsed = new Set<bigint>();
-    let extensionNodeHash: bigint|undefined;
     if (cache.rootNode instanceof BranchNode) {
       for (const branch of (cache.rootNode).branches) {
         if (branch) {
@@ -918,5 +928,39 @@ describe('Test getFromCache and rlpToMerkleNode', async () => {
     v3!.should.deep.equal(Buffer.from('xxxx'));
     bagNodesUsed.size.should.equal(1);
     bagNodesUsed.has(extensionNodeHash!).should.equal(true);
+  });
+
+  it('test putWithNodeBag root hashes', async () => {
+    const initRoot = cache.root;
+    const bag1 = new Set<bigint>(), bag2 = new Set<bigint>(),
+          bag3 = new Set<bigint>();
+
+    cache.putWithNodeBag(
+        Buffer.from('abcd'), Buffer.from('abcd'), bag1, nodeMap);
+    cache.putWithNodeBag(
+        Buffer.from('abcx'), Buffer.from('abcx'), bag2, nodeMap);
+    cache.putWithNodeBag(
+        Buffer.from('xxxx'), Buffer.from('xxxx'), bag3, nodeMap);
+
+    bag1.size.should.equal(1);
+    bag1.has(extensionNodeHash!).should.equal(true);
+  });
+
+  it('test putWithNodeBag insertions', async () => {
+    const updatedValue = Buffer.from('1234');
+    cache.putWithNodeBag(Buffer.from('abcd'), updatedValue, undefined, nodeMap);
+    cache.putWithNodeBag(Buffer.from('abcx'), updatedValue, undefined, nodeMap);
+    cache.putWithNodeBag(Buffer.from('xxxx'), updatedValue, undefined, nodeMap);
+
+    const v1 = cache.get(Buffer.from('abcd')).value;
+    const v2 = cache.get(Buffer.from('abcx')).value;
+    const v3 = cache.get(Buffer.from('xxxx')).value;
+
+    should.exist(v1);
+    should.exist(v2);
+    should.exist(v3);
+    v1!.should.deep.equal(updatedValue);
+    v2!.should.deep.equal(updatedValue);
+    v3!.should.deep.equal(updatedValue);
   });
 });
