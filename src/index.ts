@@ -1785,11 +1785,13 @@ export class CachedMerklePatriciaTree<K, V> extends MerklePatriciaTree<K, V> {
   }
 
   /**
-   * putWithNodeBag inserts k,v pairs and rebuilds the pruned CachedMerklePatriciaTree if needed
+   * putWithNodeBag inserts k,v pairs and rebuilds the pruned
+   * CachedMerklePatriciaTree if needed
    * @param key : key to insert or modify
    * @param value : value corresponding to the key
-   * @param usedNodes : A list of nodes used from the nodeBag for rebuilding the cached tree
-   * The usedNodes hashes change due to the insertion of the k, v pair into the tree
+   * @param usedNodes : A list of nodes used from the nodeBag for rebuilding the
+   * cached tree The usedNodes hashes change due to the insertion of the k, v
+   * pair into the tree
    * @param nodeBag : A Map of nodes indexed by their hashes
    */
   putWithNodeBag(
