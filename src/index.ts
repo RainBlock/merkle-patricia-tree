@@ -1909,7 +1909,7 @@ export class CachedMerklePatriciaTree<K, V> extends MerklePatriciaTree<K, V> {
           currNode.nextNode = witness.proof[result.stack.length];
         }
       } else {
-        // Tree path for the key has depth < 6; perform insertion
+        // Tree path for the key has depth < pruneDepth; perform insertion
         this.insert(result.stack, result.remainder, witness.value!);
       }
       // Clear all memoized hashes in the path, they will be reset.
