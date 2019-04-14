@@ -1057,6 +1057,8 @@ export class MerklePatriciaTree<K = Buffer, V = Buffer> implements
             throw new Error('Unexpected non-branch node in update');
           }
         }
+      } else {
+        throw new Error('Unexpected node while inserting into tree');
       }
     }
   }

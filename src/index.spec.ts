@@ -795,6 +795,15 @@ describe('test cached merkle tree', async () => {
   });
 });
 
+describe('Test put in pruned CachedMerklePatriciaTree', async () => {
+  const cache = new CachedMerklePatriciaTree({putCanDelete: false}, 1);
+  cache.put(Buffer.from('abcd'), Buffer.from('abcd'));
+  cache.put(Buffer.from('abxx'), Buffer.from('abxx'));
+  cache.put(Buffer.from('xxxx'), Buffer.from('xxxx'));
+  cache.pruneStateCache();
+  should.throw(() => cache.put(Buffer.from('abcd'), Buffer.from('1234')));
+});
+
 describe('Test getFromCache and rlpToMerkleNode', async () => {
   const cache =
       new CachedMerklePatriciaTree<Buffer, Buffer>({putCanDelete: false}, 1);
