@@ -436,6 +436,8 @@ export class BranchNode<V> extends MerklePatriciaTreeNode<V> {
     for (const [idx, branch] of this.branches.entries()) {
       if (branch === undefined) {
         hashedBranches[idx] = Buffer.from([]);
+      } else if (branch instanceof HashNode) {
+        hashedBranches[idx] = toBufferBE(branch.nodeHash, 32);
       } else if (
           branch instanceof BranchNode || (branch.nibbles.length / 2) > 30) {
         // Will be >32 when RLP serialized, so just hash
@@ -512,7 +514,12 @@ export class ExtensionNode<V> extends MerklePatriciaTreeNode<V> {
 
   /** @inheritdoc */
   serialize(options: MerklePatriciaTreeOptions<{}, V>) {
-    const serialized = this.nextNode!.serialize(options);
+    let serialized: RlpItem;
+    if (this.nextNode instanceof HashNode) {
+      serialized = toBufferBE(this.nextNode.nodeHash, 32);
+    } else {
+      serialized = this.nextNode!.serialize(options);
+    }
     const rlpEncodeNextNode = this.nextNode!.getRlpNodeEncoding(options);
     return [
       MerklePatriciaTreeNode.toBuffer(this.nibbles, this.prefix),
