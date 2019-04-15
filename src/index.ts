@@ -1744,7 +1744,7 @@ export class CachedMerklePatriciaTree<K, V> extends MerklePatriciaTree<K, V> {
         // ExtensionNode
         if (hash[1] instanceof Buffer && hash[1].length === 32) {
           // Hash is serialized; create HashNode
-          const next = new HashNode<V>(toBigIntBE(hash[1] as Buffer));
+          const next = new HashNode<V>(toBigIntBE(hash[1] as Buffer), raw);
           const ret = new ExtensionNode<V>(decodeHash.nibbles, next);
           return ret;
         } else {
@@ -1771,7 +1771,7 @@ export class CachedMerklePatriciaTree<K, V> extends MerklePatriciaTree<K, V> {
         }
         if (branch instanceof Buffer && branch.length === 32) {
           // Hash is serialized; create HashNode
-          ret.branches[bIndex] = new HashNode<V>(toBigIntBE(branch));
+          ret.branches[bIndex] = new HashNode<V>(toBigIntBE(branch), raw);
         } else {
           // Node is serialized; recursively decode the node
           ret.branches[bIndex] =
