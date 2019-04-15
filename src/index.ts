@@ -438,8 +438,7 @@ export class BranchNode<V> extends MerklePatriciaTreeNode<V> {
         hashedBranches[idx] = Buffer.from([]);
       } else if (branch instanceof HashNode) {
         hashedBranches[idx] = toBufferBE(branch.nodeHash, 32);
-      }
-      else if (
+      } else if (
           branch instanceof BranchNode || (branch.nibbles.length / 2) > 30) {
         // Will be >32 when RLP serialized, so just hash
         hashedBranches[idx] =
