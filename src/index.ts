@@ -1693,7 +1693,7 @@ export class CachedMerklePatriciaTree<K, V> extends MerklePatriciaTree<K, V> {
       const ret = this._getRecursive(mappedNode, key, bagNodesUsed, ...nodeMap);
       return ret;
 
-    } else if (NullNode) {
+    } else if (node instanceof NullNode) {
       // Error if we hit a nullNode
       throw new Error('Unexpected NullNode');
     } else {
