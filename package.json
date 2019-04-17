@@ -1,6 +1,6 @@
 {
   "name": "@rainblock/merkle-patricia-tree",
-  "version": "4.8.0",
+  "version": "4.9.0",
   "description": "An implementation of the modified merkle patricia tree used in Ethereum, optimized for in-memory usage",
   "main": "build/src/index.js",
   "types": "build/src/index.d.js",
