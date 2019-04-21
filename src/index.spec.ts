@@ -1001,7 +1001,8 @@ describe('Test nodeCount', async () => {
 });
 
 describe('Test batchCOW with nodeBag on CachedMerkleTree', async () => {
-  const cache = new CachedMerklePatriciaTree<Buffer, Buffer>({putCanDelete: false}, 1);
+  const cache =
+      new CachedMerklePatriciaTree<Buffer, Buffer>({putCanDelete: false}, 1);
   const value = Buffer.from('1234');
   const updatedValue = Buffer.from('1234');
   const nodesUsed = new Set<bigint>();
@@ -1061,5 +1062,5 @@ describe('Test batchCOW with nodeBag on CachedMerkleTree', async () => {
 
   it('batchCOWwithNodeBag should set nodes used', async () => {
     nodesUsed.size.should.not.equal(0);
-  })
+  });
 });
