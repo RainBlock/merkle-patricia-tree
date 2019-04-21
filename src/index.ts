@@ -827,7 +827,8 @@ export class MerklePatriciaTree<K = Buffer, V = Buffer> implements
       const copyNode = new LeafNode<V>(node.nibbles, node.value);
       return copyNode;
     } else if (node instanceof HashNode) {
-      const nodeSerialization = (node.serialization)? node.serialization: undefined;
+      const nodeSerialization =
+          (node.serialization) ? node.serialization : undefined;
       const copyNode = new HashNode<V>(node.nodeHash, nodeSerialization);
       return copyNode;
     }
