@@ -964,3 +964,37 @@ describe('Test getFromCache and rlpToMerkleNode', async () => {
     v3!.should.deep.equal(updatedValue);
   });
 });
+
+describe('Test nodeCount', async () => {
+  const tree = new CachedMerklePatriciaTree({putCanDelete: false}, 1);
+  const value = Buffer.from('1234');
+
+  it('Test nodeCount with empty tree', async () => {
+    const nodeCount = tree.nodeCount();
+    nodeCount.should.equal(1);
+  });
+
+  it('Test nodeCount with a LeafNode', async () => {
+    tree.put(Buffer.from('abcd'), value);
+    const nodeCount = tree.nodeCount();
+    nodeCount.should.equal(1);
+  });
+
+  it('Test nodeCount with BranchNode', async () => {
+    tree.put(Buffer.from('xxxx'), value);
+    const nodeCount = tree.nodeCount();
+    nodeCount.should.equal(3);
+  });
+
+  it('Test nodeCount with Extension, Branch and Leaf', async () => {
+    tree.put(Buffer.from('abef'), value);
+    const nodeCount = tree.nodeCount();
+    nodeCount.should.equal(6);
+  });
+
+  it('Test nodeCount with HashNodes', async () => {
+    tree.pruneStateCache();
+    const nodeCount = tree.nodeCount();
+    nodeCount.should.equal(3);
+  });
+});

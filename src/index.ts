@@ -109,7 +109,7 @@ export abstract class MerklePatriciaTreeNode<V> {
   markForCopy = false;
 
   /**
-   * Serializes and computed the RLP encoding of the node
+   * Serializes and computes the RLP encoding of the node
    * Also stores it for future references.
    */
   getRlpNodeEncoding(options: MerklePatriciaTreeOptions<{}, V>): Buffer {
@@ -128,6 +128,25 @@ export abstract class MerklePatriciaTreeNode<V> {
    */
   clearRlpNodeEncoding() {
     this.rlpNodeEncoding = null;
+  }
+
+  /**
+   * Serializes and computes the RLP encoding of the node and returns
+   * the length of the rlp encoding of the node.
+   * getNodeRlpSize also stores the computed rlp encoding for future references.
+   */
+  getNodeRlpSize(options: MerklePatriciaTreeOptions<{}, V>): number {
+    if (this.rlpNodeEncoding) {
+      return this.rlpNodeEncoding.length;
+    }
+    if (options.memoizeSerialization === undefined ||
+        options.memoizeSerialization === false) {
+      return RlpEncode(this.serialize(options)).length;
+    }
+    if (this.rlpNodeEncoding === null) {
+      this.rlpNodeEncoding = RlpEncode(this.serialize(options));
+    }
+    return this.rlpNodeEncoding.length;
   }
 
 
@@ -1300,6 +1319,63 @@ export class MerklePatriciaTree<K = Buffer, V = Buffer> implements
       }
     }
     return {value, proof};
+  }
+
+  /**
+   * Counts the number of nodes in the tree
+   */
+  nodeCount(count = 0): number {
+    return this._getNodeCount(this.rootNode);
+  }
+
+  /**
+   * Returns the sum of lengths of rlpEncodings of all the nodes in the tree
+   */
+  size(): number {
+    return this._getSize(this.rootNode);
+  }
+
+  // TODO: Maybe return the number of nodes of each type...
+  private _getNodeCount(node: MerklePatriciaTreeNode<V>): number {
+    if (node instanceof NullNode) {
+      return 1;
+    } else if (node instanceof BranchNode) {
+      let count = 0;
+      for (const branch of node.branches) {
+        if (branch) {
+          count += this._getNodeCount(branch);
+        }
+      }
+      return 1 + count;
+    } else if (node instanceof ExtensionNode) {
+      const count = this._getNodeCount(node.nextNode);
+      return 1 + count;
+    } else if (node instanceof HashNode || node instanceof LeafNode) {
+      return 1;
+    }
+    throw new Error('Unknown node type');
+  }
+
+  private _getSize(node: MerklePatriciaTreeNode<V>): number {
+    const nodeSize =
+        node.getNodeRlpSize(this.options as MerklePatriciaTreeOptions<{}, V>);
+    if (node instanceof NullNode) {
+      return nodeSize;
+    } else if (node instanceof BranchNode) {
+      let size = 0;
+      for (const branch of node.branches) {
+        if (branch) {
+          size += this._getSize(branch);
+        }
+      }
+      return nodeSize + size;
+    } else if (node instanceof ExtensionNode) {
+      const size = this._getSize(node.nextNode);
+      return nodeSize + size;
+    } else if (node instanceof HashNode || node instanceof LeafNode) {
+      return nodeSize;
+    }
+    throw new Error('Unknown node type');
   }
 }
 
