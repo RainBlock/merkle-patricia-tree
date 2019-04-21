@@ -826,34 +826,19 @@ export class MerklePatriciaTree<K = Buffer, V = Buffer> implements
     } else if (node instanceof LeafNode) {
       const copyNode = new LeafNode<V>(node.nibbles, node.value);
       return copyNode;
+    } else if (node instanceof HashNode) {
+      const nodeSerialization = (node.serialization)? node.serialization: undefined;
+      const copyNode = new HashNode<V>(node.nodeHash, nodeSerialization);
+      return copyNode;
     }
     return new NullNode<V>();
-  }
-
-  private copyPath(key: K, newTree: MerklePatriciaTree<K, V>, flag?: boolean) {
-    let keyNibbles: number[] =
-        MerklePatriciaTreeNode.bufferToNibbles(this.options.keyConverter!(key));
-    let currNode: MerklePatriciaTreeNode<V>|null = newTree.rootNode;
-    let nextNode: MerklePatriciaTreeNode<V>|null;
-    const result: SearchResult<V> = this.search(key);
-    for (let i = 1; i < result.stack.length; i++) {
-      nextNode = this.getNodeCopy(result.stack[i]);
-      if (currNode instanceof BranchNode) {
-        currNode.branches[keyNibbles[0]] = nextNode;
-        keyNibbles.shift();
-      } else if (currNode instanceof ExtensionNode) {
-        currNode.nextNode = nextNode;
-        keyNibbles = keyNibbles.slice(currNode.nibbles.length);
-      }
-      currNode = nextNode;
-    }
   }
 
   /**
    * CopyTreePaths
    * Copies paths that are marked for copy
    */
-  private copyTreePaths(
+  copyTreePaths(
       node1: MerklePatriciaTreeNode<V>,
       node2: MerklePatriciaTreeNode<V>): MerklePatriciaTreeNode<V> {
     if (node1.markForCopy) {
@@ -870,6 +855,7 @@ export class MerklePatriciaTree<K = Buffer, V = Buffer> implements
           node1 instanceof ExtensionNode && node2 instanceof ExtensionNode) {
         node2.nextNode = this.copyTreePaths(node1.nextNode, node2.nextNode);
       } else if (
+          node1 instanceof HashNode && node2 instanceof HashNode ||
           node1 instanceof LeafNode && node2 instanceof LeafNode ||
           node1 instanceof NullNode && node2 instanceof NullNode) {
         return node2;
@@ -1894,6 +1880,34 @@ export class CachedMerklePatriciaTree<K, V> extends MerklePatriciaTree<K, V> {
     for (const node of updatedResult.stack) {
       node.clearMemoizedHash();
     }
+  }
+
+  batchCOWwithNodeBag(
+      putOps: Array<BatchPut<K, V>>, delOps: K[],
+      nodesUsed: Set<bigint>|undefined,
+      ...nodeBag: Array<Map<bigint, MerklePatriciaTreeNode<V>>>):
+      CachedMerklePatriciaTree<K, V> {
+    if (putOps.length === 0 && delOps.length === 0) {
+      // If no updates for batchCOW; just return the same tree
+      return this;
+    }
+    // Search the tree and mark the nodes for copy
+    this.multiSearch(putOps, delOps, true);
+    const newTree = new CachedMerklePatriciaTree<K, V>(this.options);
+    // Copy all the nodes marked for copy into the newTree
+    newTree.rootNode = super.copyTreePaths(this.rootNode, newTree.rootNode);
+    // Modify the new Tree: Insert the putOps
+    for (const put of putOps) {
+      newTree.putWithNodeBag(put.key, put.val, nodesUsed, ...nodeBag);
+    }
+    // Modify the new Tree: Delete the delOps
+    for (const key of delOps) {
+      newTree.del(key);
+    }
+    // Reset the nodes marked for copy in the original tree
+    this.multiSearch(putOps, delOps, false);
+    // Return the new tree;
+    return newTree;
   }
 
   verifyAndAddWitness(root: Buffer, key: K, witness: Witness<V>) {
