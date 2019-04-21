@@ -1959,17 +1959,24 @@ export class CachedMerklePatriciaTree<K, V> extends MerklePatriciaTree<K, V> {
     }
   }
 
+  /**
+   * Updates CachedMerklePatriciaTree in a copy-on-write fashion
+   * @param putOps Key value pairs to be updated
+   * @param delOps Keys to be deleted
+   * @param nodesUsed Nodes in the nodeBags that become stale due to the updates
+   * @param nodeBag A list of maps indexing MerkleNodes with their hashes
+   */
+  // TODO: Add support for delOps; Needs modifying MerklePatriciaTree.del
   batchCOWwithNodeBag(
-      putOps: Array<BatchPut<K, V>>, delOps: K[],
-      nodesUsed: Set<bigint>|undefined,
+      putOps: Array<BatchPut<K, V>>, nodesUsed: Set<bigint>|undefined,
       ...nodeBag: Array<Map<bigint, MerklePatriciaTreeNode<V>>>):
       CachedMerklePatriciaTree<K, V> {
-    if (putOps.length === 0 && delOps.length === 0) {
+    if (putOps.length === 0) {
       // If no updates for batchCOW; just return the same tree
       return this;
     }
     // Search the tree and mark the nodes for copy
-    this.multiSearch(putOps, delOps, true);
+    this.multiSearch(putOps, [], true);
     const newTree = new CachedMerklePatriciaTree<K, V>(this.options);
     // Copy all the nodes marked for copy into the newTree
     newTree.rootNode = super.copyTreePaths(this.rootNode, newTree.rootNode);
@@ -1977,12 +1984,8 @@ export class CachedMerklePatriciaTree<K, V> extends MerklePatriciaTree<K, V> {
     for (const put of putOps) {
       newTree.putWithNodeBag(put.key, put.val, nodesUsed, ...nodeBag);
     }
-    // Modify the new Tree: Delete the delOps
-    for (const key of delOps) {
-      newTree.del(key);
-    }
     // Reset the nodes marked for copy in the original tree
-    this.multiSearch(putOps, delOps, false);
+    this.multiSearch(putOps, [], false);
     // Return the new tree;
     return newTree;
   }
