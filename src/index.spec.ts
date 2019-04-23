@@ -4,7 +4,7 @@ import * as chai from 'chai';
 import * as path from 'path';
 import {RlpEncode, RlpList} from 'rlp-stream';
 
-import {BranchNode, CachedMerklePatriciaTree, ExtensionNode, HashNode, LeafNode, MerklePatriciaTree, MerklePatriciaTreeOptions, NullNode, verifyWitness} from './index';
+import {BatchPut, BranchNode, CachedMerklePatriciaTree, ExtensionNode, HashNode, LeafNode, MerklePatriciaTree, MerklePatriciaTreeNode, MerklePatriciaTreeOptions, NullNode, verifyWitness} from './index';
 
 const utils = require('ethereumjs-util');
 
@@ -947,10 +947,11 @@ describe('Test getFromCache and rlpToMerkleNode', async () => {
   });
 
   it('test putWithNodeBag insertions', async () => {
+    const nodesUsed = new Set<bigint>();
     const updatedValue = Buffer.from('1234');
-    cache.putWithNodeBag(Buffer.from('abcd'), updatedValue, undefined, nodeMap);
-    cache.putWithNodeBag(Buffer.from('abcx'), updatedValue, undefined, nodeMap);
-    cache.putWithNodeBag(Buffer.from('xxxx'), updatedValue, undefined, nodeMap);
+    cache.putWithNodeBag(Buffer.from('abcd'), updatedValue, nodesUsed, nodeMap);
+    cache.putWithNodeBag(Buffer.from('abcx'), updatedValue, nodesUsed, nodeMap);
+    cache.putWithNodeBag(Buffer.from('xxxx'), updatedValue, nodesUsed, nodeMap);
 
     const v1 = cache.get(Buffer.from('abcd')).value;
     const v2 = cache.get(Buffer.from('abcx')).value;
@@ -962,5 +963,104 @@ describe('Test getFromCache and rlpToMerkleNode', async () => {
     v1!.should.deep.equal(updatedValue);
     v2!.should.deep.equal(updatedValue);
     v3!.should.deep.equal(updatedValue);
+  });
+});
+
+describe('Test nodeCount', async () => {
+  const tree = new CachedMerklePatriciaTree({putCanDelete: false}, 1);
+  const value = Buffer.from('1234');
+
+  it('Test nodeCount with empty tree', async () => {
+    const nodeCount = tree.nodeCount();
+    nodeCount.should.equal(1);
+  });
+
+  it('Test nodeCount with a LeafNode', async () => {
+    tree.put(Buffer.from('abcd'), value);
+    const nodeCount = tree.nodeCount();
+    nodeCount.should.equal(1);
+  });
+
+  it('Test nodeCount with BranchNode', async () => {
+    tree.put(Buffer.from('xxxx'), value);
+    const nodeCount = tree.nodeCount();
+    nodeCount.should.equal(3);
+  });
+
+  it('Test nodeCount with Extension, Branch and Leaf', async () => {
+    tree.put(Buffer.from('abef'), value);
+    const nodeCount = tree.nodeCount();
+    nodeCount.should.equal(6);
+  });
+
+  it('Test nodeCount with HashNodes', async () => {
+    tree.pruneStateCache();
+    const nodeCount = tree.nodeCount();
+    nodeCount.should.equal(3);
+  });
+});
+
+describe('Test batchCOW with nodeBag on CachedMerkleTree', async () => {
+  const cache =
+      new CachedMerklePatriciaTree<Buffer, Buffer>({putCanDelete: false}, 1);
+  const value = Buffer.from('1234');
+  const updatedValue = Buffer.from('1234');
+  const nodesUsed = new Set<bigint>();
+  const nodeMap = new Map<bigint, MerklePatriciaTreeNode<Buffer>>();
+
+  it('Test batchCOW copy on write functionality', async () => {
+    cache.put(Buffer.from('abcd'), value);
+    cache.put(Buffer.from('abcx'), value);
+    cache.put(Buffer.from('xxxx'), value);
+    const root = cache.root;
+
+    let extensionNodeHash: bigint;
+    if (cache.rootNode instanceof BranchNode) {
+      for (const branch of (cache.rootNode).branches) {
+        if (branch) {
+          const node = branch.getRlpNodeEncoding(
+              cache.options as {} as MerklePatriciaTreeOptions<{}, Buffer>);
+          const hash = branch.hash(
+              cache.options as {} as MerklePatriciaTreeOptions<{}, Buffer>);
+          const mappedNode = cache.rlpToMerkleNode(node, (val: Buffer) => val);
+          nodeMap.set(hash, mappedNode);
+          if (mappedNode instanceof ExtensionNode) {
+            extensionNodeHash = hash;
+          }
+        }
+      }
+      const branch6 = cache.rootNode.branches[6];
+      if (branch6 instanceof ExtensionNode) {
+        const node2 = branch6.nextNode.getRlpNodeEncoding(
+            cache.options as {} as MerklePatriciaTreeOptions<{}, Buffer>);
+        const hash2 = branch6.nextNode.hash(
+            cache.options as {} as MerklePatriciaTreeOptions<{}, Buffer>);
+        const mapNode2 = cache.rlpToMerkleNode(node2, (val: Buffer) => val);
+        nodeMap.set(hash2, mapNode2);
+      }
+    }
+    cache.pruneStateCache();
+
+    const putOps = new Array<BatchPut<Buffer, Buffer>>();
+    putOps.push({key: Buffer.from('abcd'), val: updatedValue});
+    putOps.push({key: Buffer.from('abcx'), val: updatedValue});
+    putOps.push({key: Buffer.from('xxxx'), val: updatedValue});
+
+    const newCache = cache.batchCOWwithNodeBag(putOps, nodesUsed, nodeMap);
+
+    const oldRoot = cache.root;
+    oldRoot.should.deep.equal(root);
+
+    const v1 = newCache.getFromCache(Buffer.from('abcd'), undefined, nodeMap);
+    const v2 = newCache.getFromCache(Buffer.from('abcd'), undefined, nodeMap);
+    const v3 = newCache.getFromCache(Buffer.from('abcd'), undefined, nodeMap);
+
+    v1.should.deep.equal(updatedValue);
+    v2.should.deep.equal(updatedValue);
+    v3.should.deep.equal(updatedValue);
+  });
+
+  it('batchCOWwithNodeBag should set nodes used', async () => {
+    nodesUsed.size.should.not.equal(0);
   });
 });

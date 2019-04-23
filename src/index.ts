@@ -109,7 +109,7 @@ export abstract class MerklePatriciaTreeNode<V> {
   markForCopy = false;
 
   /**
-   * Serializes and computed the RLP encoding of the node
+   * Serializes and computes the RLP encoding of the node
    * Also stores it for future references.
    */
   getRlpNodeEncoding(options: MerklePatriciaTreeOptions<{}, V>): Buffer {
@@ -128,6 +128,25 @@ export abstract class MerklePatriciaTreeNode<V> {
    */
   clearRlpNodeEncoding() {
     this.rlpNodeEncoding = null;
+  }
+
+  /**
+   * Serializes and computes the RLP encoding of the node and returns
+   * the length of the rlp encoding of the node.
+   * getNodeRlpSize also stores the computed rlp encoding for future references.
+   */
+  getNodeRlpSize(options: MerklePatriciaTreeOptions<{}, V>): number {
+    if (this.rlpNodeEncoding) {
+      return this.rlpNodeEncoding.length;
+    }
+    if (options.memoizeSerialization === undefined ||
+        options.memoizeSerialization === false) {
+      return RlpEncode(this.serialize(options)).length;
+    }
+    if (this.rlpNodeEncoding === null) {
+      this.rlpNodeEncoding = RlpEncode(this.serialize(options));
+    }
+    return this.rlpNodeEncoding.length;
   }
 
 
@@ -826,34 +845,20 @@ export class MerklePatriciaTree<K = Buffer, V = Buffer> implements
     } else if (node instanceof LeafNode) {
       const copyNode = new LeafNode<V>(node.nibbles, node.value);
       return copyNode;
+    } else if (node instanceof HashNode) {
+      const nodeSerialization =
+          (node.serialization) ? node.serialization : undefined;
+      const copyNode = new HashNode<V>(node.nodeHash, nodeSerialization);
+      return copyNode;
     }
     return new NullNode<V>();
-  }
-
-  private copyPath(key: K, newTree: MerklePatriciaTree<K, V>, flag?: boolean) {
-    let keyNibbles: number[] =
-        MerklePatriciaTreeNode.bufferToNibbles(this.options.keyConverter!(key));
-    let currNode: MerklePatriciaTreeNode<V>|null = newTree.rootNode;
-    let nextNode: MerklePatriciaTreeNode<V>|null;
-    const result: SearchResult<V> = this.search(key);
-    for (let i = 1; i < result.stack.length; i++) {
-      nextNode = this.getNodeCopy(result.stack[i]);
-      if (currNode instanceof BranchNode) {
-        currNode.branches[keyNibbles[0]] = nextNode;
-        keyNibbles.shift();
-      } else if (currNode instanceof ExtensionNode) {
-        currNode.nextNode = nextNode;
-        keyNibbles = keyNibbles.slice(currNode.nibbles.length);
-      }
-      currNode = nextNode;
-    }
   }
 
   /**
    * CopyTreePaths
    * Copies paths that are marked for copy
    */
-  private copyTreePaths(
+  copyTreePaths(
       node1: MerklePatriciaTreeNode<V>,
       node2: MerklePatriciaTreeNode<V>): MerklePatriciaTreeNode<V> {
     if (node1.markForCopy) {
@@ -870,6 +875,7 @@ export class MerklePatriciaTree<K = Buffer, V = Buffer> implements
           node1 instanceof ExtensionNode && node2 instanceof ExtensionNode) {
         node2.nextNode = this.copyTreePaths(node1.nextNode, node2.nextNode);
       } else if (
+          node1 instanceof HashNode && node2 instanceof HashNode ||
           node1 instanceof LeafNode && node2 instanceof LeafNode ||
           node1 instanceof NullNode && node2 instanceof NullNode) {
         return node2;
@@ -1313,6 +1319,63 @@ export class MerklePatriciaTree<K = Buffer, V = Buffer> implements
       }
     }
     return {value, proof};
+  }
+
+  /**
+   * Counts the number of nodes in the tree
+   */
+  nodeCount(count = 0): number {
+    return this._getNodeCount(this.rootNode);
+  }
+
+  /**
+   * Returns the sum of lengths of rlpEncodings of all the nodes in the tree
+   */
+  size(): number {
+    return this._getSize(this.rootNode);
+  }
+
+  // TODO: Maybe return the number of nodes of each type...
+  private _getNodeCount(node: MerklePatriciaTreeNode<V>): number {
+    if (node instanceof NullNode) {
+      return 1;
+    } else if (node instanceof BranchNode) {
+      let count = 0;
+      for (const branch of node.branches) {
+        if (branch) {
+          count += this._getNodeCount(branch);
+        }
+      }
+      return 1 + count;
+    } else if (node instanceof ExtensionNode) {
+      const count = this._getNodeCount(node.nextNode);
+      return 1 + count;
+    } else if (node instanceof HashNode || node instanceof LeafNode) {
+      return 1;
+    }
+    throw new Error('Unknown node type');
+  }
+
+  private _getSize(node: MerklePatriciaTreeNode<V>): number {
+    const nodeSize =
+        node.getNodeRlpSize(this.options as MerklePatriciaTreeOptions<{}, V>);
+    if (node instanceof NullNode) {
+      return nodeSize;
+    } else if (node instanceof BranchNode) {
+      let size = 0;
+      for (const branch of node.branches) {
+        if (branch) {
+          size += this._getSize(branch);
+        }
+      }
+      return nodeSize + size;
+    } else if (node instanceof ExtensionNode) {
+      const size = this._getSize(node.nextNode);
+      return nodeSize + size;
+    } else if (node instanceof HashNode || node instanceof LeafNode) {
+      return nodeSize;
+    }
+    throw new Error('Unknown node type');
   }
 }
 
@@ -1894,6 +1957,37 @@ export class CachedMerklePatriciaTree<K, V> extends MerklePatriciaTree<K, V> {
     for (const node of updatedResult.stack) {
       node.clearMemoizedHash();
     }
+  }
+
+  /**
+   * Updates CachedMerklePatriciaTree in a copy-on-write fashion
+   * @param putOps Key value pairs to be updated
+   * @param delOps Keys to be deleted
+   * @param nodesUsed Nodes in the nodeBags that become stale due to the updates
+   * @param nodeBag A list of maps indexing MerkleNodes with their hashes
+   */
+  // TODO: Add support for delOps; Needs modifying MerklePatriciaTree.del
+  batchCOWwithNodeBag(
+      putOps: Array<BatchPut<K, V>>, nodesUsed: Set<bigint>|undefined,
+      ...nodeBag: Array<Map<bigint, MerklePatriciaTreeNode<V>>>):
+      CachedMerklePatriciaTree<K, V> {
+    if (putOps.length === 0) {
+      // If no updates for batchCOW; just return the same tree
+      return this;
+    }
+    // Search the tree and mark the nodes for copy
+    this.multiSearch(putOps, [], true);
+    const newTree = new CachedMerklePatriciaTree<K, V>(this.options);
+    // Copy all the nodes marked for copy into the newTree
+    newTree.rootNode = super.copyTreePaths(this.rootNode, newTree.rootNode);
+    // Modify the new Tree: Insert the putOps
+    for (const put of putOps) {
+      newTree.putWithNodeBag(put.key, put.val, nodesUsed, ...nodeBag);
+    }
+    // Reset the nodes marked for copy in the original tree
+    this.multiSearch(putOps, [], false);
+    // Return the new tree;
+    return newTree;
   }
 
   verifyAndAddWitness(root: Buffer, key: K, witness: Witness<V>) {
