@@ -534,15 +534,16 @@ export class ExtensionNode<V> extends MerklePatriciaTreeNode<V> {
   /** @inheritdoc */
   serialize(options: MerklePatriciaTreeOptions<{}, V>) {
     let serialized: RlpItem;
+    let rlpEncodeNextNode = undefined;
     if (this.nextNode instanceof HashNode) {
       serialized = toBufferBE(this.nextNode.nodeHash, 32);
     } else {
       serialized = this.nextNode!.serialize(options);
+      rlpEncodeNextNode = this.nextNode!.getRlpNodeEncoding(options);
     }
-    const rlpEncodeNextNode = this.nextNode!.getRlpNodeEncoding(options);
     return [
       MerklePatriciaTreeNode.toBuffer(this.nibbles, this.prefix),
-      rlpEncodeNextNode.length >= 32 ?
+      (rlpEncodeNextNode && rlpEncodeNextNode.length >= 32) ?
           toBufferBE(this.nextNode!.hash(options), 32) :
           serialized
     ];
@@ -1357,9 +1358,9 @@ export class MerklePatriciaTree<K = Buffer, V = Buffer> implements
   }
 
   private _getSize(node: MerklePatriciaTreeNode<V>): number {
-    const nodeSize =
-        node.getNodeRlpSize(this.options as MerklePatriciaTreeOptions<{}, V>);
     if (node instanceof NullNode) {
+      const nodeSize =
+          node.getNodeRlpSize(this.options as MerklePatriciaTreeOptions<{}, V>);
       return nodeSize;
     } else if (node instanceof BranchNode) {
       let size = 0;
@@ -1368,12 +1369,20 @@ export class MerklePatriciaTree<K = Buffer, V = Buffer> implements
           size += this._getSize(branch);
         }
       }
+      const nodeSize =
+          node.getNodeRlpSize(this.options as MerklePatriciaTreeOptions<{}, V>);
       return nodeSize + size;
     } else if (node instanceof ExtensionNode) {
       const size = this._getSize(node.nextNode);
+      const nodeSize =
+          node.getNodeRlpSize(this.options as MerklePatriciaTreeOptions<{}, V>);
       return nodeSize + size;
-    } else if (node instanceof HashNode || node instanceof LeafNode) {
+    } else if (node instanceof LeafNode) {
+      const nodeSize =
+          node.getNodeRlpSize(this.options as MerklePatriciaTreeOptions<{}, V>);
       return nodeSize;
+    } else if (node instanceof HashNode) {
+      return 32;
     }
     throw new Error('Unknown node type');
   }
@@ -1645,8 +1654,7 @@ export class CachedMerklePatriciaTree<K, V> extends MerklePatriciaTree<K, V> {
   pruneStateCache(
       currNode: MerklePatriciaTreeNode<V> = this.rootNode, depth = 1) {
     while (depth < this.maxCacheDepth) {
-      if (currNode instanceof LeafNode || currNode instanceof HashNode ||
-          currNode instanceof NullNode) {
+      if (currNode instanceof HashNode || currNode instanceof NullNode) {
         return;
       }
       if (currNode instanceof BranchNode) {
@@ -1670,10 +1678,10 @@ export class CachedMerklePatriciaTree<K, V> extends MerklePatriciaTree<K, V> {
         }
         const nodeHash = branch.hash(
             this.options as {} as MerklePatriciaTreeOptions<{}, Buffer>);
-        currNode.branches[idx] = new HashNode(
-            nodeHash,
-            branch.getRlpNodeEncoding(
-                this.options as {} as MerklePatriciaTreeOptions<{}, Buffer>));
+        const nodeRLP = branch.getRlpNodeEncoding(
+            this.options as {} as MerklePatriciaTreeOptions<{}, Buffer>);
+        currNode.branches[idx] =
+            new HashNode(nodeHash, (nodeRLP.length < 32) ? nodeRLP : undefined);
       }
     } else if (currNode instanceof ExtensionNode) {
       if (currNode.nextNode instanceof LeafNode ||
@@ -1682,10 +1690,10 @@ export class CachedMerklePatriciaTree<K, V> extends MerklePatriciaTree<K, V> {
       }
       const nodeHash = currNode.nextNode.hash(
           this.options as {} as MerklePatriciaTreeOptions<{}, Buffer>);
-      currNode.nextNode = new HashNode(
-          nodeHash,
-          currNode.nextNode.getRlpNodeEncoding(
-              this.options as {} as MerklePatriciaTreeOptions<{}, Buffer>));
+      const nodeRLP = currNode.nextNode.getRlpNodeEncoding(
+          this.options as {} as MerklePatriciaTreeOptions<{}, Buffer>);
+      currNode.nextNode =
+          new HashNode(nodeHash, (nodeRLP.length < 32) ? nodeRLP : undefined);
     }
     return;
   }
